@@ -6,12 +6,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    protected $table = 'usuario';
+    
     /**
      * The attributes that are mass assignable.
      *
@@ -21,14 +24,11 @@ class User extends Authenticatable
         'nombres',
         'primerApellido',
         'segundoApellido',
-        'rol',
         'email',
+        'rol',
+        'qr_codigo',
         'password',
     ];
-
-    protected $table = 'usuario';
-
-
 
     /**
      * The attributes that should be hidden for serialization.
@@ -71,5 +71,15 @@ class User extends Authenticatable
     public function isStudent(): bool
     {
         return $this->hasRole('estudiante');
+    }
+
+    public function estudiante(): HasOne
+    {
+        return $this->hasOne(Estudiante::class, 'idUser', 'id');
+    }
+
+    public function docente(): HasOne
+    {
+        return $this->hasOne(Docente::class, 'idUser', 'id');
     }
 }
