@@ -1,6 +1,29 @@
 import type { PageProps } from '@inertiajs/core';
-import type { LucideIcon } from 'lucide-vue-next';
 import type { Config } from 'ziggy-js';
+
+// Tipos básicos
+export type UserRole = 'administrador' | 'estudiante' | 'docente';
+
+// Ítem básico de navegación
+export interface NavItem {
+    title: string;
+    href: string;
+    icon?: any;
+}
+
+// Grupo de navegación
+export interface NavGroup {
+    title: string;
+    icon: any;
+    items: NavItem[];
+}
+
+// Navegación por rol
+export interface RoleNavigation {
+    admin: NavGroup[];
+    student?: NavGroup[];
+    teacher?: NavGroup[];
+}
 
 export interface Auth {
     user: User;
@@ -11,11 +34,16 @@ export interface BreadcrumbItem {
     href: string;
 }
 
-export interface NavItem {
-    title: string;
-    href: string;
-    icon?: LucideIcon;
-    isActive?: boolean;
+export interface AdminNavigation {
+    academico: MenuSection;
+    residuos: MenuSection;
+}
+
+export interface RoleBasedNavigation {
+    common: NavItem[];
+    admin: AdminNavigation;
+    teacher: NavItem[];
+    student: NavItem[];
 }
 
 export interface SharedData extends PageProps {
@@ -28,9 +56,13 @@ export interface SharedData extends PageProps {
 
 export interface User {
     id: number;
-    name: string;
+    nombres: string;
+    primerApellido: string;
+    segundoApellido: string;
+    rol: string;
     email: string;
     avatar?: string;
+    src: string;
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;

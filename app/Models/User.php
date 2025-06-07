@@ -18,10 +18,17 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'name',
+        'nombres',
+        'primerApellido',
+        'segundoApellido',
+        'rol',
         'email',
         'password',
     ];
+
+    protected $table = 'usuario';
+
+
 
     /**
      * The attributes that should be hidden for serialization.
@@ -44,5 +51,25 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return $this->rol === $role;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('administrador');
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->hasRole('docente');
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->hasRole('estudiante');
     }
 }

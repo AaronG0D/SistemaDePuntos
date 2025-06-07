@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\EstudianteController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Middleware\RoleMiddleware;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -10,6 +12,11 @@ Route::get('/', function () {
 Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(function () {
+    Route::get('/admin/estudiantes', [EstudianteController::class, 'index'])
+        ->name('admin.estudiantes');
+});
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

@@ -10,6 +10,9 @@ import { LoaderCircle } from 'lucide-vue-next';
 
 const form = useForm({
     name: '',
+    primerApellido: '',
+    segundoApellido: '',
+    rol: '',
     email: '',
     password: '',
     password_confirmation: '',
@@ -35,8 +38,31 @@ const submit = () => {
                 </div>
 
                 <div class="grid gap-2">
+                    <Label for="primerApellido">Primer Apellido</Label>
+                    <Input id="primerApellido" type="text" required :tabindex="2" v-model="form.primerApellido" placeholder="Primer Apellido" />
+                    <InputError :message="form.errors.primerApellido" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="segundoApellido">Segundo Apellido</Label>
+                    <Input id="segundoApellido" type="text" :tabindex="3" v-model="form.segundoApellido" placeholder="Segundo Apellido (opcional)" />
+                    <InputError :message="form.errors.segundoApellido" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="rol">Rol</Label>
+                    <select id="rol" required :tabindex="4" v-model="form.rol" class="input">
+                        <option value="" disabled>Seleccione un rol</option>
+                        <option value="estudiante">Estudiante</option>
+                        <option value="docente">Docente</option>
+                        <option value="administrador">Administrador</option>
+                    </select>
+                    <InputError :message="form.errors.rol" />
+                </div>
+
+                <div class="grid gap-2">
                     <Label for="email">Email address</Label>
-                    <Input id="email" type="email" required :tabindex="2" autocomplete="email" v-model="form.email" placeholder="email@example.com" />
+                    <Input id="email" type="email" required :tabindex="5" autocomplete="email" v-model="form.email" placeholder="email@example.com" />
                     <InputError :message="form.errors.email" />
                 </div>
 
@@ -46,7 +72,7 @@ const submit = () => {
                         id="password"
                         type="password"
                         required
-                        :tabindex="3"
+                        :tabindex="6"
                         autocomplete="new-password"
                         v-model="form.password"
                         placeholder="Password"
@@ -60,7 +86,7 @@ const submit = () => {
                         id="password_confirmation"
                         type="password"
                         required
-                        :tabindex="4"
+                        :tabindex="7"
                         autocomplete="new-password"
                         v-model="form.password_confirmation"
                         placeholder="Confirm password"
@@ -68,15 +94,15 @@ const submit = () => {
                     <InputError :message="form.errors.password_confirmation" />
                 </div>
 
-                <Button type="submit" class="mt-2 w-full" tabindex="5" :disabled="form.processing">
+                <Button type="submit" class="mt-2 w-full" tabindex="8" :disabled="form.processing">
                     <LoaderCircle v-if="form.processing" class="h-4 w-4 animate-spin" />
                     Create account
                 </Button>
             </div>
 
-            <div class="text-center text-sm text-muted-foreground">
+            <div class="text-muted-foreground text-center text-sm">
                 Already have an account?
-                <TextLink :href="route('login')" class="underline underline-offset-4" :tabindex="6">Log in</TextLink>
+                <TextLink :href="route('login')" class="underline underline-offset-4" :tabindex="9">Log in</TextLink>
             </div>
         </form>
     </AuthBase>

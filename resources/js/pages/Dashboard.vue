@@ -3,6 +3,8 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import PlaceholderPattern from '../components/PlaceholderPattern.vue';
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
