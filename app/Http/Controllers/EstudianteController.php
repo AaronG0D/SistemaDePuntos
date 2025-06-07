@@ -28,7 +28,7 @@ class EstudianteController extends Controller
                 ];
             });
 
-        return Inertia::render('Admin/EstudiantesLIST', [
+        return Inertia::render('admin/EstudiantesLIST', [
             'estudiantes' => $estudiantes
         ]);
     }
