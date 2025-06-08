@@ -16,6 +16,7 @@ interface Curso {
 interface Paralelo {
     idParalelo: number;
     nombre: string;
+    
 }
 
 // Tipa las props correctamente
