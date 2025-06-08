@@ -67,16 +67,29 @@ export interface User {
     created_at: string;
     updated_at: string;
 }
- export interface Estudiante {
-    id: number;
-    nombres: string;
-    primerApellido: string;
-    segundoApellido?: string;
-    email: string;
-    curso: string;
-    paralelo: string;
-    qr_codigo?: string;
-    puntos_totales: number;
+export interface Estudiante {
+    idUser: number;
+    user: {
+        id: number;
+        nombres: string;
+        primerApellido: string;
+        segundoApellido?: string;
+        email: string;
+        qr_codigo?: string;
+        puntaje?: {
+            puntajeTotal: number;
+        };
+    };
+    curso_paralelo?: {
+        curso?: {
+            idCurso: number;
+            nombre: string;
+        };
+        paralelo?: {
+            idParalelo: number;
+            nombre: string;
+        };
+    };
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;

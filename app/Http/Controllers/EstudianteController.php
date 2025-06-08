@@ -12,24 +12,20 @@ class EstudianteController extends Controller
 
     public function index()
     {
-        $estudiantes = Estudiante::with(['user', 'cursoParalelo.curso', 'cursoParalelo.paralelo'])
-            ->get()
-            ->map(function ($estudiante) {
-                return [
-                    'id' => $estudiante->idUser,
-                    'nombres' => $estudiante->user->nombres,
-                    'primerApellido' => $estudiante->user->primerApellido,
-                    'segundoApellido' => $estudiante->user->segundoApellido,
-                    'email' => $estudiante->user->email,
-                    'curso' => $estudiante->cursoParalelo->curso->nombre,
-                    'paralelo' => $estudiante->cursoParalelo->paralelo->nombre,
-                    'qr_codigo' => $estudiante->user->qr_codigo,
-                    'puntos_totales' => $estudiante->puntos_totales ?? 0,
-                ];
-            });
+        $estudiantes = Estudiante::with([
+            'user.puntaje',
+            'cursoParalelo.curso',
+            'cursoParalelo.paralelo'
+        ])->get();
+
+        // Trae todos los cursos y paralelos como objetos
+        $cursos = \App\Models\Curso::orderBy('nombre')->get(['idCurso', 'nombre']);
+        $paralelos = \App\Models\Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
 
         return Inertia::render('admin/EstudiantesLIST', [
-            'estudiantes' => $estudiantes
+            'estudiantes' => $estudiantes,
+            'cursos' => $cursos,
+            'paralelos' => $paralelos,
         ]);
     }
 }
