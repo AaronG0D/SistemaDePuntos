@@ -30,4 +30,4 @@ class CursoParalelo extends Model
     {
         return $this->hasMany(Estudiante::class, 'idCursoParalelo', 'idCursoParalelo');
     }
-}
+} 

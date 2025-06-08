@@ -11,6 +11,7 @@ class Curso extends Model
     protected $primaryKey = 'idCurso';
     
     protected $fillable = [
+        'idCurso',
         'nombre'
     ];
 

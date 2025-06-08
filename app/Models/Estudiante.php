@@ -9,7 +9,8 @@ class Estudiante extends Model
 {
     protected $table = 'estudiante';
     protected $primaryKey = 'idUser';
-    
+    public $incrementing = false; // porque no es autoincremental
+
     protected $fillable = [
         'idUser',
         'idCursoParalelo'
@@ -24,4 +25,4 @@ class Estudiante extends Model
     {
         return $this->belongsTo(CursoParalelo::class, 'idCursoParalelo', 'idCursoParalelo');
     }
-}
+} 

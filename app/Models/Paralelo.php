@@ -11,7 +11,8 @@ class Paralelo extends Model
     protected $primaryKey = 'idParalelo';
     
     protected $fillable = [
-        'nombre'
+        'nombre',
+        'idCurso'
     ];
 
     public function cursoParalelos(): HasMany
