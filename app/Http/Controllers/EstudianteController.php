@@ -10,13 +10,13 @@ use Inertia\Inertia;
 class EstudianteController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
         $estudiantes = Estudiante::with([
             'user.puntaje',
             'cursoParalelo.curso',
             'cursoParalelo.paralelo'
-        ])->get();
+        ])->paginate(10); // Cambia 10 por la cantidad que desees por página
 
         // Trae todos los cursos y paralelos como objetos
         $cursos = \App\Models\Curso::orderBy('nombre')->get(['idCurso', 'nombre']);

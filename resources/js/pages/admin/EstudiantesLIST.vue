@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -8,6 +9,7 @@ import { Estudiante } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { Search, SquarePen, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+
 // Define los tipos de curso y paralelo
 interface Curso {
     idCurso: number;
@@ -16,12 +18,20 @@ interface Curso {
 interface Paralelo {
     idParalelo: number;
     nombre: string;
-    
+}
+
+interface PaginacionEstudiantes {
+    total: any;
+    per_page: any;
+    data: Estudiante[];
+    last_page: number;
+    current_page: number;
+    // agrega otras propiedades si las necesitas
 }
 
 // Tipa las props correctamente
 const props = defineProps<{
-    estudiantes: Estudiante[];
+    estudiantes: PaginacionEstudiantes;
     cursos: Curso[];
     paralelos: Paralelo[];
 }>();
@@ -30,7 +40,7 @@ const selectedCurso = ref<'all' | number>('all');
 const selectedParalelo = ref<'all' | number>('all');
 const searchQuery = ref('');
 const filteredEstudiantes = computed(() => {
-    return props.estudiantes.filter((est) => {
+    return props.estudiantes.data.filter((est) => {
         const cursoMatch = selectedCurso.value === 'all' || est.curso_paralelo?.curso?.idCurso === selectedCurso.value;
 
         const paraleloMatch = selectedParalelo.value === 'all' || est.curso_paralelo?.paralelo?.idParalelo === selectedParalelo.value;
@@ -44,6 +54,23 @@ const filteredEstudiantes = computed(() => {
         return cursoMatch && paraleloMatch && searchMatch;
     });
 });
+
+function goToPage(page: number) {
+    router.get(
+        '/admin/estudiantes',
+        {
+            page,
+            curso: selectedCurso.value !== 'all' ? selectedCurso.value : undefined,
+            paralelo: selectedParalelo.value !== 'all' ? selectedParalelo.value : undefined,
+            search: searchQuery.value || undefined,
+        },
+        {
+            preserveState: false,
+            preserveScroll: true,
+            replace: true,
+        },
+    );
+}
 </script>
 <template>
     <Head title="Estudiantes" />
@@ -101,7 +128,7 @@ const filteredEstudiantes = computed(() => {
                 </Button>
             </div>
 
-            <div class="rounded-lg border">
+            <div class="min-h-[500px] rounded-lg border">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -141,6 +168,26 @@ const filteredEstudiantes = computed(() => {
                     </TableBody>
                 </Table>
             </div>
+
+            <!-- Paginación -->
+            <Pagination
+                class="bg-rgb(214, 219, 216)"
+                v-if="estudiantes.last_page > 1"
+                :total="estudiantes.total"
+                :items-per-page="estudiantes.per_page"
+                :default-page="estudiantes.current_page"
+                v-slot="{ page }"
+            >
+                <PaginationContent>
+                    <PaginationPrevious v-if="estudiantes.current_page > 1" @click="goToPage(estudiantes.current_page - 1)" />
+                    <template v-for="p in estudiantes.last_page" :key="p">
+                        <PaginationItem :value="p" :is-active="p === estudiantes.current_page" @click="goToPage(p)">
+                            {{ p }}
+                        </PaginationItem>
+                    </template>
+                    <PaginationNext v-if="estudiantes.current_page < estudiantes.last_page" @click="goToPage(estudiantes.current_page + 1)" />
+                </PaginationContent>
+            </Pagination>
         </div>
     </AppLayout>
 </template>
