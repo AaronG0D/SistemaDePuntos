@@ -81,6 +81,7 @@ export interface Estudiante {
         };
     };
     curso_paralelo?: {
+        idCursoParalelo: number;
         curso?: {
             idCurso: number;
             nombre: string;

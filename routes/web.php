@@ -16,6 +16,8 @@ Route::get('dashboard', function () {
 Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(function () {
     Route::get('/admin/estudiantes', [EstudianteController::class, 'index'])
         ->name('admin.estudiantes');
+    Route::put('/admin/estudiantes/{id}', [EstudianteController::class, 'update'])
+        ->name('admin.estudiantes.update');
 });
 
 require __DIR__.'/settings.php';

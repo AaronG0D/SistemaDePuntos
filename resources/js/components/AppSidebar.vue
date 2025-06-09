@@ -15,11 +15,11 @@ import {
     SidebarMenuSub,
     SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type NavGroup, type NavItem, type UserRole } from '@/types';
-import type { Page } from '@inertiajs/core';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Book, BoxIcon, Briefcase, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
 const commonNavItems: NavItem[] = [
@@ -33,6 +33,10 @@ const commonNavItems: NavItem[] = [
 // Estado para los menús colapsables
 const openAcademico = ref(false);
 const openResiduos = ref(false);
+const openGroups = ref<{ [key: string]: boolean }>({});
+
+// Estado para el sidebar colapsado
+const collapsible = computed(() => 'collapsed'); // Ajusta el valor según tu lógica
 
 // Definición de la navegación del sidebar
 
@@ -88,6 +92,15 @@ const navigationGroups: NavGroup[] = [
 
 const page = usePage();
 const userRole = page.props.auth?.user?.rol as UserRole;
+
+function setGroupOpen(group: { title: string | number }) {
+    openGroups.value[group.title] = true;
+}
+function isGroupActive(group: { items: Array<{ href: string }> }) {
+    // Ejemplo: verifica si alguna ruta del grupo coincide con la ruta actual
+    // Ajusta según tu lógica de rutas
+    return group.items.some((item) => window.location.pathname === item.href);
+}
 </script>
 
 <template>
@@ -106,52 +119,67 @@ const userRole = page.props.auth?.user?.rol as UserRole;
 
         <SidebarContent class="space-y-1">
             <SidebarGroup class="py-1">
-                <SidebarGroupLabel class="px-3 py-1 text-xs font-medium text-muted-foreground uppercase">
-                    Sistema de Puntos
-                </SidebarGroupLabel>
+                <SidebarGroupLabel class="text-muted-foreground px-3 py-1 text-xs font-medium uppercase"> Sistema de Puntos </SidebarGroupLabel>
                 <SidebarGroupContent>
                     <SidebarMenu>
                         <!-- Dashboard -->
                         <SidebarMenuItem>
-                            <SidebarMenuButton as-child>
-                                <Link href="/dashboard" class="flex items-center gap-2 px-2 py-1.5">
-                                    <LayoutGrid class="h-4 w-4" />
-                                    Dashboard
-                                </Link>
-                            </SidebarMenuButton>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <SidebarMenuButton as-child>
+                                            <Link href="/dashboard" class="flex items-center gap-2 px-2 py-1.5">
+                                                <LayoutGrid class="h-4 w-4" />
+                                                <span class="sidebar-label">Dashboard</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </TooltipTrigger>
+                                    <TooltipContent v-if="collapsible === 'collapsed'" side="right"> Dashboard </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                         </SidebarMenuItem>
 
                         <!-- Menús de administrador -->
                         <template v-if="userRole === 'administrador'">
                             <SidebarMenuItem v-for="group in navigationGroups" :key="group.title">
-                                <Collapsible class="w-full">
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton class="flex w-full items-center px-2 py-1.5">
-                                            <component :is="group.icon" class="mr-2 h-4 w-4" />
-                                            {{ group.title }}
-                                            <ChevronDown 
-                                                class="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" 
-                                            />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            <SidebarMenuSubItem 
-                                                v-for="item in group.items" 
-                                                :key="item.href" 
-                                                class="pl-4"
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Collapsible
+                                                class="w-full"
+                                                :open="openGroups[group.title] ?? isGroupActive(group)"
+                                                @update:open="(val) => (openGroups[group.title] = val)"
                                             >
-                                                <Link
-                                                    :href="item.href"
-                                                    class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors hover:bg-muted"
-                                                >
-                                                    <component :is="item.icon" class="h-4 w-4" />
-                                                    <span>{{ item.title }}</span>
-                                                </Link>
-                                            </SidebarMenuSubItem>
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </Collapsible>
+                                                <CollapsibleTrigger asChild>
+                                                    <SidebarMenuButton class="flex w-full items-center px-2 py-1.5">
+                                                        <component :is="group.icon" class="mr-2 h-4 w-4" />
+                                                        <span class="sidebar-label">{{ group.title }}</span>
+                                                        <ChevronDown
+                                                            class="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                                        />
+                                                    </SidebarMenuButton>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent>
+                                                    <SidebarMenuSub>
+                                                        <SidebarMenuSubItem v-for="item in group.items" :key="item.href" class="pl-4">
+                                                            <Link
+                                                                :href="item.href"
+                                                                class="hover:bg-muted flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors"
+                                                                @click="setGroupOpen(group)"
+                                                            >
+                                                                <component :is="item.icon" class="h-4 w-4" />
+                                                                <span>{{ item.title }}</span>
+                                                            </Link>
+                                                        </SidebarMenuSubItem>
+                                                    </SidebarMenuSub>
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            {{ group.title }}
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </SidebarMenuItem>
                         </template>
                     </SidebarMenu>
@@ -164,3 +192,16 @@ const userRole = page.props.auth?.user?.rol as UserRole;
         </SidebarFooter>
     </Sidebar>
 </template>
+
+<style scoped>
+/* Oculta el texto cuando el sidebar está colapsado (solo íconos) */
+:deep(.sidebar-label) {
+    transition: opacity 0.2s;
+}
+:deep([data-collapsible='icon'] .sidebar-label) {
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    display: inline-block;
+}
+</style>

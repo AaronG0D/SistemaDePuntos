@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Estudiante } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Search, SquarePen, Trash2 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { Search, SquarePen, Trash2, Check, AlertCircle, XCircle } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
+import { Toaster } from 'vue-sonner';
+import 'vue-sonner/style.css'; //
 
 // Define los tipos de curso y paralelo
 interface Curso {
@@ -29,7 +34,7 @@ interface PaginacionEstudiantes {
     // agrega otras propiedades si las necesitas
 }
 
-// Tipa las props correctamente
+// Tipa las props correctamente 
 const props = defineProps<{
     estudiantes: PaginacionEstudiantes;
     cursos: Curso[];
@@ -71,11 +76,99 @@ function goToPage(page: number) {
         },
     );
 }
+
+const dialogOpen = ref(false);
+const editEstudiante = ref<any>(null);
+
+function openEdit(estudiante: any) {
+    editEstudiante.value = JSON.parse(JSON.stringify(estudiante));
+    // Establece los valores iniciales de curso y paralelo
+    editCurso.value = estudiante.curso_paralelo?.curso?.idCurso || null;
+    editParalelo.value = estudiante.curso_paralelo?.paralelo?.idParalelo || null;
+    dialogOpen.value = true;
+}
+
+// Guardar cambios (ajusta la ruta si usas otro endpoint)
+function guardarCambios() {
+    const datos = {
+        user: {
+            nombres: editEstudiante.value.user.nombres,
+            primerApellido: editEstudiante.value.user.primerApellido,
+            segundoApellido: editEstudiante.value.user.segundoApellido,
+            email: editEstudiante.value.user.email,
+        },
+        curso_paralelo: {
+            idCurso: editCurso.value,
+            idParalelo: editParalelo.value,
+        },
+    };
+
+    router.put(`/admin/estudiantes/${editEstudiante.value.idUser}`, datos, {
+        onSuccess: () => {
+            dialogOpen.value = false;
+            toast('Estudiante actualizado', {
+                description: 'Los cambios han sido guardados correctamente',
+                icon: Check,
+                position: 'top-center',
+                action: {
+                    label: 'Ver detalles',
+                    onClick: () => router.visit(`/admin/estudiantes/${editEstudiante.value.idUser}`),
+                },
+            });
+        },
+        onError: () => {
+            toast('Error al actualizar', {
+                description: 'No se pudo actualizar el estudiante',
+                icon: XCircle,
+                position: 'top-center' ,
+                action: {
+                    label: 'Intentar de nuevo',
+                    onClick: () => guardarCambios(),
+                },
+            });
+        },
+    });
+}
+// Opcional: Sincroniza curso/paralelo seleccionados en el diálogo
+const editCurso = ref<number | 'all'>();
+const editParalelo = ref<number | 'all'>();
+
+watch(dialogOpen, (open) => {
+    if (open && editEstudiante.value) {
+        // Si existe curso_paralelo, toma los ids, si no, pon 'all'
+        editCurso.value = editEstudiante.value.curso_paralelo?.curso?.idCurso ?? editEstudiante.value.curso_paralelo?.idCurso ?? 'all';
+        editParalelo.value = editEstudiante.value.curso_paralelo?.paralelo?.idParalelo ?? editEstudiante.value.curso_paralelo?.idParalelo ?? 'all';
+    }
+});
+
+watch(editCurso, (val) => {
+    if (editEstudiante.value && val !== undefined && val !== 'all') {
+        editEstudiante.value.curso_paralelo = editEstudiante.value.curso_paralelo || {};
+        // Actualiza tanto el ID como el objeto curso
+        editEstudiante.value.curso_paralelo.idCurso = val;
+        editEstudiante.value.curso_paralelo.curso = props.cursos.find((c) => c.idCurso === val);
+    }
+});
+
+watch(editParalelo, (val) => {
+    if (editEstudiante.value && val !== undefined && val !== 'all') {
+        editEstudiante.value.curso_paralelo = editEstudiante.value.curso_paralelo || {};
+        // Actualiza tanto el ID como el objeto paralelo
+        editEstudiante.value.curso_paralelo.idParalelo = val;
+        editEstudiante.value.curso_paralelo.paralelo = props.paralelos.find((p) => p.idParalelo === val);
+    }
+});
 </script>
 <template>
     <Head title="Estudiantes" />
 
     <AppLayout>
+        <Toaster 
+            position='top-center' 
+            richColors
+            closeButton
+            expand
+        />
         <div class="container mx-auto py-6">
             <header class="mb-6">
                 <h1 class="text-3xl font-bold">Estudiantes</h1>
@@ -154,15 +247,36 @@ function goToPage(page: number) {
                                 <img v-if="estudiante.user?.qr_codigo" :src="estudiante.user.qr_codigo" alt="QR Code" class="h-8 w-8" />
                             </TableCell>
                             <TableCell class="text-right">
-                                <Button as-child size="sm" class="bg-primary">
-                                    <Link :href="`/admin/estudiantes/${estudiante.idUser}/edit`">Editar <SquarePen /> </Link>
-                                </Button>
-                                <Button variant="ghost" size="sm" as-child>
-                                    <Link :href="`/admin/estudiantes/${estudiante.idUser}`">Ver Detalles</Link>
-                                </Button>
-                                <Button variant="destructive" size="sm" @click="router.delete(`/admin/estudiantes/${estudiante.idUser}`)">
-                                    <Trash2 />
-                                </Button>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Button variant="outline" size="sm" @click="openEdit(estudiante)">
+                                                <SquarePen />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent> Editar estudiante </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Button variant="ghost" size="sm" as-child>
+                                                <Link :href="`/admin/estudiantes/${estudiante.idUser}`"> Ver Detalles </Link>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent> Ver detalles </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Button variant="destructive" size="sm" @click="router.delete(`/admin/estudiantes/${estudiante.idUser}`)">
+                                                <Trash2 />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent> Eliminar estudiante </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </TableCell>
                         </TableRow>
                     </TableBody>
@@ -188,6 +302,65 @@ function goToPage(page: number) {
                     <PaginationNext v-if="estudiantes.current_page < estudiantes.last_page" @click="goToPage(estudiantes.current_page + 1)" />
                 </PaginationContent>
             </Pagination>
+
+            <!-- Diálogo de edición -->
+            <Dialog v-model:open="dialogOpen">
+                <DialogContent class="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Editar estudiante</DialogTitle>
+                        <DialogDescription> Modifica los datos del estudiante y guarda los cambios. </DialogDescription>
+                    </DialogHeader>
+                    <div v-if="editEstudiante" class="grid gap-4 py-4">
+                        <div class="grid grid-cols-4 items-center gap-4">
+                            <Label for="nombres" class="text-right">Nombres</Label>
+                            <Input id="nombres" v-model="editEstudiante.user.nombres" class="col-span-3" />
+                        </div>
+                        <div class="grid grid-cols-4 items-center gap-4">
+                            <Label for="primerApellido" class="text-right">Primer Apellido</Label>
+                            <Input id="primerApellido" v-model="editEstudiante.user.primerApellido" class="col-span-3" />
+                        </div>
+                        <div class="grid grid-cols-4 items-center gap-4">
+                            <Label for="segundoApellido" class="text-right">Segundo Apellido</Label>
+                            <Input id="segundoApellido" v-model="editEstudiante.user.segundoApellido" class="col-span-3" />
+                        </div>
+                        <div class="grid grid-cols-4 items-center gap-4">
+                            <Label for="email" class="text-right">Email</Label>
+                            <Input id="email" v-model="editEstudiante.user.email" class="col-span-3" />
+                        </div>
+                        <div class="grid grid-cols-4 items-center gap-4">
+                            <Label class="text-right">Curso</Label>
+                            <Select v-model="editCurso" class="col-span-3">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona un curso" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem :value="null">Sin curso</SelectItem>
+                                    <SelectItem v-for="curso in cursos" :key="curso.idCurso" :value="curso.idCurso">
+                                        {{ curso.nombre }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div class="grid grid-cols-4 items-center gap-4">
+                            <Label class="text-right">Paralelo</Label>
+                            <Select v-model="editParalelo" class="col-span-3">
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona un paralelo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem :value="null">Sin paralelo</SelectItem>
+                                    <SelectItem v-for="paralelo in paralelos" :key="paralelo.idParalelo" :value="paralelo.idParalelo">
+                                        {{ paralelo.nombre }}
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button @click="guardarCambios">Guardar cambios</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     </AppLayout>
 </template>
