@@ -94,3 +94,6 @@ export interface Estudiante {
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
+
+// ===== EXPORTACIONES DE TIPOS DE ADMINISTRACIÓN =====
+export type { AdminDocentesProps, Curso, Docente, DocenteMateriaCurso, Materia, PaginacionDocentes, Paralelo } from './admin';
