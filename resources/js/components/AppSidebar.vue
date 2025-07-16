@@ -18,7 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type NavGroup, type NavItem, type UserRole } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Book, BoxIcon, Briefcase, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
+import { Book, BoxIcon, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import AppLogo from './AppLogo.vue';
 
@@ -51,18 +51,13 @@ const navigationGroups: NavGroup[] = [
                 icon: User,
             },
             {
-                title: 'Materias',
-                href: '/materias',
+                title: 'Cursos y Materias',
+                href: '/admin/cursos-materias',
                 icon: Book,
             },
             {
-                title: 'Cursos',
-                href: '/cursos',
-                icon: Briefcase,
-            },
-            {
                 title: 'Docentes',
-                href: '/docentes',
+                href: '/admin/docentes',
                 icon: Users,
             },
         ],
@@ -73,17 +68,17 @@ const navigationGroups: NavGroup[] = [
         items: [
             {
                 title: 'Tipos de Basura',
-                href: '/tipos-basura',
+                href: 'admin/tipos-basura',
                 icon: Recycle,
             },
             {
                 title: 'Basureros',
-                href: '/basureros',
+                href: 'admin/basureros',
                 icon: Trash2,
             },
             {
                 title: 'Depósitos',
-                href: '/depositos',
+                href: 'admin/depositos',
                 icon: BoxIcon,
             },
         ],
