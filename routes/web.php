@@ -3,9 +3,13 @@
 use App\Http\Controllers\EstudianteController;
 use App\Http\Controllers\DocenteController;
 use App\Http\Controllers\CursosMateriasController;
+use App\Http\Controllers\BasureroController;
+use App\Http\Controllers\TipoBasuraController;
+use App\Http\Controllers\DepositoController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Controllers\ReporteController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -81,6 +85,72 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.materias.update');
     Route::delete('/admin/materias/{id}', [CursosMateriasController::class, 'destroyMateria'])
         ->name('admin.materias.destroy');
+
+    // ===== RUTAS DE GESTIÓN DE RESIDUOS =====
+    // Basureros
+    Route::get('/admin/basureros', [BasureroController::class, 'index'])
+        ->name('admin.basureros.index');
+    Route::get('/admin/basureros/create', [BasureroController::class, 'create'])
+        ->name('admin.basureros.create');
+    Route::post('/admin/basureros', [BasureroController::class, 'store'])
+        ->name('admin.basureros.store');
+    Route::get('/admin/basureros/{basurero}', [BasureroController::class, 'show'])
+        ->name('admin.basureros.show');
+    Route::get('/admin/basureros/{basurero}/edit', [BasureroController::class, 'edit'])
+        ->name('admin.basureros.edit');
+    Route::put('/admin/basureros/{basurero}', [BasureroController::class, 'update'])
+        ->name('admin.basureros.update');
+    Route::delete('/admin/basureros/{basurero}', [BasureroController::class, 'destroy'])
+        ->name('admin.basureros.destroy');
+    Route::patch('/admin/basureros/{basurero}/toggle-estado', [BasureroController::class, 'toggleEstado'])
+        ->name('admin.basureros.toggle-estado');
+
+    // Tipos de basura
+    Route::get('/admin/tipos-basura', [TipoBasuraController::class, 'index'])
+        ->name('admin.tipos-basura.index');
+    Route::get('/admin/tipos-basura/create', [TipoBasuraController::class, 'create'])
+        ->name('admin.tipos-basura.create');
+    Route::post('/admin/tipos-basura', [TipoBasuraController::class, 'store'])
+        ->name('admin.tipos-basura.store');
+    Route::get('/admin/tipos-basura/{tipoBasura}', [TipoBasuraController::class, 'show'])
+        ->name('admin.tipos-basura.show');
+    Route::get('/admin/tipos-basura/{tipoBasura}/edit', [TipoBasuraController::class, 'edit'])
+        ->name('admin.tipos-basura.edit');
+    Route::put('/admin/tipos-basura/{tipoBasura}', [TipoBasuraController::class, 'update'])
+        ->name('admin.tipos-basura.update');
+    Route::delete('/admin/tipos-basura/{tipoBasura}', [TipoBasuraController::class, 'destroy'])
+        ->name('admin.tipos-basura.destroy');
+
+    // Depósitos
+    Route::get('/admin/depositos', [DepositoController::class, 'index'])
+        ->name('admin.depositos.index');
+    Route::get('/admin/depositos/create', [DepositoController::class, 'create'])
+        ->name('admin.depositos.create');
+    Route::post('/admin/depositos', [DepositoController::class, 'store'])
+        ->name('admin.depositos.store');
+    Route::get('/admin/depositos/estadisticas', [DepositoController::class, 'estadisticas'])
+        ->name('admin.depositos.estadisticas');
+    Route::get('/admin/depositos/{deposito}', [DepositoController::class, 'show'])
+        ->name('admin.depositos.show');
+    Route::get('/admin/depositos/{deposito}/edit', [DepositoController::class, 'edit'])
+        ->name('admin.depositos.edit');
+    Route::put('/admin/depositos/{deposito}', [DepositoController::class, 'update'])
+        ->name('admin.depositos.update');
+    Route::delete('/admin/depositos/{deposito}', [DepositoController::class, 'destroy'])
+        ->name('admin.depositos.destroy');
+
+    // Rutas de reportes
+    Route::get('/admin/reportes', [ReporteController::class, 'index'])->name('admin.reportes.index');
+    Route::get('/admin/reportes/depositos/pdf', [ReporteController::class, 'exportarPDF'])->name('admin.reportes.depositos.pdf');
+    Route::get('/admin/reportes/depositos/excel', [ReporteController::class, 'exportarExcel'])->name('admin.reportes.depositos.excel');
+    Route::get('/admin/reportes/ranking/pdf', [ReporteController::class, 'exportarRankingPDF'])->name('admin.reportes.ranking.pdf');
+    Route::get('/admin/reportes/basurero/pdf', [ReporteController::class, 'exportarBasureroPDF'])->name('admin.reportes.basurero.pdf');
+    Route::get('/admin/reportes/fecha/pdf', [ReporteController::class, 'exportarDepositosPorFechaPDF'])->name('admin.reportes.fecha.pdf');
+    Route::get('/admin/reportes/depositos', [ReporteController::class, 'depositos'])->name('admin.reportes.depositos');
+    Route::get('/admin/reportes/ranking', [ReporteController::class, 'ranking'])->name('admin.reportes.ranking');
+    Route::get('/admin/reportes/basureros', [ReporteController::class, 'basureros'])->name('admin.reportes.basureros');
+    Route::get('/admin/reportes/tendencias', [ReporteController::class, 'tendencias'])->name('admin.reportes.tendencias');
+    Route::get('/admin/reportes/impacto', [ReporteController::class, 'impacto'])->name('admin.reportes.impacto');
 });
 
 require __DIR__.'/settings.php';

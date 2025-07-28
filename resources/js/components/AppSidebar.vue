@@ -20,6 +20,7 @@ import { type NavGroup, type NavItem, type UserRole } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Book, BoxIcon, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { route } from 'ziggy-js';
 import AppLogo from './AppLogo.vue';
 
 const commonNavItems: NavItem[] = [
@@ -47,17 +48,17 @@ const navigationGroups: NavGroup[] = [
         items: [
             {
                 title: 'Estudiantes',
-                href: '/admin/estudiantes',
+                href: route('admin.estudiantes'),
                 icon: User,
             },
             {
                 title: 'Cursos y Materias',
-                href: '/admin/cursos-materias',
+                href: route('admin.cursos.materias'),
                 icon: Book,
             },
             {
                 title: 'Docentes',
-                href: '/admin/docentes',
+                href: route('admin.docentes'),
                 icon: Users,
             },
         ],
@@ -68,17 +69,22 @@ const navigationGroups: NavGroup[] = [
         items: [
             {
                 title: 'Tipos de Basura',
-                href: 'admin/tipos-basura',
+                href: route('admin.tipos-basura.index'),
                 icon: Recycle,
             },
             {
                 title: 'Basureros',
-                href: 'admin/basureros',
+                href: route('admin.basureros.index'),
                 icon: Trash2,
             },
             {
                 title: 'Depósitos',
-                href: 'admin/depositos',
+                href: route('admin.depositos.index'),
+                icon: BoxIcon,
+            },
+            {
+                title: 'Estadísticas',
+                href: route('admin.depositos.estadisticas'),
                 icon: BoxIcon,
             },
         ],
@@ -92,9 +98,14 @@ function setGroupOpen(group: { title: string | number }) {
     openGroups.value[group.title] = true;
 }
 function isGroupActive(group: { items: Array<{ href: string }> }) {
-    // Ejemplo: verifica si alguna ruta del grupo coincide con la ruta actual
-    // Ajusta según tu lógica de rutas
-    return group.items.some((item) => window.location.pathname === item.href);
+    // Usar la ruta actual de Inertia para detectar si alguna subruta está activa
+    const currentPath = page.url || window.location.pathname;
+    return group.items.some((item) => currentPath.startsWith(item.href));
+}
+
+// Mantener desplegado el grupo si alguna subruta está activa o el usuario lo abrió manualmente
+function isGroupOpen(group: { title: string | number; items: Array<{ href: string }> }) {
+    return openGroups.value[group.title] !== undefined ? openGroups.value[group.title] : isGroupActive(group);
 }
 </script>
 
@@ -142,12 +153,12 @@ function isGroupActive(group: { items: Array<{ href: string }> }) {
                                         <TooltipTrigger as-child>
                                             <Collapsible
                                                 class="w-full"
-                                                :open="openGroups[group.title] ?? isGroupActive(group)"
+                                                :open="isGroupOpen(group)"
                                                 @update:open="(val) => (openGroups[group.title] = val)"
                                             >
                                                 <CollapsibleTrigger asChild>
                                                     <SidebarMenuButton class="flex w-full items-center px-2 py-1.5">
-                                                        <component :is="group.icon" class="mr-2 h-4 w-4" />
+                                                        <component v-if="group.icon" :is="group.icon" class="mr-2 h-4 w-4" />
                                                         <span class="sidebar-label">{{ group.title }}</span>
                                                         <ChevronDown
                                                             class="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
@@ -162,7 +173,7 @@ function isGroupActive(group: { items: Array<{ href: string }> }) {
                                                                 class="hover:bg-muted flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors"
                                                                 @click="setGroupOpen(group)"
                                                             >
-                                                                <component :is="item.icon" class="h-4 w-4" />
+                                                                <component v-if="item.icon" :is="item.icon" class="h-4 w-4" />
                                                                 <span>{{ item.title }}</span>
                                                             </Link>
                                                         </SidebarMenuSubItem>
@@ -177,6 +188,41 @@ function isGroupActive(group: { items: Array<{ href: string }> }) {
                                 </TooltipProvider>
                             </SidebarMenuItem>
                         </template>
+
+                        <!-- Sección de Reportes -->
+                        <SidebarMenuItem>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <Collapsible class="w-full" :open="openResiduos" @update:open="(val) => (openResiduos = val)">
+                                            <CollapsibleTrigger asChild>
+                                                <SidebarMenuButton class="flex w-full items-center px-2 py-1.5">
+                                                    <BoxIcon class="mr-2 h-4 w-4" />
+                                                    <span class="sidebar-label">Reportes</span>
+                                                    <ChevronDown
+                                                        class="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                                    />
+                                                </SidebarMenuButton>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent>
+                                                <SidebarMenuSub>
+                                                    <SidebarMenuSubItem>
+                                                        <Link
+                                                            :href="route('admin.reportes.index')"
+                                                            class="hover:bg-muted flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors"
+                                                        >
+                                                            <Icon name="file-text" class="h-4 w-4" />
+                                                            <span>Reporte de Depósitos</span>
+                                                        </Link>
+                                                    </SidebarMenuSubItem>
+                                                </SidebarMenuSub>
+                                            </CollapsibleContent>
+                                        </Collapsible>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right"> Reportes </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarGroupContent>
             </SidebarGroup>

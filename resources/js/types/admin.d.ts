@@ -66,3 +66,29 @@ export interface AdminDocentesProps {
     cursos: Curso[];
     paralelos: Paralelo[];
 }
+
+// Tipos para resultados de computed properties
+export interface CursoParaleloUnico {
+    idCursoParalelo: number;
+    curso: {
+        idCurso: number;
+        nombre: string;
+    };
+    paralelo: {
+        idParalelo: number;
+        nombre: string;
+    };
+}
+
+// Tipos para estadísticas
+export interface DocenteStats {
+    materiasAsignadas: number;
+    cursosAsignados: number;
+    asignacionesTotales: number;
+}
+
+// Tipos para formularios y acciones
+export interface DocenteActions {
+    eliminar: (id: number) => void;
+    editar: (id: number) => void;
+}

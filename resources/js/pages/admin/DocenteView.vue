@@ -1,109 +1,35 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useDocente } from '@/composables/useDocente';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import type { Docente } from '@/types/admin';
+import { Head, Link } from '@inertiajs/vue3';
 import { ArrowLeft, BookOpen, Edit, GraduationCap, Mail, MapPin, Trash2, User, Users } from 'lucide-vue-next';
-import { computed } from 'vue';
-import { toast, Toaster } from 'vue-sonner';
+import { Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
 
 // ===== PROPS =====
 const props = defineProps<{
-    docente: {
-        idDocente: number;
-        user: {
-            id: number;
-            nombres: string;
-            primerApellido: string;
-            segundoApellido?: string;
-            email: string;
-        };
-        docente_materia_cursos: Array<{
-            idMateria: number;
-            idCursoParalelo: number;
-            materia: {
-                idMateria: number;
-                nombre: string;
-            };
-            curso_paralelo: {
-                idCursoParalelo: number;
-                curso: {
-                    idCurso: number;
-                    nombre: string;
-                };
-                paralelo: {
-                    idParalelo: number;
-                    nombre: string;
-                };
-            };
-        }>;
-    };
+    docente: Docente;
 }>();
 
-// ===== MÉTODOS =====
-function eliminarDocente() {
-    if (confirm('¿Estás seguro de que quieres eliminar este docente?')) {
-        router.delete(`/admin/docentes/${props.docente.idDocente}`, {
-            onSuccess: () => {
-                toast('Docente eliminado', {
-                    description: 'El docente ha sido eliminado correctamente',
-                    position: 'top-center',
-                });
-                router.visit('/admin/docentes');
-            },
-            onError: () => {
-                toast('Error al eliminar', {
-                    description: 'No se pudo eliminar el docente',
-                    position: 'top-center',
-                });
-            },
-        });
-    }
-}
-
-function editarDocente() {
-    // Navegar a la página de edición
-    router.visit(`/admin/docentes/${props.docente.idDocente}/edit`);
-}
-
-// ===== COMPUTED =====
-const materiasUnicas = computed(() => {
-    const materias = new Set<number>();
-    const materiasUnicas: Array<{ idMateria: number; nombre: string }> = [];
-
-    props.docente.docente_materia_cursos.forEach((asignacion) => {
-        if (!materias.has(asignacion.materia.idMateria)) {
-            materias.add(asignacion.materia.idMateria);
-            materiasUnicas.push(asignacion.materia);
-        }
-    });
-
-    return materiasUnicas;
-});
-
-const cursosUnicos = computed(() => {
-    const cursos = new Set<string>();
-    const cursosUnicos: Array<{
-        idCursoParalelo: number;
-        curso: { idCurso: number; nombre: string };
-        paralelo: { idParalelo: number; nombre: string };
-    }> = [];
-
-    props.docente.docente_materia_cursos.forEach((asignacion) => {
-        const key = `${asignacion.curso_paralelo.curso.idCurso}-${asignacion.curso_paralelo.paralelo.idParalelo}`;
-        if (!cursos.has(key)) {
-            cursos.add(key);
-            cursosUnicos.push(asignacion.curso_paralelo);
-        }
-    });
-
-    return cursosUnicos;
-});
+// ===== COMPOSABLE =====
+const {
+    materiasUnicas,
+    cursosUnicos,
+    estadisticas,
+    nombreCompleto,
+    eliminarDocente,
+    editarDocente,
+    generarKeyAsignacion,
+    generarKeyCursoParalelo,
+    ROUTES,
+} = useDocente(props.docente);
 </script>
 
 <template>
-    <Head :title="`Docente - ${docente.user.nombres} ${docente.user.primerApellido}`" />
+    <Head :title="`Docente - ${nombreCompleto}`" />
 
     <AppLayout>
         <div class="container mx-auto py-6">
@@ -124,7 +50,7 @@ const cursosUnicos = computed(() => {
                     </div>
                     <div class="flex items-center gap-2">
                         <Button @click="editarDocente" variant="outline" as-child>
-                            <Link :href="`/admin/docentes/${docente.idDocente}/edit`">
+                            <Link :href="ROUTES.editar(docente.idDocente)">
                                 <Edit class="mr-2 h-4 w-4" />
                                 Editar
                             </Link>
@@ -188,7 +114,7 @@ const cursosUnicos = computed(() => {
                     <CardContent>
                         <div v-if="materiasUnicas.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <div v-for="materia in materiasUnicas" :key="materia.idMateria" class="rounded-lg border bg-blue-50 p-4">
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 text-gray-900">
                                     <BookOpen class="h-4 w-4 text-blue-600" />
                                     <span class="font-medium">{{ materia.nombre }}</span>
                                 </div>
@@ -214,12 +140,12 @@ const cursosUnicos = computed(() => {
                         <div v-if="cursosUnicos.length > 0" class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <div
                                 v-for="cursoParalelo in cursosUnicos"
-                                :key="`${cursoParalelo.curso.idCurso}-${cursoParalelo.paralelo.idParalelo}`"
+                                :key="generarKeyCursoParalelo(cursoParalelo)"
                                 class="rounded-lg border bg-green-50 p-4"
                             >
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 text-gray-900">
                                     <GraduationCap class="h-4 w-4 text-green-600" />
-                                    <div>
+                                    <div class="text-gray-900">
                                         <span class="font-medium">{{ cursoParalelo.curso.nombre }}</span>
                                         <span class="text-muted-foreground text-sm"> - {{ cursoParalelo.paralelo.nombre }}</span>
                                     </div>
@@ -246,16 +172,16 @@ const cursosUnicos = computed(() => {
                         <div v-if="docente.docente_materia_cursos.length > 0" class="space-y-4">
                             <div
                                 v-for="asignacion in docente.docente_materia_cursos"
-                                :key="`${asignacion.idMateria}-${asignacion.idCursoParalelo}`"
+                                :key="generarKeyAsignacion(asignacion)"
                                 class="flex items-center justify-between rounded-lg border bg-gray-50 p-4"
                             >
                                 <div class="flex items-center gap-4">
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-2 text-gray-900">
                                         <BookOpen class="h-4 w-4 text-blue-600" />
                                         <span class="font-medium">{{ asignacion.materia.nombre }}</span>
                                     </div>
                                     <span class="text-muted-foreground">→</span>
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-2 text-gray-900">
                                         <GraduationCap class="h-4 w-4 text-green-600" />
                                         <span>{{ asignacion.curso_paralelo.curso.nombre }} - {{ asignacion.curso_paralelo.paralelo.nombre }}</span>
                                     </div>
@@ -278,15 +204,15 @@ const cursosUnicos = computed(() => {
                     <CardContent>
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div class="text-center">
-                                <div class="text-primary text-2xl font-bold">{{ materiasUnicas.length }}</div>
+                                <div class="text-primary text-2xl font-bold">{{ estadisticas.materiasAsignadas }}</div>
                                 <div class="text-muted-foreground text-sm">Materias asignadas</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-green-600">{{ cursosUnicos.length }}</div>
+                                <div class="text-2xl font-bold text-green-600">{{ estadisticas.cursosAsignados }}</div>
                                 <div class="text-muted-foreground text-sm">Cursos asignados</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-blue-600">{{ docente.docente_materia_cursos.length }}</div>
+                                <div class="text-2xl font-bold text-blue-600">{{ estadisticas.asignacionesTotales }}</div>
                                 <div class="text-muted-foreground text-sm">Asignaciones totales</div>
                             </div>
                         </div>
