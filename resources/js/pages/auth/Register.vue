@@ -27,6 +27,8 @@ const submit = () => {
 
 <template>
     <AuthBase title="Create an account" description="Enter your details below to create your account">
+        <img src="/public/img/LogoDario.png" alt="Logo" class="mx-auto mb-4 h-24 w-24" />
+
         <Head title="Register" />
 
         <form @submit.prevent="submit" class="flex flex-col gap-6">

@@ -48,8 +48,5 @@ class TipoBasura extends Model
         return $this->depositos()->count();
     }
 
-    public function getTotalPuntosGenerados(): int
-    {
-        return $this->depositos()->sum('puntos_generados');
-    }
+   
 } 

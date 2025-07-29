@@ -8,7 +8,7 @@ import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
 import { ChevronDown, ChevronUp } from 'lucide-vue-next'
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Sistema de Puntos Darío Montaño';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,

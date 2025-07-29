@@ -82,11 +82,6 @@ const navigationGroups: NavGroup[] = [
                 href: route('admin.depositos.index'),
                 icon: BoxIcon,
             },
-            {
-                title: 'Estadísticas',
-                href: route('admin.depositos.estadisticas'),
-                icon: BoxIcon,
-            },
         ],
     },
 ];

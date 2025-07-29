@@ -28,8 +28,8 @@ class DepositoController extends Controller
             $query->where('idBasurero', $request->basurero);
         }
 
-        if ($request->filled('tipo_basura')) {
-            $query->where('idTipoBasura', $request->tipo_basura);
+        if ($request->filled('tipoBasura')) {
+            $query->where('idTipoBasura', $request->tipoBasura  );
         }
 
         if ($request->filled('fecha')) {
@@ -37,6 +37,7 @@ class DepositoController extends Controller
         }
 
         $depositos = $query->paginate(15);
+        
 
         // Datos para filtros
         $basureros = Basurero::activos()->get();

@@ -1,4 +1,5 @@
 <template>
+    <Head title="Reportes" />
     <AppLayout>
         <div class="container mx-auto py-6">
             <div class="mb-8">
@@ -133,19 +134,18 @@
 
                     <!-- Botones de exportación -->
                     <div class="mt-6 flex gap-3">
-                        <Button @click="exportarPDF" :disabled="loading" class="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
-                            <Icon name="file-text" class="h-4 w-4" />
+                        <Button @click="exportarPDF" :disabled="loading" class="flex items-center gap-2 bg-red-600 text-white hover:bg-red-700">
+                             <FileText class="mr-2 h-4 w-4" />
                             <span v-if="!loading">Exportar PDF</span>
                             <span v-else>Cargando...</span>
                         </Button>
-
                 <Button
                             v-if="tipoReporte === 'depositos'"
                             @click="exportarExcel"
                     :disabled="loading"
                             class="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
                 >
-                            <Icon name="file-spreadsheet" class="h-4 w-4" />
+                             <Table2 class="mr-2 h-4 w-4" />
                             <span v-if="!loading">Exportar Excel</span>
                     <span v-else>Cargando...</span>
                 </Button>
@@ -338,7 +338,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { Basurero, DatosGraficos, Estadisticas, TipoResiduo } from '@/types';
+import { FileText, Table2 } from 'lucide-vue-next';
 import { ref } from 'vue';
+import { Head} from '@inertiajs/vue3';
 import { useToast } from '../../../composables/useToast';
 
 const props = withDefaults(

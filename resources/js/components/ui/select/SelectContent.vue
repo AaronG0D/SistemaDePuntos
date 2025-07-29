@@ -11,7 +11,6 @@ import {
 } from 'reka-ui'
 import { cn } from '@/lib/utils'
 import { SelectScrollDownButton, SelectScrollUpButton } from '.'
-import { onBeforeUnmount } from 'vue'
 
 defineOptions({
   inheritAttrs: false,
@@ -26,19 +25,8 @@ const props = withDefaults(
 const emits = defineEmits<SelectContentEmits>()
 
 const delegatedProps = reactiveOmit(props, 'class')
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
 
-// Proteger el desmontaje del portal
-onBeforeUnmount(() => {
-  try {
-    const portal = document.querySelector('[data-slot="select-content"]')?.parentElement
-    if (portal?.parentElement) {
-      portal.parentElement.removeChild(portal)
-    }
-  } catch (error) {
-    console.debug('Error al desmontar portal de SelectContent:', error)
-  }
-})
+const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>
 
 <template>
@@ -51,25 +39,14 @@ onBeforeUnmount(() => {
         position === 'popper'
           && 'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
         props.class,
-      )"
+      )
+      "
     >
-      <SelectViewport
-        :class="cn(
-          'p-1',
-          position === 'popper' &&
-            'h-(--reka-select-content-available-height) w-(--reka-select-content-available-width)',
-        )"
-      >
+      <SelectScrollUpButton />
+      <SelectViewport :class="cn('p-1', position === 'popper' && 'h-[var(--reka-select-trigger-height)] w-full min-w-[var(--reka-select-trigger-width)] scroll-my-1')">
         <slot />
       </SelectViewport>
-
-      <SelectScrollUpButton>
-        <ChevronUp class="h-4 w-4" />
-      </SelectScrollUpButton>
-
-      <SelectScrollDownButton>
-        <ChevronDown class="h-4 w-4" />
-      </SelectScrollDownButton>
+      <SelectScrollDownButton />
     </SelectContent>
   </SelectPortal>
 </template>

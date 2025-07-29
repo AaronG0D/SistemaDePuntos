@@ -523,7 +523,7 @@ async function quitarMateria(materiaId: number) {
                                 <div
                                     v-for="curso in cursos"
                                     :key="curso.idCurso"
-                                    class="hover:bg-muted cursor-pointer rounded-lg border p-3 transition-colors"
+                                    class="hover:bg-green-400 cursor-pointer rounded-lg border p-3 transition-colors"
                                     :class="{ 'bg-primary text-primary-foreground': selectedCurso === curso.idCurso }"
                                     @click="seleccionarCurso(curso.idCurso)"
                                 >
@@ -543,7 +543,7 @@ async function quitarMateria(materiaId: number) {
                                 <div
                                     v-for="cursoParalelo in paralelosDelCurso"
                                     :key="cursoParalelo.idCursoParalelo"
-                                    class="hover:bg-muted cursor-pointer rounded-lg border p-3 transition-colors"
+                                    class="hover:bg-green-400 cursor-pointer rounded-lg border p-3 transition-colors"
                                     :class="{ 'bg-primary text-primary-foreground': selectedParalelo === cursoParalelo.paralelo.idParalelo }"
                                     @click="seleccionarParalelo(cursoParalelo.paralelo.idParalelo)"
                                 >

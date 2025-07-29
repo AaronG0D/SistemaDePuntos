@@ -34,6 +34,16 @@ const selectedFecha = ref(props.filters?.fecha || '');
 const depositosFiltrados = computed(() => {
     let filtered = props.depositos.data;
 
+    // Debug para verificar los datos
+    console.log(
+        'Datos de depósitos:',
+        filtered.map((d) => ({
+            id: d.idDeposito,
+            tipoBasura: d.tipoBasura?.created_at,
+            puntos: d.tipoBasura?.puntos,
+        })),
+    );
+
     if (searchTerm.value) {
         filtered = filtered.filter((deposito) =>
             `${deposito.user?.nombres} ${deposito.user?.primerApellido}`.toLowerCase().includes(searchTerm.value.toLowerCase()),
@@ -112,24 +122,8 @@ function limpiarFiltros() {
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <Button variant="outline" as-child>
-                            <Link :href="ROUTES.depositos.estadisticas">
-                                <Award class="mr-2 h-4 w-4" />
-                                Estadísticas
-                            </Link>
-                        </Button>
-                        <Button variant="outline" as-child>
-                            <Link href="/admin/reportes/depositos/pdf" target="_blank">
-                                <FileText class="mr-2 h-4 w-4" />
+                          <FileText class="mr-2 h-4 w-4" />
                                 Exportar PDF
-                            </Link>
-                        </Button>
-                        <Button variant="outline" as-child>
-                            <Link href="/admin/reportes/depositos/excel" target="_blank">
-                                <Table2 class="mr-2 h-4 w-4" />
-                                Exportar Excel
-                            </Link>
-                        </Button>
                         <Button as-child>
                             <Link :href="ROUTES.depositos.create">
                                 <Plus class="mr-2 h-4 w-4" />
@@ -262,10 +256,14 @@ function limpiarFiltros() {
                                 <TableRow v-for="deposito in depositosFiltrados" :key="deposito.idDeposito">
                                     <TableCell class="font-medium"> {{ deposito.user?.nombres }} {{ deposito.user?.primerApellido }} </TableCell>
                                     <TableCell>{{ deposito.basurero?.ubicacion }}</TableCell>
-                                    <TableCell>{{ deposito.tipoBasura?.nombre }}</TableCell>
                                     <TableCell>
-                                        <Badge variant="secondary">
-                                            {{ formatearPuntos(deposito.tipoBasura?.puntos || 0) }}
+                                        <Badge variant="outline" class="bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100">
+                                            {{ deposito.tipoBasura?.nombre || 'Sin especificar' }}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant="secondary" class="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
+                                            {{ formatearPuntos(deposito.tipoBasura?.puntos || 0) }} pts
                                         </Badge>
                                     </TableCell>
                                     <TableCell>{{ formatearFecha(deposito.fechaHora) }}</TableCell>
