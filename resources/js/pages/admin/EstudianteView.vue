@@ -4,13 +4,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Estudiante } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, Award, Edit, GraduationCap, Mail, MapPin, QrCode, Trash2, User } from 'lucide-vue-next';
+import { ArrowLeft, Award, Edit, GraduationCap, Mail, MapPin, QrCode, Trash2, User, Recycle, Calendar, TrendingUp } from 'lucide-vue-next';
 import { toast, Toaster } from 'vue-sonner';
+import  UserQrCode  from '@/components/UserQrCode.vue';
 import 'vue-sonner/style.css';
 
 // ===== PROPS =====
 const props = defineProps<{
     estudiante: Estudiante;
+    ultimosDepositos?: Array<{
+        idDeposito: number;
+        fechaHora: string;
+        tipoBasura: {
+            idTipoBasura: number;
+            nombre: string;
+            puntos: number;
+        };
+        basurero: {
+            idBasurero: number;
+            nombre: string;
+            ubicacion: string;
+        };
+    }>;
+    depositosPorTipo?: Array<{
+        tipo: string;
+        cantidad: number;
+        puntos_totales: number;
+        ultimo_deposito: string;
+    }>;
+    estadisticas?: {
+        total_depositos: number;
+        depositos_este_mes: number;
+        kg_reciclados_estimados: number;
+        dias_activo: number;
+    };
 }>();
 
 // ===== MÉTODOS =====
@@ -42,6 +69,26 @@ function editarEstudiante() {
         },
     });
 }
+const formatUserForQr = (user: any) => {
+    if (!user) {
+        return {
+            id: 0,
+            nombres: '',
+            primerApellido: '',
+            segundoApellido: '',
+            email: '',
+            qr_codigo: { id: '' },
+        };
+    }
+    return {
+        id: Number(user.id),
+        nombres: user.nombres || '',
+        primerApellido: user.primerApellido || '',
+        segundoApellido: user.segundoApellido || '',
+        email: user.email || '',
+        qr_codigo: user.qr_codigo || '',
+    };
+};
 </script>
 
 <template>
@@ -175,7 +222,7 @@ function editarEstudiante() {
                     </CardHeader>
                     <CardContent>
                         <div class="flex items-center gap-4">
-                            <img :src="estudiante.user.qr_codigo" alt="QR Code" class="h-32 w-32 rounded-lg border" />
+                            <UserQrCode v-if="estudiante.user.qr_codigo" :user="formatUserForQr(estudiante.user)" class="h-32 w-32 rounded-lg border" />
                             <div>
                                 <p class="text-muted-foreground text-sm">Este código QR es único para este estudiante y se utiliza para:</p>
                                 <ul class="text-muted-foreground mt-2 space-y-1 text-sm">
@@ -188,25 +235,92 @@ function editarEstudiante() {
                     </CardContent>
                 </Card>
 
-                <!-- Tarjeta de estadísticas (placeholder para futuras funcionalidades) -->
+                <!-- Tarjeta de estadísticas -->
                 <Card>
                     <CardHeader>
-                        <CardTitle>Estadísticas</CardTitle>
+                        <CardTitle class="flex items-center gap-2">
+                            <TrendingUp class="h-5 w-5" />
+                            Estadísticas de Reciclaje
+                        </CardTitle>
                         <CardDescription>Actividad reciente del estudiante</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
                             <div class="text-center">
-                                <div class="text-primary text-2xl font-bold">0</div>
-                                <div class="text-muted-foreground text-sm">Actividades este mes</div>
+                                <div class="text-primary text-2xl font-bold">{{ estadisticas?.depositos_este_mes || 0 }}</div>
+                                <div class="text-muted-foreground text-sm">Depósitos este mes</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-green-600">0</div>
-                                <div class="text-muted-foreground text-sm">Kg reciclados</div>
+                                <div class="text-2xl font-bold text-green-600">{{ (estadisticas?.kg_reciclados_estimados || 0).toFixed(1) }}</div>
+                                <div class="text-muted-foreground text-sm">Kg reciclados (est.)</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-blue-600">0</div>
+                                <div class="text-2xl font-bold text-blue-600">{{ estadisticas?.dias_activo || 0 }}</div>
                                 <div class="text-muted-foreground text-sm">Días activo</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-purple-600">{{ estadisticas?.total_depositos || 0 }}</div>
+                                <div class="text-muted-foreground text-sm">Total depósitos</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Tarjeta de depósitos por tipo de basura -->
+                <Card v-if="depositosPorTipo && depositosPorTipo.length > 0">
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <Recycle class="h-5 w-5" />
+                            Depósitos por Tipo de Basura
+                        </CardTitle>
+                        <CardDescription>Últimos 30 días</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-4">
+                            <div v-for="deposito in depositosPorTipo" :key="deposito.tipo" class="flex items-center justify-between p-3 rounded-lg border">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-primary/10 text-primary rounded-full p-2">
+                                        <Recycle class="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">{{ deposito.tipo }}</p>
+                                        <p class="text-muted-foreground text-sm">{{ deposito.cantidad }} depósitos</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold text-green-600">+{{ deposito.puntos_totales }} pts</p>
+                                    <p class="text-muted-foreground text-xs">Último: {{ new Date(deposito.ultimo_deposito).toLocaleDateString() }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Tarjeta de últimos depósitos -->
+                <Card v-if="ultimosDepositos && ultimosDepositos.length > 0">
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <Calendar class="h-5 w-5" />
+                            Últimos Depósitos
+                        </CardTitle>
+                        <CardDescription>Historial de actividades recientes</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-3">
+                            <div v-for="deposito in ultimosDepositos" :key="deposito.idDeposito" class="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                                <div class="flex items-center gap-3">
+                                    <div class="bg-green-100 text-green-700 rounded-full p-2">
+                                        <Recycle class="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <p class="font-medium">{{ deposito.tipoBasura.nombre }}</p>
+                                        <p class="text-muted-foreground text-sm">{{ deposito.basurero.nombre }} - {{ deposito.basurero.ubicacion }}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-bold text-green-600">+{{ deposito.tipoBasura.puntos }} pts</p>
+                                    <p class="text-muted-foreground text-xs">{{ new Date(deposito.fechaHora).toLocaleString() }}</p>
+                                </div>
                             </div>
                         </div>
                     </CardContent>

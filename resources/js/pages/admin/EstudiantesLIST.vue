@@ -7,6 +7,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import UserQrCode from '@/components/UserQrCode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Estudiante } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -77,6 +78,28 @@ const isInitialized = ref(false); // Bandera para controlar inicialización
 const filteredEstudiantes = computed(() => {
     return props.estudiantes.data;
 });
+
+// Función para formatear los datos del usuario para el QR
+const formatUserForQr = (user: any) => {
+    if (!user) {
+        return {
+            id: 0,
+            nombres: '',
+            primerApellido: '',
+            segundoApellido: '',
+            email: '',
+            qr_codigo: { id: '' },
+        };
+    }
+    return {
+        id: Number(user.id),
+        nombres: user.nombres || '',
+        primerApellido: user.primerApellido || '',
+        segundoApellido: user.segundoApellido || '',
+        email: user.email || '',
+        qr_codigo: user.qr_codigo || '',
+    };
+};
 
 // ===== MÉTODOS DE NAVEGACIÓN =====
 function goToPage(page: number) {
@@ -395,7 +418,7 @@ watch(editParalelo, (val) => {
                                 {{ estudiante.user?.puntaje?.puntajeTotal ?? '-' }}
                             </TableCell>
                             <TableCell>
-                                <img v-if="estudiante.user?.qr_codigo" :src="estudiante.user.qr_codigo" alt="QR Code" class="h-8 w-8" />
+                                <UserQrCode v-if="estudiante.user.qr_codigo" :user="formatUserForQr(estudiante.user)" />
                             </TableCell>
                             <TableCell class="text-right">
                                 <TooltipProvider>

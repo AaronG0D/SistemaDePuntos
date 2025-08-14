@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\EstudianteController;
 use App\Http\Controllers\DocenteController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\CursosMateriasController;
 use App\Http\Controllers\BasureroController;
 use App\Http\Controllers\TipoBasuraController;
@@ -22,6 +23,10 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
     // Rutas de estudiantes
     Route::get('/admin/estudiantes', [EstudianteController::class, 'index'])
         ->name('admin.estudiantes');
+    Route::get('/admin/estudiantes/create', [EstudianteController::class, 'create'])
+        ->name('admin.estudiantes.create');
+    Route::post('/admin/estudiantes', [EstudianteController::class, 'store'])
+        ->name('admin.estudiantes.store');
     Route::get('/admin/estudiantes/{id}', [EstudianteController::class, 'show'])
         ->name('admin.estudiantes.show');
     Route::put('/admin/estudiantes/{id}', [EstudianteController::class, 'update'])
@@ -32,6 +37,10 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
     // Rutas de docentes
     Route::get('/admin/docentes', [DocenteController::class, 'index'])
         ->name('admin.docentes');
+    Route::get('/admin/docentes/create', [DocenteController::class, 'create'])
+        ->name('admin.docentes.create');
+    Route::post('/admin/docentes', [DocenteController::class, 'store'])
+        ->name('admin.docentes.store');
     Route::get('/admin/docentes/{id}', [DocenteController::class, 'show'])
         ->name('admin.docentes.show');
     Route::get('/admin/docentes/{id}/edit', [DocenteController::class, 'edit'])
@@ -150,6 +159,15 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
     Route::get('/admin/reportes/basureros', [ReporteController::class, 'basureros'])->name('admin.reportes.basureros');
     Route::get('/admin/reportes/tendencias', [ReporteController::class, 'tendencias'])->name('admin.reportes.tendencias');
     Route::get('/admin/reportes/impacto', [ReporteController::class, 'impacto'])->name('admin.reportes.impacto');
+
+    // Rutas de gestión de usuarios
+    Route::get('/admin/users', [UserController::class, 'index'])->name('users.index');
+    Route::get('/admin/users/create', [UserController::class, 'create'])->name('users.create');
+    Route::get('/admin/users/{user}', [UserController::class, 'show'])->name('users.show');
+    Route::post('/admin/users', [UserController::class, 'store'])->name('users.store');
+    Route::get('/admin/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+    Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 });
 
 require __DIR__.'/settings.php';
