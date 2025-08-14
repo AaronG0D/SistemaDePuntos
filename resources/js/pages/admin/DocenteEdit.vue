@@ -120,14 +120,8 @@ const paralelosDisponibles = computed(() => {
     return props.paralelos;
 });
 
-const materiasDisponibles = computed(() => {
-    if (!cursoParaleloSeleccionado.value) return [];
-    const todas = props.materiasPorCursoParalelo?.[cursoParaleloSeleccionado.value.idCursoParalelo] || [];
-    const yaAsignadas = asignaciones.value
-        .filter((a) => cursoParaleloSeleccionado.value && a.idCursoParalelo === cursoParaleloSeleccionado.value.idCursoParalelo)
-        .map((a) => a.idMateria);
-    return todas.filter((m) => !yaAsignadas.includes(m.idMateria));
-});
+const materiasDisponibles = ref<Materia[]>([]);
+const isLoadingMaterias = ref(false);
 
 const cursoParaleloSeleccionado = computed(() => {
     if (!newAsignacion.value.idCurso || !newAsignacion.value.idParalelo) {
@@ -145,12 +139,53 @@ const canAddAsignacion = computed(() => {
 
 // ===== MÉTODOS =====
 function inicializarAsignaciones() {
-    asignaciones.value = props.docente.docente_materia_cursos.map((asignacion) => ({
-        idMateria: asignacion.idMateria,
-        idCursoParalelo: asignacion.idCursoParalelo,
-        materia: asignacion.materia,
-        cursoParalelo: asignacion.curso_paralelo,
+    asignaciones.value = props.docente.docente_materia_cursos.map((dmc) => ({
+        idMateria: dmc.idMateria,
+        idCursoParalelo: dmc.idCursoParalelo,
+        materia: dmc.materia,
+        cursoParalelo: dmc.curso_paralelo,
     }));
+}
+
+// Obtener materias disponibles para el curso-paralelo seleccionado
+async function obtenerMateriasDisponibles() {
+    if (!newAsignacion.value.idCurso || !newAsignacion.value.idParalelo) {
+        materiasDisponibles.value = [];
+        return;
+    }
+
+    isLoadingMaterias.value = true;
+    
+    try {
+        const response = await fetch(`/admin/materias-disponibles?idCurso=${newAsignacion.value.idCurso}&idParalelo=${newAsignacion.value.idParalelo}&idDocente=${props.docente.idDocente}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            // Filtrar materias ya asignadas en las asignaciones actuales
+            const materiasYaAsignadas = asignaciones.value
+                .filter(a => a.idCursoParalelo === cursoParaleloSeleccionado.value?.idCursoParalelo)
+                .map(a => a.idMateria);
+            
+            const materiasDisponiblesFiltered = data.materiasDisponibles.filter(
+                (materia: Materia) => !materiasYaAsignadas.includes(materia.idMateria)
+            );
+            
+            materiasDisponibles.value = materiasDisponiblesFiltered;
+        } else {
+            console.error('Error al obtener materias:', data.error);
+            materiasDisponibles.value = [];
+        }
+    } catch (error) {
+        console.error('Error al obtener materias disponibles:', error);
+        materiasDisponibles.value = [];
+    } finally {
+        isLoadingMaterias.value = false;
+    }
 }
 
 async function verificarConflictos() {
@@ -296,6 +331,7 @@ watch(
         // Resetear paralelo y materia cuando cambia el curso
         newAsignacion.value.idParalelo = null;
         newAsignacion.value.idMateria = null;
+        materiasDisponibles.value = [];
     },
 );
 
@@ -304,6 +340,11 @@ watch(
     (newParalelo) => {
         // Resetear materia cuando cambia el paralelo
         newAsignacion.value.idMateria = null;
+        if (newAsignacion.value.idCurso && newParalelo) {
+            obtenerMateriasDisponibles();
+        } else {
+            materiasDisponibles.value = [];
+        }
     },
 );
 
@@ -422,7 +463,7 @@ onMounted(() => {
             <!-- ===== BOTONES DE ACCIÓN ===== -->
             <div class="mt-6 flex justify-end gap-3">
                 <Button variant="outline" as-child>
-                    <Link :href="`/admin/docentes/${docente.idDocente}`"> Cancelar </Link>
+                    <Link href="/admin/docentes"> Cancelar </Link>
                 </Button>
                 <Button @click="guardarCambios" :disabled="isSubmitting">
                     <Check v-if="!isSubmitting" class="mr-2 h-4 w-4" />
@@ -475,14 +516,17 @@ onMounted(() => {
                     <!-- ===== SELECCIÓN DE MATERIA ===== -->
                     <div class="space-y-2">
                         <Label for="materia">Materia</Label>
-                        <Select v-model="newAsignacion.idMateria" :disabled="!newAsignacion.idCurso || !newAsignacion.idParalelo">
+                        <Select v-model="newAsignacion.idMateria" :disabled="!newAsignacion.idCurso || !newAsignacion.idParalelo || isLoadingMaterias">
                             <SelectTrigger>
-                                <SelectValue placeholder="Selecciona una materia" />
+                                <SelectValue :placeholder="isLoadingMaterias ? 'Cargando materias...' : 'Selecciona una materia'" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem v-for="materia in materiasDisponibles" :key="materia.idMateria" :value="materia.idMateria">
                                     {{ materia.nombre }}
                                 </SelectItem>
+                                <div v-if="!materiasDisponibles.length && !isLoadingMaterias" class="p-2 text-sm text-muted-foreground">
+                                    No hay materias disponibles para este curso y paralelo
+                                </div>
                             </SelectContent>
                         </Select>
                     </div>

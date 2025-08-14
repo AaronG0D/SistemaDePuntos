@@ -6,6 +6,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import UserQrCode from '@/components/UserQrCode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { AdminDocentesProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -38,6 +39,27 @@ const dialogOpen = ref(false);
 const filteredDocentes = computed(() => {
     return props.docentes.data;
 });
+
+const formatUserForQr = (user: any) => {
+    if (!user) {
+        return {
+            id: 0,
+            nombres: '',
+            primerApellido: '',
+            segundoApellido: '',
+            email: '',
+            qr_codigo: { id: '' },
+        };
+    }
+    return {
+        id: Number(user.id),
+        nombres: user.nombres || '',
+        primerApellido: user.primerApellido || '',
+        segundoApellido: user.segundoApellido || '',
+        email: user.email || '',
+        qr_codigo: user.qr_codigo || '',
+    };
+};
 
 // ===== MÉTODOS DE NAVEGACIÓN =====
 function goToPage(page: number) {
@@ -121,21 +143,21 @@ function abrirDialogoEliminar(docenteId: number) {
 
 function confirmarEliminacion() {
     if (docenteToDelete.value) {
+        // Cerrar el diálogo antes de eliminar
+        dialogOpen.value = false;
+
         router.delete(`/admin/docentes/${docenteToDelete.value}`, {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => {
-                toast('Docente eliminado', {
-                    description: 'El docente ha sido eliminado correctamente',
-                    icon: Check,
-                    position: 'top-center',
-                });
                 docenteToDelete.value = null;
-                dialogOpen.value = false;
+                toast.success('Docente eliminado correctamente', {
+                    description: 'El docente ha sido eliminado correctamente',
+                });
             },
             onError: () => {
-                toast('Error al eliminar', {
+                toast.error('Error al eliminar', {
                     description: 'No se pudo eliminar el docente',
-                    icon: XCircle,
-                    position: 'top-center',
                 });
             },
         });
@@ -233,6 +255,7 @@ watch(
                             <TableHead>Email</TableHead>
                             <TableHead>Materias</TableHead>
                             <TableHead>Cursos</TableHead>
+                            <TableHead>Código QR</TableHead>
                             <TableHead class="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -267,6 +290,9 @@ watch(
                                         {{ asignacion.curso_paralelo.curso.nombre }} - {{ asignacion.curso_paralelo.paralelo.nombre }}
                                     </span>
                                 </div>
+                            </TableCell>
+                            <TableCell>
+                                <UserQrCode v-if="docente.user.qr_codigo" :user="formatUserForQr(docente.user)" />
                             </TableCell>
                             <TableCell class="text-right">
                                 <TooltipProvider>
