@@ -86,4 +86,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(\App\Models\Puntaje::class, 'idUser', 'id');
     }
+
+    public function depositos()
+    {
+        return $this->hasMany(Deposito::class, 'idUser', 'id');
+    }
 }

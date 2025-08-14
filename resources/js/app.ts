@@ -6,30 +6,36 @@ import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
+import { ChevronDown, ChevronUp } from 'lucide-vue-next'
 
-// Extend ImportMeta interface for Vite...
-declare module 'vite/client' {
-    interface ImportMetaEnv {
-        readonly VITE_APP_NAME: string;
-        [key: string]: string | boolean | undefined;
-    }
-
-    interface ImportMeta {
-        readonly env: ImportMetaEnv;
-        readonly glob: <T>(pattern: string) => Record<string, () => Promise<T>>;
-    }
-}
-
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'Sistema de Puntos Darío Montaño';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) => resolvePageComponent(`./pages/${name}.vue`, import.meta.glob<DefineComponent>('./pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
-        createApp({ render: () => h(App, props) })
-            .use(plugin)
-            .use(ZiggyVue)
-            .mount(el);
+        const app = createApp({ render: () => h(App, props) });
+
+        // Manejador global de errores
+        app.config.errorHandler = (err, instance, info) => {
+            // Ignorar errores específicos de desmontaje
+            if (
+                err instanceof TypeError &&
+                (err.message.includes('Cannot read properties of null') ||
+                    err.message.includes("reading 'type'") ||
+                    err.message.includes("reading 'el'"))
+            ) {
+                console.debug('Ignorando error de desmontaje:', err.message);
+                return;
+            }
+
+            // Registrar otros errores
+            console.error('Error en la aplicación:', err);
+            console.error('Componente:', instance);
+            console.error('Info:', info);
+        };
+
+        app.use(plugin).use(ZiggyVue).mount(el);
     },
     progress: {
         color: '#4B5563',

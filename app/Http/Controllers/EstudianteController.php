@@ -4,8 +4,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Estudiante;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class EstudianteController extends Controller
 {
@@ -60,6 +63,72 @@ class EstudianteController extends Controller
         ]);
     }
 
+    public function create()
+    {
+        $cursos = \App\Models\Curso::orderBy('nombre')->get(['idCurso', 'nombre']);
+        $paralelos = \App\Models\Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
+        $cursoParalelos = \App\Models\CursoParalelo::with(['curso', 'paralelo'])->get();
+        
+        // Obtener usuarios con rol estudiante que aún no están asignados
+        $usuariosDisponibles = User::where('rol', 'estudiante')
+            ->whereDoesntHave('estudiante')
+            ->get(['id', 'nombres', 'primerApellido', 'segundoApellido', 'email']);
+
+        return Inertia::render('admin/Estudiantes/Create', [
+            'cursos' => $cursos,
+            'paralelos' => $paralelos,
+            'cursoParalelos' => $cursoParalelos,
+            'usuariosDisponibles' => $usuariosDisponibles
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Validar datos
+            $request->validate([
+                'idUser' => 'required|exists:usuario,id',
+                'idCursoParalelo' => 'required|exists:curso_paralelo,idCursoParalelo',
+            ]);
+
+            // Verificar que el usuario no esté ya asignado como estudiante
+            $existeEstudiante = Estudiante::where('idUser', $request->idUser)->exists();
+            if ($existeEstudiante) {
+                return redirect()->back()
+                    ->withErrors(['idUser' => 'Este usuario ya está asignado como estudiante'])
+                    ->withInput();
+            }
+
+            // Verificar que el usuario tenga rol estudiante
+            $user = User::findOrFail($request->idUser);
+            if ($user->rol !== 'estudiante') {
+                return redirect()->back()
+                    ->withErrors(['idUser' => 'El usuario seleccionado no tiene rol de estudiante'])
+                    ->withInput();
+            }
+
+            // Crear estudiante
+            Estudiante::create([
+                'idUser' => $user->id,
+                'idCursoParalelo' => $request->idCursoParalelo,
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('admin.estudiantes')
+                ->with('success', 'Estudiante creado correctamente');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Error creando estudiante: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Error al crear el estudiante: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
     public function update(Request $request, $id)
     {
         try {
@@ -90,8 +159,6 @@ class EstudianteController extends Controller
         try {
             $estudiante = Estudiante::findOrFail($id);
             
-            // Eliminar el usuario asociado
-            $estudiante->user->delete();
             
             // Eliminar el estudiante
             $estudiante->delete();
@@ -112,8 +179,47 @@ class EstudianteController extends Controller
                 'cursoParalelo.paralelo'
             ])->findOrFail($id);
 
+            // Obtener los últimos depósitos del estudiante agrupados por tipo de basura
+            $ultimosDepositos = \App\Models\Deposito::with(['tipoBasura', 'basurero'])
+                ->where('idUser', $estudiante->idUser)
+                ->orderBy('fechaHora', 'desc')
+                ->limit(10)
+                ->get();
+
+            // Estadísticas de depósitos por tipo de basura (últimos 30 días)
+            $depositosPorTipo = \App\Models\Deposito::with('tipoBasura')
+                ->where('idUser', $estudiante->idUser)
+                ->where('fechaHora', '>=', now()->subDays(30))
+                ->get()
+                ->groupBy('tipoBasura.nombre')
+                ->map(function ($depositos, $tipoBasura) {
+                    return [
+                        'tipo' => $tipoBasura,
+                        'cantidad' => $depositos->count(),
+                        'puntos_totales' => $depositos->sum('tipoBasura.puntos'),
+                        'ultimo_deposito' => $depositos->max('fechaHora')
+                    ];
+                })
+                ->values();
+
+            // Estadísticas generales
+            $estadisticas = [
+                'total_depositos' => \App\Models\Deposito::where('idUser', $estudiante->idUser)->count(),
+                'depositos_este_mes' => \App\Models\Deposito::where('idUser', $estudiante->idUser)
+                    ->whereMonth('fechaHora', now()->month)
+                    ->whereYear('fechaHora', now()->year)
+                    ->count(),
+                'kg_reciclados_estimados' => \App\Models\Deposito::where('idUser', $estudiante->idUser)->count() * 0.5, // Estimación
+                'dias_activo' => \App\Models\Deposito::where('idUser', $estudiante->idUser)
+                    ->selectRaw('COUNT(DISTINCT DATE(fechaHora)) as dias')
+                    ->value('dias') ?? 0
+            ];
+
             return Inertia::render('admin/EstudianteView', [
                 'estudiante' => $estudiante,
+                'ultimosDepositos' => $ultimosDepositos,
+                'depositosPorTipo' => $depositosPorTipo,
+                'estadisticas' => $estadisticas,
             ]);
         } catch (\Exception $e) {
             \Log::error('Error mostrando estudiante: ' . $e->getMessage());

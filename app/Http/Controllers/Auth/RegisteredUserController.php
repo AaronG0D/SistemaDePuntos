@@ -37,6 +37,13 @@ class RegisteredUserController extends Controller
             'rol' => 'required|in:estudiante,docente,administrador',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'name.required' => 'El nombre es obligatorio y debe tener un máximo de 255 caracteres.',
+            'primerApellido.required' => 'El primer apellido es obligatorio y debe tener un máximo de 100 caracteres.',
+            'segundoApellido.max' => 'El segundo apellido debe tener un máximo de 100 caracteres.',
+            'rol.required' => 'El rol es obligatorio y debe ser estudiante, docente o administrador.',
+            'email.required' => 'El correo electrónico es obligatorio, debe ser válido y único.',
+            'password.required' => 'La contraseña es obligatoria y debe confirmarse.',
         ]);
 
         $user = User::create([
