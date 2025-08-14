@@ -8,9 +8,11 @@ use App\Models\Curso;
 use App\Models\Paralelo;
 use App\Models\CursoParalelo;
 use App\Models\MateriaCursoParalelo;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class DocenteController extends Controller
 {
@@ -175,8 +177,8 @@ class DocenteController extends Controller
         try {
             $docente = Docente::findOrFail($id);
             
-            // Eliminar el usuario asociado
-            $docente->user->delete();
+      
+        
             
             // Eliminar el docente
             $docente->delete();
@@ -322,44 +324,142 @@ class DocenteController extends Controller
      */
     public function getMateriasDisponibles(Request $request)
     {
-        $request->validate([
-            'idCurso' => 'required|exists:curso,idCurso',
-            'idParalelo' => 'required|exists:paralelo,idParalelo',
-            'idDocente' => 'nullable|exists:docente,idDocente',
-        ]);
-
         $idCurso = $request->input('idCurso');
         $idParalelo = $request->input('idParalelo');
-        $idDocente = $request->input('idDocente');
+        $idDocente = $request->input('idDocente'); // Opcional, para edición
 
-        // Obtener el curso-paralelo
+        if (!$idCurso || !$idParalelo) {
+            return response()->json(['error' => 'Curso y paralelo son requeridos'], 400);
+        }
+
+        // Buscar o crear el curso-paralelo
         $cursoParalelo = CursoParalelo::where('idCurso', $idCurso)
             ->where('idParalelo', $idParalelo)
+            ->with(['curso', 'paralelo'])
             ->first();
 
         if (!$cursoParalelo) {
-            return response()->json(['error' => 'Curso-paralelo no encontrado'], 404);
+            return response()->json(['error' => 'Combinación curso-paralelo no encontrada'], 404);
         }
 
-        // Obtener materias disponibles para este curso-paralelo
-        $materiasDisponibles = Materia::whereHas('materiaCursoParalelos', function ($query) use ($cursoParalelo) {
-            $query->where('idCursoParalelo', $cursoParalelo->idCursoParalelo);
-        })->get(['idMateria', 'nombre']);
+        // Obtener todas las materias disponibles para este curso-paralelo
+        $materiasDisponibles = MateriaCursoParalelo::where('idCursoParalelo', $cursoParalelo->idCursoParalelo)
+            ->with('materia')
+            ->get()
+            ->pluck('materia');
 
-        // Si se especifica un docente, excluir las materias ya asignadas a otros docentes
+        // Filtrar las materias que ya están asignadas a otros docentes
+        $materiasAsignadas = DB::table('docente_materia_curso')
+            ->where('idCursoParalelo', $cursoParalelo->idCursoParalelo);
+
+        // Si estamos editando, excluir las materias del docente actual
         if ($idDocente) {
-            $materiasAsignadas = DB::table('docente_materia_curso')
-                ->where('idCursoParalelo', $cursoParalelo->idCursoParalelo)
-                ->where('idDocente', '!=', $idDocente)
-                ->pluck('idMateria')
-                ->toArray();
-            
-            $materiasDisponibles = $materiasDisponibles->whereNotIn('idMateria', $materiasAsignadas);
+            $materiasAsignadas = $materiasAsignadas->where('idDocente', '!=', $idDocente);
         }
+        
+        $materiasAsignadasIds = $materiasAsignadas->pluck('idMateria')->toArray();
+        $materiasDisponibles = $materiasDisponibles->whereNotIn('idMateria', $materiasAsignadasIds);
 
         return response()->json([
             'cursoParalelo' => $cursoParalelo,
-            'materiasDisponibles' => $materiasDisponibles
+            'materiasDisponibles' => $materiasDisponibles->values()
         ]);
     }
-} 
+
+   public function create()
+{
+    // Usuarios con rol docente que no tienen registro en docentes
+    $usuariosDisponibles = User::where('rol', 'docente')
+        ->whereDoesntHave('docente')
+        ->get(['id', 'nombres', 'primerApellido', 'segundoApellido', 'email']);
+
+    // Eager loading optimizado: curso → paralelos → materias
+    $cursos = Curso::with([
+        'cursoParalelos.paralelo',
+        'cursoParalelos.materias'
+    ])
+    ->orderBy('nombre')
+    ->get();
+
+    // Preparar estructura para Vue: cursos con sus paralelos y materias
+    $cursosEstructura = $cursos->map(function ($curso) {
+        return [
+            'idCurso' => $curso->idCurso,
+            'nombre' => $curso->nombre,
+            'paralelos' => $curso->cursoParalelos->map(function ($cp) {
+                return [
+                    'idParalelo' => $cp->paralelo->idParalelo,
+                    'nombre' => $cp->paralelo->nombre,
+                    'materias' => $cp->materias->map(function ($materia) {
+                        return [
+                            'idMateria' => $materia->idMateria,
+                            'nombre' => $materia->nombre
+                        ];
+                    })
+                ];
+            })->values()
+        ];
+    });
+
+
+    // Obtener todas las materias, paralelos y curso-paralelos
+    $materias = Materia::orderBy('nombre')->get(['idMateria', 'nombre']);
+    $paralelos = Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
+    $cursoParalelos = CursoParalelo::with(['curso', 'paralelo'])->get();
+
+
+    return Inertia::render('admin/Docentes/Create', [
+        'usuariosDisponibles' => $usuariosDisponibles,
+        'cursos' => $cursosEstructura,
+        'materias' => $materias,
+        'paralelos' => $paralelos,
+        'cursoParalelos' => $cursoParalelos
+    ]);
+}
+
+    public function store(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Validar datos
+            $request->validate([
+                'idUser' => 'required|exists:usuario,id',
+                'materias_cursos' => 'required|array|min:1',
+                'materias_cursos.*.idMateria' => 'required|exists:materia,idMateria',
+                'materias_cursos.*.idCurso' => 'required|exists:curso,idCurso',
+                'materias_cursos.*.idParalelo' => 'required|exists:paralelo,idParalelo',
+            ]);
+
+            // Crear docente con el usuario seleccionado
+            $docente = Docente::create([
+                'idUser' => $request->idUser,
+            ]);
+
+            // Asignar materias y cursos
+            foreach ($request->materias_cursos as $asignacion) {
+                $cursoParalelo = CursoParalelo::firstOrCreate([
+                    'idCurso' => $asignacion['idCurso'],
+                    'idParalelo' => $asignacion['idParalelo']
+                ]);
+
+                $docente->docenteMateriaCursos()->create([
+                    'idMateria' => $asignacion['idMateria'],
+                    'idCursoParalelo' => $cursoParalelo->idCursoParalelo
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('admin.docentes')
+                ->with('success', 'Docente creado correctamente');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Error creando docente: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Error al crear el docente')
+                ->withInput();
+        }
+    }
+}
