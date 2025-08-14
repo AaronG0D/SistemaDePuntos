@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 class EstudianteController extends Controller
 {
 
+
     public function index(Request $request)
     {
         // Debug temporal

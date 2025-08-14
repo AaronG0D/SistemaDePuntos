@@ -41,6 +41,7 @@ export interface DocenteMateriaCurso {
 export interface Docente {
     idDocente: number;
     user: {
+        qr_codigo: any;
         id: number;
         nombres: string;
         primerApellido: string;

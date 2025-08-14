@@ -206,7 +206,8 @@ watch(
 
     <AppLayout :breadcrumbs="[
   { title: 'Gestión Académica', href: route('admin.cursos.materias') },
-  { title: 'Cursos y Materias' }
+  { title: 'Docentes', href: route('admin.docentes') },
+  { title: 'Crear', href: route('admin.docentes.create') },
 ]">
         <div class="container mx-auto py-6">
             <div class="mx-auto max-w-2xl">
