@@ -241,7 +241,7 @@ watch(
                 </div>
 
                 <Button as-child size="sm" class="bg-primary">
-                    <Link href="/admin/Docentes/create">Agregar Docente</Link>
+                    <Link href="/admin/docentes/create">Agregar Docente</Link>
                 </Button>
             </div>
 

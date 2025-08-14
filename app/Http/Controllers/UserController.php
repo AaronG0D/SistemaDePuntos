@@ -11,9 +11,9 @@ class UserController extends Controller
 {
     public function index(): Response
     {
-         = User::query()->latest()->paginate(10)->withQueryString();
+        $users = User::query()->latest()->paginate(10)->withQueryString();
         return Inertia::render('admin/Users/Index', [
-            'users' => ,
+            'users' => $users,
         ]);
     }
 
@@ -22,33 +22,33 @@ class UserController extends Controller
         return Inertia::render('admin/Users/Create');
     }
 
-    public function store(Request )
+    public function store(Request $request)
     {
         // TODO: implementar validación y creación
         return redirect()->route('users.index');
     }
 
-    public function show(User ): Response
+    public function show(User $user): Response
     {
         return Inertia::render('admin/Users/Show', [
-            'user' => ,
+            'user' => $user,
         ]);
      }
 
-    public function edit(User ): Response
+    public function edit(User $user): Response
     {
         return Inertia::render('admin/Users/Edit', [
-            'user' => ,
+            'user' => $user,
         ]);
     }
 
-    public function update(Request , User )
+    public function update(Request $request, User $user)
     {
         // TODO: implementar actualización
         return redirect()->route('users.index');
     }
 
-    public function destroy(User )
+    public function destroy(User $user)
     {
         // TODO: implementar eliminación
         return redirect()->route('users.index');
