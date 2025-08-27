@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -362,21 +362,19 @@ watch(
             <Toaster />
         </div>
 
-        <!-- ===== DIÁLOGO DE CONFIRMACIÓN ===== -->
-        <Dialog v-model:open="dialogOpen">
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Confirmar eliminación</DialogTitle>
-                    <DialogDescription> ¿Estás seguro de que quieres eliminar este docente? Esta acción no se puede deshacer. </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                    <Button variant="outline" @click="dialogOpen = false">Cancelar</Button>
-                    <Button variant="destructive" @click="confirmarEliminacion">
-                        <Trash2 class="mr-2 h-4 w-4" />
-                        Eliminar
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <!-- ===== DIÁLOGO DE CONFIRMACIÓN (Reutilizable) ===== -->
+        <ConfirmDelete
+            :open="dialogOpen"
+            title="Confirmar eliminación"
+            description="¿Estás seguro de que quieres eliminar este docente? Esta acción no se puede deshacer."
+            @update:open="(v) => (dialogOpen = v)"
+            @confirm="confirmarEliminacion"
+            @cancel="dialogOpen = false"
+        >
+            <template #icon>
+                <Trash2 class="mr-2 h-4 w-4" />
+            </template>
+            <template #confirmLabel>Eliminar</template>
+        </ConfirmDelete>
     </AppLayout>
 </template>

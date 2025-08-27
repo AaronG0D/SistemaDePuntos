@@ -2,8 +2,8 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { UserQrProps } from '@/types/user';
-import { QrCode } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { QrCode, Loader2 } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 const props = withDefaults(defineProps<UserQrProps>(), {
     showButton: true,
@@ -22,6 +22,8 @@ const qrCode = computed(() => {
 });
 
 const dialogOpen = ref(false);
+const isLoading = ref(false);
+const isError = ref(false);
 
 const fullName = computed(() => {
     return `${props.user.nombres} ${props.user.primerApellido} ${props.user.segundoApellido || ''}`.trim();
@@ -44,6 +46,14 @@ const qrUrl = computed(() => {
             charset: 'utf-8',
         }).toString()
     );
+});
+
+// Cuando se abre el diálogo y hay URL, activar loading
+watch(dialogOpen, (open) => {
+    if (open && qrUrl.value) {
+        isLoading.value = true;
+        isError.value = false;
+    }
 });
 
 function downloadQR() {
@@ -73,8 +83,26 @@ function downloadQR() {
 
                 <div class="flex flex-col items-center gap-4 py-4">
                     <!-- QR Code -->
-                    <div class="h-48 w-48">
-                        <img v-if="qrUrl" :src="qrUrl" :alt="`QR de ${fullName}`" class="h-full w-full" />
+                    <div class="h-48 w-48 flex items-center justify-center relative overflow-hidden rounded-md border">
+                        <!-- Imagen QR (se oculta mientras carga) -->
+                        <img
+                            v-if="qrUrl"
+                            :src="qrUrl"
+                            :alt="`QR de ${fullName}`"
+                            class="h-full w-full"
+                            v-show="!isLoading && !isError"
+                            @load="isLoading = false; isError = false"
+                            @error="isLoading = false; isError = true"
+                        />
+                        <!-- Loading Spinner -->
+                        <div v-if="isLoading" class="flex flex-col items-center justify-center text-muted-foreground">
+                            <Loader2 class="h-6 w-6 animate-spin" />
+                            <span class="mt-2 text-xs">Cargando QR...</span>
+                        </div>
+                        <!-- Error -->
+                        <div v-if="isError" class="text-center text-red-600 text-xs px-2">
+                            No se pudo cargar el QR.
+                        </div>
                     </div>
                     <!-- Mostrar la información del QR -->
                     <div class="text-center">
@@ -87,7 +115,7 @@ function downloadQR() {
 
                 <div class="flex justify-end gap-2">
                     <Button variant="outline" @click="dialogOpen = false">Cerrar</Button>
-                    <Button :disabled="!qrUrl" @click="downloadQR">Descargar QR</Button>
+                    <Button :disabled="!qrUrl || isLoading || isError" @click="downloadQR">Descargar QR</Button>
                 </div>
             </DialogContent>
         </Dialog>

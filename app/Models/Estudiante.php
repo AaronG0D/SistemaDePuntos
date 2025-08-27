@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Estudiante extends Model
@@ -24,5 +25,38 @@ class Estudiante extends Model
     public function cursoParalelo(): BelongsTo
     {
         return $this->belongsTo(CursoParalelo::class, 'idCursoParalelo', 'idCursoParalelo');
+    }
+
+    // ===== Scopes =====
+    public function scopeRolEstudiante(Builder $query): Builder
+    {
+        return $query->whereHas('user', function ($q) {
+            $q->where('rol', 'estudiante');
+        });
+    }
+
+    public function scopeFilterCurso(Builder $query, $idCurso = null): Builder
+    {
+        if (!$idCurso || $idCurso === 'all') return $query;
+        return $query->whereHas('cursoParalelo', function ($q) use ($idCurso) {
+            $q->where('idCurso', $idCurso);
+        });
+    }
+
+    public function scopeFilterParalelo(Builder $query, $idParalelo = null): Builder
+    {
+        if (!$idParalelo || $idParalelo === 'all') return $query;
+        return $query->whereHas('cursoParalelo', function ($q) use ($idParalelo) {
+            $q->where('idParalelo', $idParalelo);
+        });
+    }
+
+    public function scopeOrderByPuntaje(Builder $query, string $direction = 'desc'): Builder
+    {
+        // Ordena por puntajeTotal haciendo join a la tabla puntaje
+        $query->leftJoin('puntaje', 'estudiante.idUser', '=', 'puntaje.idUser')
+              ->select('estudiante.*')
+              ->orderBy('puntaje.puntajeTotal', $direction);
+        return $query;
     }
 } 

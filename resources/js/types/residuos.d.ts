@@ -33,7 +33,11 @@ export interface Deposito {
     updated_at: string;
     user?: User;
     basurero?: Basurero;
+    // Laravel may serialize relations as snake_case in JSON
     tipoBasura?: TipoBasura;
+    tipo_basura?: TipoBasura;
+    // Appended attribute from backend for convenience
+    puntos_generados?: number;
 }
 
 // Tipos de paginación

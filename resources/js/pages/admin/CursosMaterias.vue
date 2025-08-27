@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { BookOpen, Check, Edit, GraduationCap, Plus, Settings, Trash2, Users, XCircle } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
@@ -148,25 +149,13 @@ async function guardarCurso() {
     });
 }
 
-async function eliminarCurso(cursoId: number) {
-    if (!confirm('¿Estás seguro de que quieres eliminar este curso?')) {
-        return;
-    }
+// ===== CONFIRM DIALOG STATE =====
+const confirmOpen = ref(false);
+const confirmContext = ref<{ type: 'curso' | 'paralelo' | 'materia' | 'quitar'; id?: number } | null>(null);
 
-    router.delete(`/admin/cursos/${cursoId}`, {
-        onSuccess: () => {
-            toast('Éxito', {
-                description: 'Curso eliminado correctamente',
-                icon: Check,
-            });
-        },
-        onError: (errors: any) => {
-            toast('Error', {
-                description: errors.error?.[0] || 'Error al eliminar el curso',
-                icon: XCircle,
-            });
-        },
-    });
+function promptEliminarCurso(cursoId: number) {
+    confirmContext.value = { type: 'curso', id: cursoId };
+    confirmOpen.value = true;
 }
 
 // ===== CRUD PARALELOS =====
@@ -210,25 +199,9 @@ async function guardarParalelo() {
     });
 }
 
-async function eliminarParalelo(paraleloId: number) {
-    if (!confirm('¿Estás seguro de que quieres eliminar este paralelo?')) {
-        return;
-    }
-
-    router.delete(`/admin/paralelos/${paraleloId}`, {
-        onSuccess: () => {
-            toast('Éxito', {
-                description: 'Paralelo eliminado correctamente',
-                icon: Check,
-            });
-        },
-        onError: (errors: any) => {
-            toast('Error', {
-                description: errors.error?.[0] || 'Error al eliminar el paralelo',
-                icon: XCircle,
-            });
-        },
-    });
+function promptEliminarParalelo(paraleloId: number) {
+    confirmContext.value = { type: 'paralelo', id: paraleloId };
+    confirmOpen.value = true;
 }
 
 // ===== CRUD MATERIAS =====
@@ -272,25 +245,9 @@ async function guardarMateria() {
     });
 }
 
-async function eliminarMateria(materiaId: number) {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta materia?')) {
-        return;
-    }
-
-    router.delete(`/admin/materias/${materiaId}`, {
-        onSuccess: () => {
-            toast('Éxito', {
-                description: 'Materia eliminada correctamente',
-                icon: Check,
-            });
-        },
-        onError: (errors: any) => {
-            toast('Error', {
-                description: errors.error?.[0] || 'Error al eliminar la materia',
-                icon: XCircle,
-            });
-        },
-    });
+function promptEliminarMateria(materiaId: number) {
+    confirmContext.value = { type: 'materia', id: materiaId };
+    confirmOpen.value = true;
 }
 
 // ===== GESTIÓN DE MATERIAS POR CURSO-PARALELO =====
@@ -343,30 +300,67 @@ async function asignarMateria() {
     );
 }
 
-async function quitarMateria(materiaId: number) {
-    if (!confirm('¿Estás seguro de que quieres quitar esta materia?')) {
+function promptQuitarMateria(materiaId: number) {
+    confirmContext.value = { type: 'quitar', id: materiaId };
+    confirmOpen.value = true;
+}
+
+function onConfirmDelete() {
+    if (!confirmContext.value) return;
+    const ctx = confirmContext.value;
+    confirmOpen.value = false;
+
+    if (ctx.type === 'curso' && ctx.id) {
+        router.delete(`/admin/cursos/${ctx.id}`, {
+            onSuccess: () => {
+                toast('Éxito', { description: 'Curso eliminado correctamente', icon: Check });
+                confirmContext.value = null;
+            },
+            onError: (errors: any) => {
+                toast('Error', { description: errors.error?.[0] || 'Error al eliminar el curso', icon: XCircle });
+            },
+        });
         return;
     }
 
-    router.delete('/admin/quitar-materia', {
-        data: {
-            idCurso: selectedCurso.value,
-            idParalelo: selectedParalelo.value,
-            idMateria: materiaId,
-        },
-        onSuccess: () => {
-            toast('Éxito', {
-                description: 'Materia quitada correctamente',
-                icon: Check,
-            });
-        },
-        onError: (errors: any) => {
-            toast('Error', {
-                description: errors.error?.[0] || 'Error al quitar la materia',
-                icon: XCircle,
-            });
-        },
-    });
+    if (ctx.type === 'paralelo' && ctx.id) {
+        router.delete(`/admin/paralelos/${ctx.id}`, {
+            onSuccess: () => {
+                toast('Éxito', { description: 'Paralelo eliminado correctamente', icon: Check });
+                confirmContext.value = null;
+            },
+            onError: (errors: any) => {
+                toast('Error', { description: errors.error?.[0] || 'Error al eliminar el paralelo', icon: XCircle });
+            },
+        });
+        return;
+    }
+
+    if (ctx.type === 'materia' && ctx.id) {
+        router.delete(`/admin/materias/${ctx.id}`, {
+            onSuccess: () => {
+                toast('Éxito', { description: 'Materia eliminada correctamente', icon: Check });
+                confirmContext.value = null;
+            },
+            onError: (errors: any) => {
+                toast('Error', { description: errors.error?.[0] || 'Error al eliminar la materia', icon: XCircle });
+            },
+        });
+        return;
+    }
+
+    if (ctx.type === 'quitar' && ctx.id) {
+        router.delete('/admin/quitar-materia', {
+            data: { idCurso: selectedCurso.value, idParalelo: selectedParalelo.value, idMateria: ctx.id },
+            onSuccess: () => {
+                toast('Éxito', { description: 'Materia quitada correctamente', icon: Check });
+                confirmContext.value = null;
+            },
+            onError: (errors: any) => {
+                toast('Error', { description: errors.error?.[0] || 'Error al quitar la materia', icon: XCircle });
+            },
+        });
+    }
 }
 </script>
 
@@ -427,7 +421,7 @@ async function quitarMateria(materiaId: number) {
                                         <Button variant="ghost" size="sm" @click.stop="abrirDialogoCurso(curso)">
                                             <Edit class="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="sm" @click.stop="eliminarCurso(curso.idCurso)">
+                                        <Button variant="ghost" size="sm" @click.stop="promptEliminarCurso(curso.idCurso)">
                                             <Trash2 class="h-4 w-4" />
                                         </Button>
                                     </div>
@@ -469,7 +463,7 @@ async function quitarMateria(materiaId: number) {
                                         <Button variant="ghost" size="sm" @click="abrirDialogoParalelo(paralelo)">
                                             <Edit class="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="sm" @click="eliminarParalelo(paralelo.idParalelo)">
+                                        <Button variant="ghost" size="sm" @click="promptEliminarParalelo(paralelo.idParalelo)">
                                             <Trash2 class="h-4 w-4" />
                                         </Button>
                                     </div>
@@ -498,7 +492,7 @@ async function quitarMateria(materiaId: number) {
                                         <Button variant="ghost" size="sm" @click="abrirDialogoMateria(materia)">
                                             <Edit class="h-4 w-4" />
                                         </Button>
-                                        <Button variant="ghost" size="sm" @click="eliminarMateria(materia.idMateria)">
+                                        <Button variant="ghost" size="sm" @click="promptEliminarMateria(materia.idMateria)">
                                             <Trash2 class="h-4 w-4" />
                                         </Button>
                                     </div>
@@ -574,7 +568,7 @@ async function quitarMateria(materiaId: number) {
                                         <BookOpen class="h-4 w-4 text-blue-600" />
                                         <span>{{ materia.nombre }}</span>
                                     </div>
-                                    <Button variant="ghost" size="sm" @click="quitarMateria(materia.idMateria)">
+                                    <Button variant="ghost" size="sm" @click="promptQuitarMateria(materia.idMateria)">
                                         <Trash2 class="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -591,6 +585,27 @@ async function quitarMateria(materiaId: number) {
             </Tabs>
 
             <Toaster />
+            <ConfirmDelete
+                :open="confirmOpen"
+                :title="'Confirmar eliminación'"
+                :description="
+                    confirmContext?.type === 'curso'
+                        ? '¿Estás seguro de que quieres eliminar este curso? Esto puede afectar paralelos relacionados.'
+                        : confirmContext?.type === 'paralelo'
+                        ? '¿Estás seguro de que quieres eliminar este paralelo?'
+                        : confirmContext?.type === 'materia'
+                        ? '¿Estás seguro de que quieres eliminar esta materia?'
+                        : '¿Estás seguro de que quieres quitar esta materia del curso-paralelo seleccionado?'
+                "
+                @update:open="(v) => (confirmOpen = v)"
+                @confirm="onConfirmDelete"
+                @cancel="confirmOpen = false"
+            >
+                <template #icon>
+                    <Trash2 class="mr-2 h-4 w-4" />
+                </template>
+                <template #confirmLabel>Eliminar</template>
+            </ConfirmDelete>
         </div>
 
         <!-- ===== DIÁLOGO CURSO ===== -->

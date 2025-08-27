@@ -39,8 +39,8 @@ const depositosFiltrados = computed(() => {
         'Datos de depósitos:',
         filtered.map((d) => ({
             id: d.idDeposito,
-            tipoBasura: d.tipoBasura?.created_at,
-            puntos: d.tipoBasura?.puntos,
+            tipoBasura: d.tipo_basura?.created_at ?? d.tipoBasura?.created_at,
+            puntos: d.puntos_generados ?? d.tipoBasura?.puntos ?? 0,
         })),
     );
 
@@ -203,14 +203,14 @@ function limpiarFiltros() {
             <div class="mb-6 grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardContent class="pt-6">
-                        <div class="text-2xl font-bold">{{ depositos.total }}</div>
+                        <div class="text-2xl font-bold">{{ props.depositos.total }}</div>
                         <p class="text-muted-foreground text-sm">Total depósitos</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardContent class="pt-6">
                         <div class="text-2xl font-bold text-green-600">
-                            {{ formatearPuntos(depositos.data.reduce((sum, d) => sum + (d.tipoBasura?.puntos || 0), 0)) }}
+                            {{ formatearPuntos(props.depositos.data.reduce((sum, d) => sum + (d.puntos_generados ?? d.tipoBasura?.puntos ?? d.tipo_basura?.puntos ?? 0), 0)) }}
                         </div>
                         <p class="text-muted-foreground text-sm">Total puntos generados</p>
                     </CardContent>
@@ -218,7 +218,7 @@ function limpiarFiltros() {
                 <Card>
                     <CardContent class="pt-6">
                         <div class="text-2xl font-bold text-blue-600">
-                            {{ new Set(depositos.data.map((d) => d.idUser)).size }}
+                            {{ new Set(props.depositos.data.map((d) => d.idUser)).size }}
                         </div>
                         <p class="text-muted-foreground text-sm">Usuarios únicos</p>
                     </CardContent>
@@ -226,7 +226,7 @@ function limpiarFiltros() {
                 <Card>
                     <CardContent class="pt-6">
                         <div class="text-2xl font-bold text-orange-600">
-                            {{ new Set(depositos.data.map((d) => d.idBasurero)).size }}
+                            {{ new Set(props.depositos.data.map((d) => d.idBasurero)).size }}
                         </div>
                         <p class="text-muted-foreground text-sm">Basureros utilizados</p>
                     </CardContent>
@@ -237,7 +237,7 @@ function limpiarFiltros() {
             <Card>
                 <CardHeader>
                     <CardTitle>Lista de Depósitos</CardTitle>
-                    <CardDescription> {{ depositosFiltrados.length }} de {{ depositos.total }} depósitos </CardDescription>
+                    <CardDescription> {{ depositosFiltrados.length }} de {{ props.depositos.total }} depósitos </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div v-if="depositosFiltrados.length > 0" class="overflow-x-auto">
@@ -258,12 +258,12 @@ function limpiarFiltros() {
                                     <TableCell>{{ deposito.basurero?.ubicacion }}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline" class="bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100">
-                                            {{ deposito.tipoBasura?.nombre || 'Sin especificar' }}
+                                            {{ deposito.tipo_basura?.nombre ?? deposito.tipoBasura?.nombre ?? 'Sin especificar' }}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary" class="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
-                                            {{ formatearPuntos(deposito.tipoBasura?.puntos || 0) }} pts
+                                            {{ formatearPuntos(deposito.puntos_generados ?? deposito.tipoBasura?.puntos ?? deposito.tipo_basura?.puntos ?? 0) }} pts
                                         </Badge>
                                     </TableCell>
                                     <TableCell>{{ formatearFecha(deposito.fechaHora) }}</TableCell>

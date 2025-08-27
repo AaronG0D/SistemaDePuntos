@@ -89,22 +89,20 @@ export function useResiduos() {
     }
 
     function eliminarBasurero(id: number) {
-        if (confirm('¿Estás seguro de que quieres eliminar este basurero?')) {
-            router.delete(ROUTES.basureros.destroy(id), {
-                onSuccess: () => {
-                    toast('Basurero eliminado', {
-                        description: 'El basurero ha sido eliminado exitosamente',
-                        ...TOAST_CONFIG,
-                    });
-                },
-                onError: () => {
-                    toast('Error al eliminar', {
-                        description: 'No se pudo eliminar el basurero',
-                        ...TOAST_CONFIG,
-                    });
-                },
-            });
-        }
+        router.delete(ROUTES.basureros.destroy(id), {
+            onSuccess: () => {
+                toast('Basurero eliminado', {
+                    description: 'El basurero ha sido eliminado exitosamente',
+                    ...TOAST_CONFIG,
+                });
+            },
+            onError: () => {
+                toast('Error al eliminar', {
+                    description: 'No se pudo eliminar el basurero',
+                    ...TOAST_CONFIG,
+                });
+            },
+        });
     }
 
     function toggleEstadoBasurero(id: number) {
@@ -196,22 +194,20 @@ export function useResiduos() {
     }
 
     function eliminarTipoBasura(id: number) {
-        if (confirm('¿Estás seguro de que quieres eliminar este tipo de basura?')) {
-            router.delete(ROUTES.tiposBasura.destroy(id), {
-                onSuccess: () => {
-                    toast('Tipo de basura eliminado', {
-                        description: 'El tipo de basura ha sido eliminado exitosamente',
-                        ...TOAST_CONFIG,
-                    });
-                },
-                onError: () => {
-                    toast('Error al eliminar', {
-                        description: 'No se pudo eliminar el tipo de basura',
-                        ...TOAST_CONFIG,
-                    });
-                },
-            });
-        }
+        router.delete(ROUTES.tiposBasura.destroy(id), {
+            onSuccess: () => {
+                toast('Tipo de basura eliminado', {
+                    description: 'El tipo de basura ha sido eliminado exitosamente',
+                    ...TOAST_CONFIG,
+                });
+            },
+            onError: () => {
+                toast('Error al eliminar', {
+                    description: 'No se pudo eliminar el tipo de basura',
+                    ...TOAST_CONFIG,
+                });
+            },
+        });
     }
 
     // ===== MÉTODOS PARA DEPÓSITOS =====
@@ -282,22 +278,20 @@ export function useResiduos() {
     }
 
     function eliminarDeposito(id: number) {
-        if (confirm('¿Estás seguro de que quieres eliminar este depósito?')) {
-            router.delete(ROUTES.depositos.destroy(id), {
-                onSuccess: () => {
-                    toast('Depósito eliminado', {
-                        description: 'El depósito ha sido eliminado exitosamente',
-                        ...TOAST_CONFIG,
-                    });
-                },
-                onError: () => {
-                    toast('Error al eliminar', {
-                        description: 'No se pudo eliminar el depósito',
-                        ...TOAST_CONFIG,
-                    });
-                },
-            });
-        }
+        router.delete(ROUTES.depositos.destroy(id), {
+            onSuccess: () => {
+                toast('Depósito eliminado', {
+                    description: 'El depósito ha sido eliminado exitosamente',
+                    ...TOAST_CONFIG,
+                });
+            },
+            onError: () => {
+                toast('Error al eliminar', {
+                    description: 'No se pudo eliminar el depósito',
+                    ...TOAST_CONFIG,
+                });
+            },
+        });
     }
 
     // ===== UTILIDADES =====

@@ -4,10 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Estudiante } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { ArrowLeft, Award, Edit, GraduationCap, Mail, MapPin, QrCode, Trash2, User, Recycle, Calendar, TrendingUp } from 'lucide-vue-next';
 import { toast, Toaster } from 'vue-sonner';
 import  UserQrCode  from '@/components/UserQrCode.vue';
 import 'vue-sonner/style.css';
+import { ref } from 'vue';
 
 // ===== PROPS =====
 const props = defineProps<{
@@ -41,24 +43,28 @@ const props = defineProps<{
 }>();
 
 // ===== MÉTODOS =====
+const confirmOpen = ref(false);
+function promptEliminarEstudiante() {
+    confirmOpen.value = true;
+}
+
 function eliminarEstudiante() {
-    if (confirm('¿Estás seguro de que quieres eliminar este estudiante?')) {
-        router.delete(`/admin/estudiantes/${props.estudiante.idUser}`, {
-            onSuccess: () => {
-                toast('Estudiante eliminado', {
-                    description: 'El estudiante ha sido eliminado correctamente',
-                    position: 'top-center',
-                });
-                router.visit('/admin/estudiantes');
-            },
-            onError: () => {
-                toast('Error al eliminar', {
-                    description: 'No se pudo eliminar el estudiante',
-                    position: 'top-center',
-                });
-            },
-        });
-    }
+    confirmOpen.value = false;
+    router.delete(`/admin/estudiantes/${props.estudiante.idUser}`, {
+        onSuccess: () => {
+            toast('Estudiante eliminado', {
+                description: 'El estudiante ha sido eliminado correctamente',
+                position: 'top-center',
+            });
+            router.visit('/admin/estudiantes');
+        },
+        onError: () => {
+            toast('Error al eliminar', {
+                description: 'No se pudo eliminar el estudiante',
+                position: 'top-center',
+            });
+        },
+    });
 }
 
 function editarEstudiante() {
@@ -116,7 +122,7 @@ const formatUserForQr = (user: any) => {
                             <Edit class="mr-2 h-4 w-4" />
                             Editar
                         </Button>
-                        <Button @click="eliminarEstudiante" variant="destructive">
+                        <Button @click="promptEliminarEstudiante" variant="destructive">
                             <Trash2 class="mr-2 h-4 w-4" />
                             Eliminar
                         </Button>
@@ -328,6 +334,19 @@ const formatUserForQr = (user: any) => {
             </div>
 
             <Toaster />
+            <ConfirmDelete
+                :open="confirmOpen"
+                title="Confirmar eliminación"
+                description="¿Estás seguro de que quieres eliminar este estudiante? Esta acción no se puede deshacer."
+                @update:open="(v) => (confirmOpen = v)"
+                @confirm="eliminarEstudiante"
+                @cancel="confirmOpen = false"
+            >
+                <template #icon>
+                    <Trash2 class="mr-2 h-4 w-4" />
+                </template>
+                <template #confirmLabel>Eliminar</template>
+            </ConfirmDelete>
         </div>
     </AppLayout>
 </template>

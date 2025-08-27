@@ -19,7 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { type NavGroup, type NavItem, type UserRole } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Book, BoxIcon, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { route } from 'ziggy-js';
 import AppLogo from './AppLogo.vue';
 
@@ -35,6 +35,10 @@ const commonNavItems: NavItem[] = [
 const openAcademico = ref(false);
 const openResiduos = ref(false);
 const openGroups = ref<{ [key: string]: boolean }>({});
+
+// Claves de storage para persistencia
+const STORAGE_KEY_GROUPS = 'sidebar_open_groups_v1';
+const STORAGE_KEY_RESIDUOS = 'sidebar_open_reportes_v1';
 
 // Estado para el sidebar colapsado
 const collapsible = computed(() => 'collapsed'); // Ajusta el valor según tu lógica
@@ -84,6 +88,22 @@ const navigationGroups: NavGroup[] = [
             },
         ],
     },
+    {
+        title: 'Gestión de Usuarios',
+        icon: Users,
+        items: [
+            {
+                title: 'Usuarios',
+                href: route('users.index'),
+                icon: Users,
+            },
+            {
+                title: 'Crear Usuario',
+                href: route('users.create'),
+                icon: User,
+            },
+        ],
+    },
 ];
 
 const page = usePage();
@@ -102,6 +122,52 @@ function isGroupActive(group: { items: Array<{ href: string }> }) {
 function isGroupOpen(group: { title: string | number; items: Array<{ href: string }> }) {
     return openGroups.value[group.title] !== undefined ? openGroups.value[group.title] : isGroupActive(group);
 }
+
+// Restaurar estado desde localStorage al montar
+onMounted(() => {
+    try {
+        const savedGroups = localStorage.getItem(STORAGE_KEY_GROUPS);
+        if (savedGroups) {
+            const parsed = JSON.parse(savedGroups);
+            if (parsed && typeof parsed === 'object') {
+                openGroups.value = parsed;
+            }
+        }
+    } catch (e) {
+        // noop
+    }
+
+    try {
+        const savedResiduos = localStorage.getItem(STORAGE_KEY_RESIDUOS);
+        if (savedResiduos !== null) {
+            openResiduos.value = JSON.parse(savedResiduos) === true;
+        }
+    } catch (e) {
+        // noop
+    }
+});
+
+// Persistir cambios de los grupos
+watch(
+    openGroups,
+    (val) => {
+        try {
+            localStorage.setItem(STORAGE_KEY_GROUPS, JSON.stringify(val || {}));
+        } catch (e) {
+            // noop
+        }
+    },
+    { deep: true }
+);
+
+// Persistir cambio de Reportes
+watch(openResiduos, (val) => {
+    try {
+        localStorage.setItem(STORAGE_KEY_RESIDUOS, JSON.stringify(!!val));
+    } catch (e) {
+        // noop
+    }
+});
 </script>
 
 <template>

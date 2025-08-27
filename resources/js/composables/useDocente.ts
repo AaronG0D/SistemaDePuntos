@@ -62,23 +62,21 @@ export function useDocente(docente: Docente) {
 
     // ===== MÉTODOS =====
     function eliminarDocente() {
-        if (confirm('¿Estás seguro de que quieres eliminar este docente?')) {
-            router.delete(ROUTES.eliminar(docente.idDocente), {
-                onSuccess: () => {
-                    toast('Docente eliminado', {
-                        description: 'El docente ha sido eliminado correctamente',
-                        ...TOAST_CONFIG,
-                    });
-                    router.visit(ROUTES.docentes);
-                },
-                onError: () => {
-                    toast('Error al eliminar', {
-                        description: 'No se pudo eliminar el docente',
-                        ...TOAST_CONFIG,
-                    });
-                },
-            });
-        }
+        router.delete(ROUTES.eliminar(docente.idDocente), {
+            onSuccess: () => {
+                toast('Docente eliminado', {
+                    description: 'El docente ha sido eliminado correctamente',
+                    ...TOAST_CONFIG,
+                });
+                router.visit(ROUTES.docentes);
+            },
+            onError: () => {
+                toast('Error al eliminar', {
+                    description: 'No se pudo eliminar el docente',
+                    ...TOAST_CONFIG,
+                });
+            },
+        });
     }
 
     function editarDocente() {

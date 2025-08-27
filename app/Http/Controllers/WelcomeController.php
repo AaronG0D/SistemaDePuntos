@@ -14,11 +14,11 @@ class WelcomeController extends Controller
     {
         try {
             // Construir la consulta base con eager loading explícito
-           $query = Estudiante::with([
-            'user.puntaje',
-            'cursoParalelo.curso',
-            'cursoParalelo.paralelo'
-        ]);
+            $query = Estudiante::with([
+                'user.puntaje',
+                'cursoParalelo.curso',
+                'cursoParalelo.paralelo'
+            ]);
 
             // Aplicar filtros si están presentes
             if ($request->filled('curso') && $request->input('curso') !== 'all') {
@@ -33,14 +33,11 @@ class WelcomeController extends Controller
                 });
             }
 
-            // Obtener los top 6 estudiantes con más puntos
-            $query = $query->join('usuario', 'estudiante.idUser', '=', 'usuario.id')
-                          ->join('puntaje', 'usuario.id', '=', 'puntaje.idUser')
-                          ->join('curso_paralelo', 'estudiante.idCursoParalelo', '=', 'curso_paralelo.idCursoParalelo')
-                          ->join('curso', 'curso_paralelo.idCurso', '=', 'curso.idCurso')
-                          ->join('paralelo', 'curso_paralelo.idParalelo', '=', 'paralelo.idParalelo')
-                          ->select('estudiante.*')
-                          ->orderBy('puntaje.puntajeTotal', 'desc');
+            // Obtener los top 6 estudiantes con más puntos usando scopes del modelo
+            $query = $query->rolEstudiante()
+                           ->filterCurso($request->input('curso'))
+                           ->filterParalelo($request->input('paralelo'))
+                           ->orderByPuntaje('desc');
 
             // Debug de la consulta
             \Log::info('Query SQL:', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);

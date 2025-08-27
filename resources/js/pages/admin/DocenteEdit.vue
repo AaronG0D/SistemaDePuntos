@@ -305,12 +305,15 @@ function guardarCambios() {
 
     router.put(`/admin/docentes/${props.docente.idDocente}`, datos, {
         onSuccess: () => {
-            toast('Docente actualizado', {
-                description: 'Los cambios han sido guardados correctamente',
-                icon: Check,
-                position: 'top-center',
+            router.visit('/admin/docentes', {
+                onSuccess: () => {
+                    toast('Docente actualizado', {
+                        description: 'Los cambios han sido guardados correctamente',
+                        icon: Check,
+                        position: 'top-center',
+                    });
+                },
             });
-            router.visit(`/admin/docentes/${props.docente.idDocente}`);
         },
         onError: (errors) => {
             console.error('Error al actualizar:', errors);

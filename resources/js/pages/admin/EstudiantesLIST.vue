@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -69,6 +70,8 @@ const selectedCurso = ref<'all' | number>('all');
 const selectedParalelo = ref<'all' | number>('all');
 const searchQuery = ref('');
 const dialogOpen = ref(false);
+const confirmOpen = ref(false);
+const estudianteToDelete = ref<number | null>(null);
 const editEstudiante = ref<Estudiante | null>(null);
 const editCurso = ref<number | null>(null);
 const editParalelo = ref<number | null>(null);
@@ -243,14 +246,23 @@ function showErrorToast() {
 }
 
 // ===== MÉTODOS DE ELIMINACIÓN =====
-function eliminarEstudiante(estudianteId: number) {
-    router.delete(`/admin/estudiantes/${estudianteId}`, {
+function promptEliminarEstudiante(estudianteId: number) {
+    estudianteToDelete.value = estudianteId;
+    confirmOpen.value = true;
+}
+
+function eliminarEstudiante() {
+    if (!estudianteToDelete.value) return;
+    const id = estudianteToDelete.value;
+    confirmOpen.value = false;
+    router.delete(`/admin/estudiantes/${id}`, {
         onSuccess: () => {
             toast('Estudiante eliminado', {
                 description: 'El estudiante ha sido eliminado correctamente',
                 icon: Check,
                 position: 'top-center',
             });
+            estudianteToDelete.value = null;
         },
         onError: () => {
             toast('Error al eliminar', {
@@ -448,7 +460,7 @@ watch(editParalelo, (val) => {
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger as-child>
-                                            <Button variant="destructive" size="sm" @click="eliminarEstudiante(estudiante.idUser)">
+                                            <Button variant="destructive" size="sm" @click="promptEliminarEstudiante(estudiante.idUser)">
                                                 <Trash2 />
                                             </Button>
                                         </TooltipTrigger>
@@ -556,6 +568,19 @@ watch(editParalelo, (val) => {
             </Dialog>
 
             <Toaster />
+            <ConfirmDelete
+                :open="confirmOpen"
+                title="Confirmar eliminación"
+                description="¿Estás seguro de que quieres eliminar este estudiante? Esta acción no se puede deshacer."
+                @update:open="(v) => (confirmOpen = v)"
+                @confirm="eliminarEstudiante"
+                @cancel="confirmOpen = false"
+            >
+                <template #icon>
+                    <Trash2 class="mr-2 h-4 w-4" />
+                </template>
+                <template #confirmLabel>Eliminar</template>
+            </ConfirmDelete>
         </div>
     </AppLayout>
 </template>

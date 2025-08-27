@@ -21,7 +21,7 @@ const props = defineProps<{
             ubicacion: string;
             descripcion?: string;
         };
-        tipoBasura: {
+        tipo_basura: {
             idTipoBasura: number;
             nombre: string;
             descripcion?: string;
@@ -56,7 +56,7 @@ const { ROUTES, formatearFecha, formatearPuntos } = useResiduos();
                     </div>
                     <div class="flex items-center gap-2">
                         <Button variant="outline" as-child>
-                            <Link :href="ROUTES.depositos.edit(deposito.idDeposito)">
+                            <Link :href="ROUTES.depositos.edit(props.deposito.idDeposito)">
                                 <Edit class="mr-2 h-4 w-4" />
                                 Editar
                             </Link>
@@ -86,7 +86,7 @@ const { ROUTES, formatearFecha, formatearPuntos } = useResiduos();
                                 <label class="text-muted-foreground text-sm font-medium">Puntos Generados</label>
                                 <div class="mt-1">
                                     <Badge variant="secondary" class="text-lg">
-                                        {{ formatearPuntos(deposito.tipoBasura?.puntos || 0) }}
+                                        {{ formatearPuntos(deposito.tipo_basura?.puntos || 0) }}
                                     </Badge>
                                 </div>
                             </div>
@@ -165,23 +165,23 @@ const { ROUTES, formatearFecha, formatearPuntos } = useResiduos();
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
                                 <label class="text-muted-foreground text-sm font-medium">ID del Tipo</label>
-                                <p class="font-mono text-lg">{{ deposito.tipoBasura?.idTipoBasura }}</p>
+                                <p class="font-mono text-lg">{{ deposito.tipo_basura?.idTipoBasura }}</p>
                             </div>
                             <div>
                                 <label class="text-muted-foreground text-sm font-medium">Nombre</label>
-                                <p class="text-lg font-medium">{{ deposito.tipoBasura?.nombre }}</p>
+                                <p class="text-lg font-medium">{{ deposito.tipo_basura?.nombre }}</p>
                             </div>
                             <div>
                                 <label class="text-muted-foreground text-sm font-medium">Puntos por Depósito</label>
                                 <div class="mt-1">
                                     <Badge variant="secondary" class="text-lg">
-                                        {{ formatearPuntos(deposito.tipoBasura?.puntos || 0) }}
+                                        {{ formatearPuntos(deposito.tipo_basura?.puntos || 0) }}
                                     </Badge>
                                 </div>
                             </div>
-                            <div v-if="deposito.tipoBasura?.descripcion">
+                            <div v-if="deposito.tipo_basura?.descripcion">
                                 <label class="text-muted-foreground text-sm font-medium">Descripción</label>
-                                <p class="text-lg">{{ deposito.tipoBasura.descripcion }}</p>
+                                <p class="text-lg">{{ deposito.tipo_basura.descripcion }}</p>
                             </div>
                         </div>
                     </CardContent>
