@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocenteDashboardController;
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('home');
 
@@ -168,6 +169,17 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
     Route::get('/admin/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+});
+
+// Rutas del Docente
+Route::middleware(['auth', RoleMiddleware::class.':docente'])->group(function () {
+    Route::get('/docente/dashboard', [DocenteDashboardController::class, 'index'])->name('docente.dashboard');
+    Route::get('/docente/estudiantes/{idCursoParalelo}', [DocenteDashboardController::class, 'estudiantesPorCurso'])
+        ->name('docente.estudiantes');
+    Route::get('/docente/reportes/curso/{idCursoParalelo}', [DocenteDashboardController::class, 'reportePuntosPorCurso'])
+        ->name('docente.reportes.curso');
+    Route::get('/docente/reportes/materia/{idCursoParalelo}/{idMateria}', [DocenteDashboardController::class, 'reportePuntosPorMateria'])
+        ->name('docente.reportes.materia');
 });
 
 require __DIR__.'/settings.php';

@@ -19,7 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { type NavGroup, type NavItem, type UserRole } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import { Book, BoxIcon, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 import AppLogo from './AppLogo.vue';
 
@@ -44,6 +44,8 @@ const STORAGE_KEY_RESIDUOS = 'sidebar_open_reportes_v1';
 const collapsible = computed(() => 'collapsed'); // Ajusta el valor según tu lógica
 
 // Definición de la navegación del sidebar
+
+import { docenteNavigation } from '@/config/navigation';
 
 const navigationGroups: NavGroup[] = [
     {
@@ -157,7 +159,7 @@ watch(
             // noop
         }
     },
-    { deep: true }
+    { deep: true },
 );
 
 // Persistir cambio de Reportes
@@ -206,9 +208,53 @@ watch(openResiduos, (val) => {
                             </TooltipProvider>
                         </SidebarMenuItem>
 
-                        <!-- Menús de administrador -->
+                        <!-- Menús según rol -->
                         <template v-if="userRole === 'administrador'">
                             <SidebarMenuItem v-for="group in navigationGroups" :key="group.title">
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger as-child>
+                                            <Collapsible
+                                                class="w-full"
+                                                :open="isGroupOpen(group)"
+                                                @update:open="(val) => (openGroups[group.title] = val)"
+                                            >
+                                                <CollapsibleTrigger asChild>
+                                                    <SidebarMenuButton class="flex w-full items-center px-2 py-1.5">
+                                                        <component v-if="group.icon" :is="group.icon" class="mr-2 h-4 w-4" />
+                                                        <span class="sidebar-label">{{ group.title }}</span>
+                                                        <ChevronDown
+                                                            class="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90"
+                                                        />
+                                                    </SidebarMenuButton>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent>
+                                                    <SidebarMenuSub>
+                                                        <SidebarMenuSubItem v-for="item in group.items" :key="item.href" class="pl-4">
+                                                            <Link
+                                                                :href="item.href"
+                                                                class="hover:bg-muted flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors"
+                                                                @click="setGroupOpen(group)"
+                                                            >
+                                                                <component v-if="item.icon" :is="item.icon" class="h-4 w-4" />
+                                                                <span>{{ item.title }}</span>
+                                                            </Link>
+                                                        </SidebarMenuSubItem>
+                                                    </SidebarMenuSub>
+                                                </CollapsibleContent>
+                                            </Collapsible>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            {{ group.title }}
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </SidebarMenuItem>
+                        </template>
+
+                        <!-- Menús de docente -->
+                        <template v-if="userRole === 'docente'">
+                            <SidebarMenuItem v-for="group in docenteNavigation" :key="group.title">
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger as-child>
