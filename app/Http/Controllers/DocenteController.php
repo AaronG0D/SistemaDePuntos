@@ -13,6 +13,10 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Exports\PlantillaEstudiantesExport;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use App\Imports\EstudiantesImport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DocenteController extends Controller
 {
@@ -460,6 +464,72 @@ class DocenteController extends Controller
             return redirect()->back()
                 ->with('error', 'Error al crear el docente')
                 ->withInput();
+        }
+    }
+
+    public function descargarPlantillaEstudiantes(Request $request)
+    {
+        try {
+            $cursoParaleloId = $request->query('curso_paralelo_id');
+            $cursoParalelo = CursoParalelo::with(['curso', 'paralelo'])
+                ->findOrFail($cursoParaleloId);
+
+            $plantilla = new PlantillaEstudiantesExport([$cursoParalelo]);
+            $spreadsheet = $plantilla->generateTemplate();
+
+            // Crear un nombre de archivo único
+            $filename = sprintf(
+                'plantilla_estudiantes_%s_%s_%s.xlsx',
+                \Str::slug($cursoParalelo->curso->nombre),
+                \Str::slug($cursoParalelo->paralelo->nombre),
+                date('Y-m-d_His')
+            );
+
+            // Crear archivo temporal
+            $tempFile = tempnam(sys_get_temp_dir(), 'plantilla_');
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save($tempFile);
+
+            // Devolver el archivo como descarga
+            return response()->download($tempFile, $filename, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            ])->deleteFileAfterSend();
+
+        } catch (\Exception $e) {
+            \Log::error('Error al generar plantilla:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()->with('error', 'Error al generar la plantilla: ' . $e->getMessage());
+        }
+    }
+
+    public function importarEstudiantes(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:xlsx,xls',
+                'curso_paralelo_id' => 'required|exists:curso_paralelo,idCursoParalelo'
+            ]);
+
+            Excel::import(
+                new EstudiantesImport($request->curso_paralelo_id), 
+                $request->file('file')
+            );
+
+            return response()->json(['message' => 'Estudiantes importados exitosamente']);
+        } catch (\Exception $e) {
+            \Log::error('Error importando estudiantes:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(
+                ['error' => 'Error al importar estudiantes: ' . $e->getMessage()],
+                500
+            );
         }
     }
 }

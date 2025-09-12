@@ -36,7 +36,7 @@ const { ROUTES, formatearFecha, formatearPuntos } = useResiduos();
 // ===== COMPUTED =====
 const estadisticas = computed(() => {
     const depositos = props.basurero.depositos || [];
-    const totalPuntos = depositos.reduce((sum, d) => sum + (d.tipoBasura?.puntos || 0), 0);
+    const totalPuntos = depositos.reduce((sum, d) => sum + (d.tipo_basura?.puntos || 0), 0);
     const usuariosUnicos = new Set(depositos.map((d) => d.user?.id).filter(Boolean)).size;
 
     return {
@@ -48,7 +48,21 @@ const estadisticas = computed(() => {
 });
 
 const depositosRecientes = computed(() => {
-    return (props.basurero.depositos || []).slice(0, 10);
+    return props.basurero.depositos.map((deposito) => ({
+        ...deposito,
+        nombreCompleto: `${deposito.user.nombres} ${deposito.user.primerApellido}`,
+        tipoBasura: deposito.tipo_basura?.nombre,
+        puntosGenerados: deposito.tipo_basura?.puntos,
+    }));
+});
+
+const actividadResumen = computed(() => {
+    const depositos = props.basurero.depositos || [];
+    return {
+        tiposResiduo: [...new Set(depositos.map((d) => d.tipo_basura?.nombre))],
+        ultimoDeposito: depositos[0]?.fechaHora ? formatearFecha(depositos[0].fechaHora) : 'Sin depósitos',
+        totalPuntos: depositos.reduce((sum, d) => sum + (d.tipo_basura?.puntos || 0), 0),
+    };
 });
 </script>
 
@@ -173,14 +187,33 @@ const depositosRecientes = computed(() => {
                                 </TableHeader>
                                 <TableBody>
                                     <TableRow v-for="deposito in depositosRecientes" :key="deposito.idDeposito">
-                                        <TableCell class="font-medium"> {{ deposito.user.nombres }} {{ deposito.user.primerApellido }} </TableCell>
-                                        <TableCell>{{ deposito.tipoBasura?.nombre || 'N/A' }}</TableCell>
                                         <TableCell>
-                                            <Badge variant="secondary">
-                                                {{ formatearPuntos(deposito.tipoBasura?.puntos || 0) }}
-                                            </Badge>
+                                            <div class="space-y-1">
+                                                <p class="font-medium">{{ deposito.nombreCompleto }}</p>
+                                                <p class="text-muted-foreground text-sm">ID: {{ deposito.idDeposito }}</p>
+                                            </div>
                                         </TableCell>
-                                        <TableCell>{{ formatearFecha(deposito.fechaHora) }}</TableCell>
+                                        <TableCell>
+                                            <div class="space-y-1">
+                                                <Badge variant="outline">
+                                                    {{ deposito.tipoBasura }}
+                                                </Badge>
+                                                <p class="text-muted-foreground text-xs">Peso: No especificado</p>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div class="space-y-1">
+                                                <Badge variant="secondary" class="text-lg"> {{ deposito.puntosGenerados }} pts </Badge>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div class="space-y-1">
+                                                <p>{{ formatearFecha(deposito.fechaHora) }}</p>
+                                                <p class="text-muted-foreground text-xs">
+                                                    {{ new Date(deposito.fechaHora).toLocaleTimeString() }}
+                                                </p>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
                                 </TableBody>
                             </Table>

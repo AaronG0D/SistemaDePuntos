@@ -12,17 +12,11 @@ return new class extends Migration
     public function up()
     {
         // Primero, creamos una tabla temporal para respaldar los datos existentes
-        if (Schema::hasTable('puntaje')) {
-            Schema::create('puntaje_backup', function (Blueprint $table) {
-                $table->increments('idPuntaje');
-                $table->unsignedSmallInteger('idUser');
-                $table->integer('puntajeTotal');
-                $table->timestamps();
-            });
-            
-            // Copiamos los datos a la tabla temporal
-            \DB::statement('INSERT INTO puntaje_backup SELECT * FROM puntaje');
-        }
+        // No es necesario respaldar los datos al usar migrate:fresh
+        // El bloque de respaldo se puede eliminar o comentar para evitar errores.
+        /* if (Schema::hasTable('puntaje')) {
+            // Lógica de respaldo anterior...
+        } */
         
         // Eliminamos la tabla existente
         Schema::dropIfExists('puntaje');
@@ -73,14 +67,11 @@ return new class extends Migration
             $table->index('idPeriodo');
         });
         
-        // Si había datos de respaldo, podemos intentar migrarlos
-        if (Schema::hasTable('puntaje_backup')) {
-            // Aquí puedes agregar lógica para migrar los datos antiguos si es necesario
-            // Por ejemplo, asignarlos a una materia por defecto o a un docente específico
-            
-            // Finalmente eliminamos la tabla de respaldo
+        // No hay datos de respaldo para migrar con migrate:fresh
+        /* if (Schema::hasTable('puntaje_backup')) {
+            // Lógica de migración de respaldo anterior...
             Schema::dropIfExists('puntaje_backup');
-        }
+        } */
     }
 
     /**

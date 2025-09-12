@@ -24,6 +24,8 @@ export interface TipoBasura {
 }
 
 export interface Deposito {
+    tipobasura: any;
+    tipo_Basura: any;
     idDeposito: number;
     idUser: number;
     idBasurero: number;

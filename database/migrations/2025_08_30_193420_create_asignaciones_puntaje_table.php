@@ -68,7 +68,8 @@ return new class extends Migration
             // Índices para mejorar el rendimiento
             $table->index(['idPuntaje', 'idMateria', 'idDocente']);
     }
-
+    );
+    }
     /**
      * Reverse the migrations.
      */

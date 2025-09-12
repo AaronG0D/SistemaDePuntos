@@ -18,7 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { type NavGroup, type NavItem, type UserRole } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Book, BoxIcon, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
+import { Book, BoxIcon, Calendar, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
 import AppLogo from './AppLogo.vue';
@@ -52,6 +52,11 @@ const navigationGroups: NavGroup[] = [
         title: 'Gestión Académica',
         icon: Settings,
         items: [
+            {
+                title: 'Períodos Académicos',
+                href: route('admin.periodos.index'),
+                icon: Calendar, // Asegúrate de importar Calendar de lucide-vue-next
+            },
             {
                 title: 'Estudiantes',
                 href: route('admin.estudiantes'),

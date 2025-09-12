@@ -12,12 +12,30 @@ class Puntaje extends Model
     
     protected $fillable = [
         'idUser',
+        'idPeriodo',
         'puntajeTotal',
-        'fechaActualizacion'
+        'fechaAsignacion',
+        'comentario',
+        'estado',
+        'fechaAcumulacion'
+    ];
+
+    protected $attributes = [
+        'puntajeTotal' => 0, // Valor por defecto
+    ];
+
+    protected $casts = [
+        'fechaAsignacion' => 'datetime',
+        'fechaAcumulacion' => 'datetime',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'idUser', 'id');
+    }
+
+    public function periodoAcademico(): BelongsTo
+    {
+        return $this->belongsTo(PeriodoAcademico::class, 'idPeriodo', 'idPeriodo');
     }
 }

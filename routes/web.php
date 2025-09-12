@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\EstudianteController;
+use App\Http\Controllers\EstudianteImportController;
 use App\Http\Controllers\DocenteController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\CursosMateriasController;
@@ -13,6 +14,7 @@ use App\Http\Middleware\RoleMiddleware;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocenteDashboardController;
+use App\Http\Controllers\PeriodoAcademicoController;
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('home');
 
@@ -21,6 +23,14 @@ Route::get('dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
 
 Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(function () {
+    Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard');
+    
+    // Rutas de importación y plantillas de estudiantes (DEBEN IR ANTES que las rutas con parámetros)
+    Route::get('/admin/estudiantes/plantilla', [EstudianteImportController::class, 'descargarPlantilla'])
+        ->name('admin.estudiantes.plantilla');
+    Route::post('/admin/estudiantes/importar', [EstudianteImportController::class, 'importar'])
+        ->name('admin.estudiantes.importar');
+    
     // Rutas de estudiantes
     Route::get('/admin/estudiantes', [EstudianteController::class, 'index'])
         ->name('admin.estudiantes');
@@ -169,18 +179,37 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
     Route::get('/admin/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+    // Rutas para Períodos Académicos
+    Route::prefix('admin')->group(function () {
+        Route::resource('periodos', PeriodoAcademicoController::class)->names([
+            'index' => 'admin.periodos.index',
+            'store' => 'admin.periodos.store',
+            'update' => 'admin.periodos.update',
+            'destroy' => 'admin.periodos.destroy',
+        ]);
+    });
 });
+
 
 // Rutas del Docente
 Route::middleware(['auth', RoleMiddleware::class.':docente'])->group(function () {
     Route::get('/docente/dashboard', [DocenteDashboardController::class, 'index'])->name('docente.dashboard');
+    Route::get('/docente/curso/{idCursoParalelo}', [DocenteDashboardController::class, 'cursoDetalle'])->name('docente.curso.detalle');
+    Route::post('/docente/curso/{idCursoParalelo}/asignar-puntos', [DocenteDashboardController::class, 'asignarPuntos'])->name('docente.curso.asignar');
     Route::get('/docente/estudiantes/{idCursoParalelo}', [DocenteDashboardController::class, 'estudiantesPorCurso'])
         ->name('docente.estudiantes');
     Route::get('/docente/reportes/curso/{idCursoParalelo}', [DocenteDashboardController::class, 'reportePuntosPorCurso'])
         ->name('docente.reportes.curso');
     Route::get('/docente/reportes/materia/{idCursoParalelo}/{idMateria}', [DocenteDashboardController::class, 'reportePuntosPorMateria'])
         ->name('docente.reportes.materia');
+    Route::get('/docente/exportar/materia/{idCursoParalelo}/{idMateria}', [DocenteDashboardController::class, 'exportarMateriaExcel'])
+        ->name('docente.curso.exportar-materia-excel');
+    // Ruta para descargar plantilla de estudiantes
+    Route::get('/docente/plantilla-estudiantes', [DocenteDashboardController::class, 'descargarPlantillaEstudiantes'])
+        ->name('docente.plantilla-estudiantes');
 });
+require __DIR__.'/auth.php';
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

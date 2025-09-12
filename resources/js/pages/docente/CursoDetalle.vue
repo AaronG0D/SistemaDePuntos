@@ -1,0 +1,1118 @@
+<script setup lang="ts">
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AppLayout from '@/layouts/AppLayout.vue';
+import { Head, router } from '@inertiajs/vue3';
+import { ChevronLeft, FileSpreadsheet } from 'lucide-vue-next';
+import { computed, onMounted, ref, watch } from 'vue';
+
+interface Periodo {
+    idPeriodo: number;
+    nombre: string;
+    codigo: string;
+    fecha_inicio?: string;
+    fecha_fin?: string;
+}
+
+interface CursoInfo {
+    idCursoParalelo: string;
+    curso: {
+        idCursoParalelo: any; nombre: string; paralelo: string 
+};
+    materias: { idMateria: number; nombre: string }[];
+}
+
+interface Estudiante {
+    id: number;
+    nombres: string;
+    apellidos: string;
+    puntaje: number;
+}
+
+interface Props {
+    curso: CursoInfo;
+    periodos: Periodo[];
+    periodoSeleccionado: number | null;
+    estudiantes: {
+        data: Estudiante[];
+        total: number;
+        per_page: number;
+        current_page: number;
+        last_page: number;
+    };
+    atribuidosPorMateria: Record<number, number[]>;
+    periodoActivoId?: number | null;
+}
+
+const props = defineProps<Props>();
+
+const materiaId = ref<string>('');
+const comentario = ref<string>('');
+const selectedIds = ref<Set<number>>(new Set());
+const selectAllOnPage = ref<boolean>(false);
+const selectAllFiltered = ref<boolean>(false);
+const periodoId = ref<string>(
+    props.periodoSeleccionado ? String(props.periodoSeleccionado) : 
+    props.periodoActivoId ? String(props.periodoActivoId) : ''
+);
+const searchQuery = ref('');
+const currentPeriodo = computed(() => props.periodos.find((p) => String(p.idPeriodo) === periodoId.value));
+const cursoData = computed(() => props.curso);
+const pageTitle = computed(() => `Curso ${cursoData.value.curso.nombre} "${cursoData.value.curso.paralelo}"`);
+const isPeriodoActivo = computed(() => {
+    return props.periodoActivoId ? String(props.periodoActivoId) === periodoId.value : true;
+});
+
+onMounted(() => {
+    if (periodoId.value) {
+        const activeButton = document.getElementById(`periodo-btn-${periodoId.value}`);
+        if (activeButton) {
+            activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    }
+});
+
+// Estadísticas de reporte para materia específica
+const estadisticasReporte = ref({
+    total_estudiantes: 0,
+    estudiantes_con_puntos: 0,
+    puntos_asignados_total: 0,
+    promedio_asignados: 0
+});
+
+// Función para obtener estadísticas de reporte por materia
+async function obtenerEstadisticasReporte() {
+    if (!materiaId.value) {
+        estadisticasReporte.value = {
+            total_estudiantes: props.estudiantes.data.length,
+            estudiantes_con_puntos: 0,
+            puntos_asignados_total: 0,
+            promedio_asignados: 0
+        };
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams();
+        if (periodoId.value) {
+            params.append('periodo_id', periodoId.value);
+        }
+
+        const response = await fetch(
+            `/docente/curso/${cursoData.value.curso.idCursoParalelo}/materia/${materiaId.value}/reporte?${params}`,
+            {
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                }
+            }
+        );
+
+        if (response.ok) {
+            const data = await response.json();
+            estadisticasReporte.value = data;
+        }
+    } catch (error) {
+        console.error('Error obteniendo estadísticas de reporte:', error);
+    }
+}
+
+// Estadísticas dinámicas basadas en el período seleccionado (para vista general)
+const estadisticasPeriodo = computed(() => {
+    const estudiantesActuales = props.estudiantes.data;
+    const totalEstudiantes = estudiantesActuales.length;
+    const estudiantesConPuntos = estudiantesActuales.filter(e => e.puntaje > 0).length;
+    const puntajeTotal = estudiantesActuales.reduce((sum, e) => sum + (e.puntaje || 0), 0);
+    const puntajePromedio = totalEstudiantes > 0 ? (puntajeTotal / totalEstudiantes) : 0;
+    
+    return {
+        totalEstudiantes,
+        estudiantesConPuntos,
+        puntajeTotal,
+        puntajePromedio: Math.round(puntajePromedio * 100) / 100
+    };
+});
+
+// Watchers para actualizar estadísticas cuando cambie materia o período
+watch([materiaId, periodoId], () => {
+    obtenerEstadisticasReporte();
+}, { immediate: true });
+
+// CSRF token para peticiones fetch (Laravel)
+const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+
+// Estudiantes ya atribuidos para la materia seleccionada en el período actual
+const atribuidosSet = computed(() => {
+    const mid = Number(materiaId.value || 0);
+    const ids = props.atribuidosPorMateria && props.atribuidosPorMateria[mid] ? props.atribuidosPorMateria[mid] : [];
+    return new Set<number>(ids as number[]);
+});
+
+const totalSeleccionados = computed(() => {
+    if (selectAllFiltered.value) {
+        return 'todos los estudiantes';
+    }
+    return selectedIds.value.size;
+});
+
+function toggleAllOnPage() {
+    if (selectAllOnPage.value) {
+        props.estudiantes.data.forEach((e) => {
+            if (e.puntaje === 0) return; // no seleccionar con 0 puntos
+            if (!(materiaId.value && atribuidosSet.value.has(e.id))) selectedIds.value.add(e.id);
+        });
+    } else {
+        props.estudiantes.data.forEach((e) => selectedIds.value.delete(e.id));
+    }
+}
+
+function handleSelectAllFiltered() {
+    if (selectAllFiltered.value) {
+        // Cuando se activa selección global, limpiar todo
+        selectedIds.value.clear();
+        selectAllOnPage.value = false;
+        
+        // Marcar visualmente los checkboxes de la página actual para feedback
+        props.estudiantes.data.forEach((e) => {
+            if (e.puntaje === 0) return; // no seleccionar con 0 puntos
+            if (!(materiaId.value && atribuidosSet.value.has(e.id))) {
+                selectedIds.value.add(e.id);
+            }
+        });
+    } else {
+        // Limpiar selección cuando se desactiva
+        selectedIds.value.clear();
+        selectAllOnPage.value = false;
+    }
+}
+
+function toggleOne(id: number, checked: boolean) {
+    if (checked) selectedIds.value.add(id);
+    else selectedIds.value.delete(id);
+}
+
+const confirmOpen = ref(false);
+const successOpen = ref(false);
+const errorOpen = ref(false);
+const errorText = ref('');
+const successInfo = ref<{
+    materia: string;
+    curso: string;
+    periodo: string;
+    cantidad: string;
+    insertados?: number;
+    omitidos?: number;
+    estudiantes_afectados?: number;
+}>({ materia: '', curso: '', periodo: '', cantidad: '' });
+const confirmInfo = ref<{ materia: string; curso: string; periodo: string; cantidad: string }>({ materia: '', curso: '', periodo: '', cantidad: '' });
+const isExporting = ref(false);
+const exportandoExcel = ref(false);
+
+// Estados para importación de estudiantes
+const descargandoPlantilla = ref(false);
+const archivoSeleccionado = ref<File | null>(null);
+const importandoEstudiantes = ref(false);
+const resultadosImportacion = ref<{
+    exitosos: number;
+    actualizados: number;
+    errores: Array<{ fila: number; mensaje: string }>;
+    mensajes: string[];
+} | null>(null);
+
+function abrirConfirmacion() {
+    if (!materiaId.value || (selectedIds.value.size === 0 && !selectAllFiltered.value)) return;
+    if (!isPeriodoActivo.value) return;
+    const materiaNombre = cursoData.value.materias.find((m) => String(m.idMateria) === materiaId.value)?.nombre || '';
+    const cursoNombre = `${cursoData.value.curso.nombre} "${cursoData.value.curso.paralelo}"`;
+    const periodoLabel = currentPeriodo.value ? `${currentPeriodo.value.nombre} (${currentPeriodo.value.codigo})` : 'Período activo';
+    confirmInfo.value = { materia: materiaNombre, curso: cursoNombre, periodo: periodoLabel, cantidad: String(totalSeleccionados.value) };
+    confirmOpen.value = true;
+}
+
+async function asignar() {
+    if (!materiaId.value || (selectedIds.value.size === 0 && !selectAllFiltered.value) || !isPeriodoActivo.value) return;
+    const payload: Record<string, any> = {
+        estudiantes: selectAllFiltered.value ? [] : Array.from(selectedIds.value),
+        idMateria: Number(materiaId.value),
+        comentario: comentario.value || undefined,
+        select_all: selectAllFiltered.value || undefined,
+        search: searchQuery.value || undefined,
+    };
+    if (periodoId.value !== '') payload.idPeriodo = Number(periodoId.value);
+
+    try {
+        const res = await fetch(route('docente.curso.asignar', props.curso.idCursoParalelo), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-Inertia': 'true',
+                'X-CSRF-TOKEN': csrfToken,
+                Accept: 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error((data && (data.error || data.message)) || 'Error al atribuir');
+        }
+
+        // Limpiar selección
+        selectedIds.value.clear();
+        selectAllOnPage.value = false;
+        comentario.value = '';
+
+        // Refrescar datos (estudiantes y atribuidosPorMateria) para que badges y checks se actualicen
+        const q = new URLSearchParams();
+        if (periodoId.value !== '') q.set('periodo_id', String(periodoId.value));
+        if (searchQuery.value) q.set('search', searchQuery.value);
+        await router.visit(route('docente.curso.detalle', props.curso.idCursoParalelo), {
+            method: 'get',
+            data: Object.fromEntries(q.entries()),
+            only: ['estudiantes', 'atribuidosPorMateria', 'periodoSeleccionado'],
+            preserveScroll: true,
+            preserveState: true,
+        });
+
+        // Abrir diálogo de éxito con datos relevantes (usamos confirmInfo ya preparado)
+        successInfo.value = {
+            ...confirmInfo.value,
+            insertados: data?.insertados,
+            omitidos: data?.omitidos,
+            estudiantes_afectados: data?.estudiantes_afectados,
+        } as any;
+        successOpen.value = true;
+    } catch (err) {
+        errorText.value = (err as Error).message || 'Error al atribuir';
+        errorOpen.value = true;
+    }
+}
+
+function goBack() {
+    window.close();
+    // Fallback: si no se puede cerrar, volver al dashboard
+    router.visit(route('docente.dashboard'));
+}
+
+function applyPeriodo() {
+    const params: Record<string, string> = {};
+    if (periodoId.value !== '') params['periodo_id'] = periodoId.value;
+    router.visit(route('docente.curso.detalle', props.curso.idCursoParalelo), {
+        method: 'get',
+        data: params,
+        only: ['estudiantes', 'periodoSeleccionado', 'atribuidosPorMateria'],
+        preserveScroll: true,
+        preserveState: true,
+    });
+}
+
+async function buscar(page?: number) {
+    const q = new URLSearchParams();
+    if (periodoId.value !== '') q.set('periodo_id', String(periodoId.value));
+    if (searchQuery.value) q.set('search', searchQuery.value);
+    if (page) q.set('page', String(page));
+    router.visit(route('docente.curso.detalle', props.curso.idCursoParalelo), {
+        method: 'get',
+        data: Object.fromEntries(q.entries()),
+        only: ['estudiantes'],
+        preserveScroll: true,
+        preserveState: true,
+    });
+}
+
+async function exportarExcel() {
+    if (!materiaId.value) {
+        errorText.value = 'Debes seleccionar una materia para exportar';
+        errorOpen.value = true;
+        return;
+    }
+
+    exportandoExcel.value = true;
+    try {
+        const url = route('docente.curso.exportar-materia-excel', {
+            idCursoParalelo: props.curso.idCursoParalelo,
+            idMateria: materiaId.value,
+        }) + (props.periodoSeleccionado ? `?idPeriodo=${props.periodoSeleccionado}` : '');
+
+        // Crear un enlace temporal para descargar
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (error) {
+        console.error('Error al exportar:', error);
+    } finally {
+        exportandoExcel.value = false;
+    }
+}
+
+// Métodos para importación de estudiantes
+async function descargarPlantilla() {
+    descargandoPlantilla.value = true;
+    try {
+        const response = await fetch(route('docente.plantilla-estudiantes'), {
+            method: 'GET',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            throw new Error('Error al descargar la plantilla');
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'Plantilla_Importar_Estudiantes_' + new Date().toISOString().split('T')[0] + '.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error al descargar plantilla:', error);
+        errorText.value = 'Error al descargar la plantilla';
+        errorOpen.value = true;
+    } finally {
+        descargandoPlantilla.value = false;
+    }
+}
+
+function seleccionarArchivo(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+
+    if (file) {
+        // Validar tipo de archivo
+        const allowedTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+        if (!allowedTypes.includes(file.type)) {
+            errorText.value = 'Por favor selecciona un archivo Excel válido (.xlsx o .xls)';
+            errorOpen.value = true;
+            target.value = '';
+            return;
+        }
+
+        // Validar tamaño (10MB máximo)
+        if (file.size > 10 * 1024 * 1024) {
+            errorText.value = 'El archivo es demasiado grande. Máximo 10MB permitido.';
+            errorOpen.value = true;
+            target.value = '';
+            return;
+        }
+
+        archivoSeleccionado.value = file;
+        resultadosImportacion.value = null; // Limpiar resultados anteriores
+    }
+}
+
+function limpiarArchivo() {
+    archivoSeleccionado.value = null;
+    resultadosImportacion.value = null;
+
+    // Limpiar el input file
+    const fileInput = document.getElementById('archivo-excel') as HTMLInputElement;
+    if (fileInput) {
+        fileInput.value = '';
+    }
+}
+
+function formatearTamano(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+async function importarEstudiantes() {
+    if (!archivoSeleccionado.value) return;
+
+    importandoEstudiantes.value = true;
+
+    try {
+        const formData = new FormData();
+        formData.append('archivo', archivoSeleccionado.value);
+
+        const response = await fetch(route('docente.importar-estudiantes'), {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Error durante la importación');
+        }
+
+        if (data.success) {
+            resultadosImportacion.value = data.data;
+
+            // Limpiar archivo después de importación exitosa
+            archivoSeleccionado.value = null;
+            const fileInput = document.getElementById('archivo-excel') as HTMLInputElement;
+            if (fileInput) {
+                fileInput.value = '';
+            }
+
+            // No refrescar automáticamente - permitir que el usuario vea los resultados
+            // El usuario puede refrescar manualmente si desea ver los nuevos estudiantes
+        } else {
+            throw new Error(data.message || 'Error durante la importación');
+        }
+    } catch (error) {
+        console.error('Error al importar estudiantes:', error);
+        errorText.value = error instanceof Error ? error.message : 'Error desconocido durante la importación';
+        errorOpen.value = true;
+    } finally {
+        importandoEstudiantes.value = false;
+    }
+}
+
+function refrescarPagina() {
+    router.visit(route('docente.curso.detalle', props.curso.idCursoParalelo), {
+        method: 'get',
+        preserveState: false,
+        preserveScroll: true,
+    });
+}
+</script>
+<template>
+    <AppLayout>
+        <Head :title="pageTitle" />
+        <div class="mx-auto w-full max-w-5xl p-4 sm:p-6">
+            <header class="mb-4 flex items-center justify-between">
+                <div class="min-w-0">
+                    <h1 class="truncate text-xl font-semibold sm:text-2xl">Curso {{ cursoData.curso.nombre }} "{{ cursoData.curso.paralelo }}"</h1>
+                    <p class="text-muted-foreground text-sm">
+                        {{ cursoData.materias.length }} materias · período:
+                        <span v-if="currentPeriodo">{{ currentPeriodo.nombre }} ({{ currentPeriodo.codigo }})</span>
+                        <span v-else>Todos</span>
+                    </p>
+                </div>
+                <Button variant="outline" class="shrink-0" @click="goBack"> <ChevronLeft class="mr-2 h-4 w-4" /> Volver </Button>
+            </header>
+
+            <div class="mb-4 grid gap-3">
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <Input v-model="searchQuery" placeholder="Buscar estudiantes..." @keydown.enter.prevent="buscar()" />
+                    </div>
+                    <Button variant="outline" @click="buscar()">Buscar</Button>
+                </div>
+                <div class="flex items-center gap-2 overflow-x-auto py-2">
+                    <Label class="text-sm whitespace-nowrap">Período</Label>
+                    <Button
+                        :id="`periodo-btn-${p.idPeriodo}`"
+                        size="sm"
+                        variant="outline"
+                        :class="{ 'bg-primary text-white': periodoId === String(p.idPeriodo) }"
+                        v-for="p in periodos"
+                        :key="p.idPeriodo"
+                        @click="
+                            periodoId = String(p.idPeriodo);
+                            applyPeriodo();
+                        "
+                    >
+                        {{ p.nombre }} ({{ p.codigo }})
+                    </Button>
+                </div>
+                <div v-if="!isPeriodoActivo" class="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    Solo se pueden atribuir puntos en el período activo. Cambia al período activo para habilitar la acción.
+                </div>
+            </div>
+
+            <Tabs default-value="estudiantes">
+                <TabsList class="grid w-full grid-cols-4">
+                    <TabsTrigger value="estudiantes">👥 Estudiantes</TabsTrigger>
+                    <TabsTrigger value="materias">📚 Materias</TabsTrigger>
+                    <TabsTrigger value="reportes">📊 Reportes</TabsTrigger>
+                    <TabsTrigger value="importar">📤 Importar</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="estudiantes">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Listado de estudiantes</CardTitle>
+                            <CardDescription>
+                                Filtrado por período académico. Al atribuir, se usarán los puntos totales del estudiante en el período seleccionado.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="mb-4 space-y-4">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <Label class="text-sm">Materia</Label>
+                                    <select v-model="materiaId" class="rounded-md border px-2 py-1 text-sm">
+                                        <option value="" disabled>Selecciona una materia</option>
+                                        <option v-for="m in cursoData.materias" :key="m.idMateria" :value="String(m.idMateria)">
+                                            {{ m.nombre }}
+                                        </option>
+                                    </select>
+                                    <Label class="ml-4 text-sm">Comentario</Label>
+                                    <Input v-model="comentario" placeholder="Opcional" class="max-w-sm" />
+                                </div>
+
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2">
+                                        <input type="checkbox" v-model="selectAllFiltered" @change="handleSelectAllFiltered" />
+                                        <Label class="text-sm font-medium text-blue-700">
+                                            🌐 Seleccionar TODOS los estudiantes (todas las páginas)
+                                        </Label>
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            :disabled="!materiaId || isExporting"
+                                            @click="exportarExcel"
+                                            class="border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100"
+                                        >
+                                            <FileSpreadsheet class="mr-2 h-4 w-4" />
+                                            {{ isExporting ? 'Generando Excel...' : 'Exportar Excel' }}
+                                        </Button>
+
+                                        <Button
+                                            :disabled="!materiaId || !isPeriodoActivo || (selectedIds.size === 0 && !selectAllFiltered)"
+                                            @click="abrirConfirmacion"
+                                        >
+                                            Atribuir puntos del período
+                                            <span v-if="selectedIds.size > 0 || selectAllFiltered" class="ml-2 rounded-full bg-white/20 px-2 py-1 text-xs">
+                                                {{ totalSeleccionados }}
+                                            </span>
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <ScrollArea class="h-[480px]">
+                                <div class="divide-y rounded-md border">
+                                    <div class="flex items-center justify-between gap-3 p-3" :class="selectAllFiltered ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'">
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" v-model="selectAllOnPage" @change="toggleAllOnPage" :disabled="selectAllFiltered" />
+                                            <label class="text-sm font-medium">Seleccionar todos en esta página</label>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <input type="checkbox" v-model="selectAllFiltered" @change="handleSelectAllFiltered" />
+                                            <label class="text-sm font-medium" :class="selectAllFiltered ? 'text-blue-700 font-semibold' : ''">
+                                                🌐 Seleccionar TODOS los estudiantes
+                                                <span v-if="selectAllFiltered" class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                    ACTIVO
+                                                </span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div v-for="(e, idx) in estudiantes.data" :key="e.id" class="flex items-center justify-between gap-3 p-3">
+                                        <div class="flex min-w-0 items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                :disabled="e.puntaje === 0 || (!!materiaId && atribuidosSet.has(e.id)) || selectAllFiltered"
+                                                :checked="selectedIds.has(e.id) || (selectAllFiltered && e.puntaje > 0 && !(materiaId && atribuidosSet.has(e.id)))"
+                                                @change="toggleOne(e.id, ($event.target as HTMLInputElement).checked)"
+                                            />
+                                            <span class="text-muted-foreground w-8 text-right text-sm">
+                                                {{ (estudiantes.current_page - 1) * estudiantes.per_page + idx + 1 }}
+                                            </span>
+                                            <div class="min-w-0">
+                                                <p class="truncate font-medium">{{ e.apellidos }}</p>
+                                                <p class="text-muted-foreground truncate text-sm">{{ e.nombres }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <span
+                                                v-if="materiaId && atribuidosSet.has(e.id)"
+                                                class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                                                >Atribuido</span
+                                            >
+                                            <div class="text-right">
+                                                <div class="text-xl font-semibold">{{ e.puntaje }}</div>
+                                                <div class="text-muted-foreground text-xs">puntos</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ScrollArea>
+
+                            <div v-if="estudiantes.total > estudiantes.per_page" class="mt-3 flex justify-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    :disabled="estudiantes.current_page === 1"
+                                    @click="buscar(estudiantes.current_page - 1)"
+                                    >Anterior</Button
+                                >
+                                <Button
+                                    v-for="page in estudiantes.last_page"
+                                    :key="page"
+                                    variant="outline"
+                                    size="sm"
+                                    :class="{ 'bg-primary text-white': page === estudiantes.current_page }"
+                                    @click="buscar(page)"
+                                    >{{ page }}</Button
+                                >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    :disabled="estudiantes.current_page === estudiantes.last_page"
+                                    @click="buscar(estudiantes.current_page + 1)"
+                                    >Siguiente</Button
+                                >
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="materias">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Materias del curso</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                <div v-for="m in cursoData.materias" :key="m.idMateria" class="rounded-md border p-3">
+                                    <div class="font-medium">{{ m.nombre }}</div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="reportes">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Reportes y Exportaciones</CardTitle>
+                            <CardDescription>Genera reportes detallados en Excel para análisis y seguimiento</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="space-y-6">
+                                <!-- Reporte por Materia -->
+                                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                    <div class="flex items-start justify-between">
+                                        <div class="space-y-2">
+                                            <h3 class="font-semibold text-blue-900">📊 Reporte de Estudiantes por Materia</h3>
+                                            <p class="text-sm text-blue-700">
+                                                Exporta un reporte detallado con todos los estudiantes que tienen puntos atribuidos en una materia
+                                                específica.
+                                            </p>
+                                            <div class="flex items-center gap-2 text-xs text-blue-600">
+                                                <span>✓ Información completa del estudiante</span>
+                                                <span>✓ Puntos atribuidos y registros</span>
+                                                <span>✓ Estadísticas y calificaciones</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-col gap-2">
+                                            <select v-model="materiaId" class="rounded-md border border-blue-300 px-3 py-2 text-sm">
+                                                <option value="" disabled>Selecciona materia</option>
+                                                <option v-for="m in cursoData.materias" :key="m.idMateria" :value="String(m.idMateria)">
+                                                    {{ m.nombre }}
+                                                </option>
+                                            </select>
+                                            <button
+                                                @click="exportarExcel"
+                                                :disabled="exportandoExcel"
+                                                class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                <svg
+                                                    v-if="!exportandoExcel"
+                                                    class="mr-2 h-4 w-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                    ></path>
+                                                </svg>
+                                                <svg v-else class="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path
+                                                        class="opacity-75"
+                                                        fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                    ></path>
+                                                </svg>
+                                                {{ exportandoExcel ? 'Generando...' : 'Generar Excel' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Información del Período -->
+                                <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                                    <div class="space-y-2">
+                                        <h3 class="font-semibold text-amber-900">📅 Información del Período</h3>
+                                        <div class="grid grid-cols-2 gap-4 text-sm">
+                                            <div>
+                                                <span class="font-medium text-amber-800">Período Seleccionado:</span>
+                                                <p class="text-amber-700">
+                                                    {{
+                                                        currentPeriodo ? `${currentPeriodo.nombre} (${currentPeriodo.codigo})` : 'Todos los períodos'
+                                                    }}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-amber-800">Total de Estudiantes:</span>
+                                                <p class="text-amber-700">{{ estadisticasReporte.total_estudiantes }} estudiantes</p>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-amber-800">Estudiantes con Puntos Asignados:</span>
+                                                <p class="text-amber-700">{{ estadisticasReporte.estudiantes_con_puntos }} estudiantes</p>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-amber-800">Puntos Asignados Total:</span>
+                                                <p class="text-amber-700">{{ estadisticasReporte.puntos_asignados_total }} puntos</p>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-amber-800">Promedio de Puntos Asignados:</span>
+                                                <p class="text-amber-700">{{ estadisticasReporte.promedio_asignados }} puntos</p>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-amber-800">Materias Disponibles:</span>
+                                                <p class="text-amber-700">{{ cursoData.materias.length }} materias</p>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-amber-800">Fecha de Consulta:</span>
+                                                <p class="text-amber-700">{{ new Date().toLocaleDateString('es-ES') }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Instrucciones -->
+                                <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                    <h3 class="mb-3 font-semibold text-gray-900">💡 Cómo usar los reportes</h3>
+                                    <div class="space-y-2 text-sm text-gray-700">
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-emerald-600">1.</span>
+                                            <span>Selecciona el período académico deseado usando los botones de período arriba.</span>
+                                        </div>
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-emerald-600">2.</span>
+                                            <span>Elige la materia para la cual quieres generar el reporte.</span>
+                                        </div>
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-emerald-600">3.</span>
+                                            <span>Haz clic en "Generar Excel" para descargar el reporte completo.</span>
+                                        </div>
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-emerald-600">4.</span>
+                                            <span>El archivo Excel incluirá formato profesional, estadísticas y gráficos.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <!-- Tab de Importar Estudiantes -->
+                <TabsContent value="importar">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>📤 Importar Estudiantes desde Excel</CardTitle>
+                            <CardDescription> Carga masiva de estudiantes utilizando archivos Excel con formato específico. </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="space-y-6">
+                                <!-- Paso 1: Descargar Plantilla -->
+                                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                    <h3 class="mb-3 font-semibold text-blue-900">📋 Paso 1: Descargar Plantilla</h3>
+                                    <p class="mb-4 text-sm text-blue-800">
+                                        Descarga la plantilla Excel con el formato correcto y las instrucciones para importar estudiantes.
+                                    </p>
+                                    <button
+                                        @click="descargarPlantilla"
+                                        :disabled="descargandoPlantilla"
+                                        class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        <svg v-if="!descargandoPlantilla" class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                            ></path>
+                                        </svg>
+                                        <svg v-else class="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path
+                                                class="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                            ></path>
+                                        </svg>
+                                        {{ descargandoPlantilla ? 'Descargando...' : 'Descargar Plantilla Excel' }}
+                                    </button>
+                                </div>
+
+                                <!-- Paso 2: Subir Archivo -->
+                                <div class="rounded-lg border border-green-200 bg-green-50 p-4">
+                                    <h3 class="mb-3 font-semibold text-green-900">📁 Paso 2: Subir Archivo Excel</h3>
+                                    <p class="mb-4 text-sm text-green-800">
+                                        Selecciona el archivo Excel completado con los datos de los estudiantes.
+                                    </p>
+
+                                    <div class="space-y-4">
+                                        <!-- Input de archivo -->
+                                        <div class="flex w-full items-center justify-center">
+                                            <label
+                                                for="archivo-excel"
+                                                class="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-green-300 bg-green-50 transition-colors hover:bg-green-100"
+                                            >
+                                                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                                    <svg
+                                                        class="mb-4 h-8 w-8 text-green-500"
+                                                        aria-hidden="true"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 20 16"
+                                                    >
+                                                        <path
+                                                            stroke="currentColor"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
+                                                        />
+                                                    </svg>
+                                                    <p class="mb-2 text-sm text-green-500">
+                                                        <span class="font-semibold">Haz clic para subir</span> o arrastra el archivo
+                                                    </p>
+                                                    <p class="text-xs text-green-500">Excel (.xlsx, .xls) hasta 10MB</p>
+                                                </div>
+                                                <input
+                                                    id="archivo-excel"
+                                                    type="file"
+                                                    class="hidden"
+                                                    accept=".xlsx,.xls"
+                                                    @change="seleccionarArchivo"
+                                                />
+                                            </label>
+                                        </div>
+
+                                        <!-- Archivo seleccionado -->
+                                        <div
+                                            v-if="archivoSeleccionado"
+                                            class="flex items-center justify-between rounded-md border border-green-200 bg-white p-3"
+                                        >
+                                            <div class="flex items-center">
+                                                <svg class="mr-2 h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                    ></path>
+                                                </svg>
+                                                <span class="text-sm font-medium text-gray-900">{{ archivoSeleccionado.name }}</span>
+                                                <span class="ml-2 text-xs text-gray-500">({{ formatearTamano(archivoSeleccionado.size) }})</span>
+                                            </div>
+                                            <button @click="limpiarArchivo" class="text-red-600 hover:text-red-800">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                        stroke-width="2"
+                                                        d="M6 18L18 6M6 6l12 12"
+                                                    ></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- Botón de importar -->
+                                        <button
+                                            @click="importarEstudiantes"
+                                            :disabled="!archivoSeleccionado || importandoEstudiantes"
+                                            class="inline-flex w-full items-center justify-center rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <svg
+                                                v-if="!importandoEstudiantes"
+                                                class="mr-2 h-4 w-4"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                                ></path>
+                                            </svg>
+                                            <svg v-else class="mr-2 h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path
+                                                    class="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                ></path>
+                                            </svg>
+                                            {{ importandoEstudiantes ? 'Importando...' : 'Importar Estudiantes' }}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Resultados de importación -->
+                                <div v-if="resultadosImportacion" class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                    <h3 class="mb-3 font-semibold text-gray-900">📊 Resultados de Importación</h3>
+
+                                    <div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                                        <div class="rounded-lg border border-green-200 bg-green-100 p-3">
+                                            <div class="text-2xl font-bold text-green-800">{{ resultadosImportacion.exitosos }}</div>
+                                            <div class="text-sm text-green-600">Estudiantes importados</div>
+                                        </div>
+                                        <div class="rounded-lg border border-yellow-200 bg-yellow-100 p-3">
+                                            <div class="text-2xl font-bold text-yellow-800">{{ resultadosImportacion.actualizados }}</div>
+                                            <div class="text-sm text-yellow-600">Estudiantes actualizados</div>
+                                        </div>
+                                        <div class="rounded-lg border border-red-200 bg-red-100 p-3">
+                                            <div class="text-2xl font-bold text-red-800">{{ resultadosImportacion.errores.length }}</div>
+                                            <div class="text-sm text-red-600">Errores encontrados</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Lista de errores -->
+                                    <div v-if="resultadosImportacion.errores.length > 0" class="space-y-2">
+                                        <h4 class="font-medium text-red-900">Errores detallados:</h4>
+                                        <div class="max-h-40 space-y-1 overflow-y-auto">
+                                            <div
+                                                v-for="(error, index) in resultadosImportacion.errores"
+                                                :key="index"
+                                                class="rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700"
+                                            >
+                                                <span class="font-medium">Fila {{ error.fila }}:</span> {{ error.mensaje }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Mensajes informativos -->
+                                    <div v-if="resultadosImportacion.mensajes.length > 0" class="mt-4 space-y-2">
+                                        <h4 class="font-medium text-blue-900">Información adicional:</h4>
+                                        <div class="max-h-32 space-y-1 overflow-y-auto">
+                                            <div
+                                                v-for="(mensaje, index) in resultadosImportacion.mensajes"
+                                                :key="index"
+                                                class="rounded border border-blue-200 bg-blue-50 p-2 text-sm text-blue-700"
+                                            >
+                                                {{ mensaje }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Botón para refrescar y ver estudiantes actualizados -->
+                                    <div class="mt-4 flex justify-center">
+                                        <button
+                                            @click="refrescarPagina"
+                                            class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        >
+                                            🔄 Refrescar para ver estudiantes actualizados
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Instrucciones -->
+                                <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                    <h3 class="mb-3 font-semibold text-gray-900">💡 Instrucciones de Uso</h3>
+                                    <div class="space-y-2 text-sm text-gray-700">
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-blue-600">1.</span>
+                                            <span>Descarga la plantilla Excel haciendo clic en el botón "Descargar Plantilla Excel".</span>
+                                        </div>
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-blue-600">2.</span>
+                                            <span>Completa la plantilla con los datos de los estudiantes siguiendo las instrucciones incluidas.</span>
+                                        </div>
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-blue-600">3.</span>
+                                            <span>Asegúrate de usar los IDs de curso-paralelo correctos que aparecen en la plantilla.</span>
+                                        </div>
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-blue-600">4.</span>
+                                            <span>Sube el archivo completado y haz clic en "Importar Estudiantes".</span>
+                                        </div>
+                                        <div class="flex items-start gap-2">
+                                            <span class="font-medium text-blue-600">5.</span>
+                                            <span>Revisa los resultados y corrige cualquier error si es necesario.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+        </div>
+        <!-- Confirmación -->
+        <Dialog v-model:open="confirmOpen">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Confirmar atribución</DialogTitle>
+                    <DialogDescription> Revisa los datos antes de continuar. </DialogDescription>
+                </DialogHeader>
+                <div class="space-y-1 text-sm">
+                    <div><span class="text-muted-foreground">Curso:</span> {{ confirmInfo.curso }}</div>
+                    <div><span class="text-muted-foreground">Materia:</span> {{ confirmInfo.materia }}</div>
+                    <div><span class="text-muted-foreground">Período:</span> {{ confirmInfo.periodo }}</div>
+                    <div><span class="text-muted-foreground">Estudiantes:</span> {{ confirmInfo.cantidad }}</div>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" @click="confirmOpen = false">Cancelar</Button>
+                    <Button
+                        @click="
+                            confirmOpen = false;
+                            asignar();
+                        "
+                        >Confirmar</Button
+                    >
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Éxito -->
+        <Dialog v-model:open="successOpen">
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Atribución realizada</DialogTitle>
+                </DialogHeader>
+                <div class="space-y-1 text-sm">
+                    <div><span class="text-muted-foreground">Curso:</span> {{ successInfo.curso }}</div>
+                    <div><span class="text-muted-foreground">Materia:</span> {{ successInfo.materia }}</div>
+                    <div><span class="text-muted-foreground">Período:</span> {{ successInfo.periodo }}</div>
+                    <div><span class="text-muted-foreground">Estudiantes seleccionados:</span> {{ successInfo.cantidad }}</div>
+                    <div v-if="successInfo.estudiantes_afectados !== undefined">
+                        <span class="text-muted-foreground">Estudiantes afectados:</span> {{ successInfo.estudiantes_afectados }}
+                    </div>
+                    <div v-if="successInfo.insertados !== undefined">
+                        <span class="text-muted-foreground">Registros insertados:</span> {{ successInfo.insertados }}
+                    </div>
+                    <div v-if="successInfo.omitidos !== undefined">
+                        <span class="text-muted-foreground">Registros omitidos (ya existentes):</span> {{ successInfo.omitidos }}
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button @click="successOpen = false">Cerrar</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    </AppLayout>
+</template>

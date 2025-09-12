@@ -45,14 +45,26 @@ class BasureroController extends Controller
 
     public function show(Basurero $basurero): Response
     {
-        $basurero->load(['depositos' => function ($query) {
-            $query->with(['user', 'tipoBasura'])
-                ->orderBy('fechaHora', 'desc')
-                ->limit(20);
-        }]);
+        $basurero->load([
+            'depositos' => function ($query) {
+                $query->with([
+                    'user:id,nombres,primerApellido',
+                    'tipoBasura:idTipoBasura,nombre,puntos',
+                ])
+                ->latest('fechaHora')
+                ->take(10);
+            }
+        ]);
+
+        // Para debug
+        \Log::info('Datos del basurero y depósitos:', [
+            'basurero' => $basurero->toArray(),
+            'depositos_count' => $basurero->depositos->count(),
+            'primer_deposito' => $basurero->depositos->first()
+        ]);
 
         return Inertia::render('admin/residuos/BasureroView', [
-            'basurero' => $basurero,
+            'basurero' => $basurero
         ]);
     }
 
@@ -106,4 +118,4 @@ class BasureroController extends Controller
 
         return back()->with('success', $mensaje);
     }
-} 
+}

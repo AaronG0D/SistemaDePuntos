@@ -122,8 +122,6 @@ function limpiarFiltros() {
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                          <FileText class="mr-2 h-4 w-4" />
-                                Exportar PDF
                         <Button as-child>
                             <Link :href="ROUTES.depositos.create">
                                 <Plus class="mr-2 h-4 w-4" />

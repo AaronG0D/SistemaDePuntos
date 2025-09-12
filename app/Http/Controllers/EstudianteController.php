@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Estudiante;
 use App\Models\User;
+use App\Imports\EstudiantesImport;
+use App\Exports\PlantillaEstudiantesExport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class EstudianteController extends Controller
 {
@@ -227,4 +230,73 @@ class EstudianteController extends Controller
             return redirect()->back()->with('error', 'Error al mostrar el estudiante');
         }
     }
+
+    /**
+     * Importar estudiantes desde Excel
+     */
+    public function importarEstudiantes(Request $request)
+    {
+        try {
+            $request->validate([
+                'archivo' => 'required|file|mimes:xlsx,xls|max:10240'
+            ]);
+
+            if (!$request->hasFile('archivo') || !$request->file('archivo')->isValid()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Archivo no válido o corrupto'
+                ], 400);
+            }
+
+            $file = $request->file('archivo');
+            $path = $file->store('temp');
+            $fullPath = storage_path('app/' . $path);
+
+            $import = new EstudiantesImport();
+            $import->filePath = $fullPath;
+            $results = $import->import();
+
+            // Limpiar archivo temporal
+            if (file_exists($fullPath)) {
+                unlink($fullPath);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'insertados' => $results['exitosos'],
+                    'actualizados' => $results['actualizados'],
+                    'errores' => $results['errores'],
+                    'mensajes' => $results['mensajes']
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error en importación: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar el archivo: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Descargar plantilla Excel para importar estudiantes
+     */
+public function descargarPlantillaEstudiantes(Request $request)
+{
+    try {
+        $fileName = 'Plantilla_Estudiantes_' . now()->format('Y-m-d') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new PlantillaEstudiantesExport(),
+            $fileName,
+            \Maatwebsite\Excel\Excel::XLSX
+        );
+    } catch (\Exception $e) {
+        \Log::error('Error al descargar plantilla: ' . $e->getMessage());
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
 }

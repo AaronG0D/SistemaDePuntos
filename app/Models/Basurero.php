@@ -12,16 +12,17 @@ class Basurero extends Model
 
     protected $table = 'basurero';
     protected $primaryKey = 'idBasurero';
-    public $timestamps = true;
 
     protected $fillable = [
         'ubicacion',
         'descripcion',
-        'estado',
+        'estado'
     ];
 
     protected $casts = [
-        'estado' => 'integer',
+        'estado' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     // ===== RELACIONES =====
@@ -55,11 +56,13 @@ class Basurero extends Model
     // ===== MÉTODOS =====
     public function activar(): void
     {
-        $this->update(['estado' => 1]);
+        $this->estado = true;
+        $this->save();
     }
 
     public function desactivar(): void
     {
-        $this->update(['estado' => 0]);
+        $this->estado = false;
+        $this->save();
     }
-} 
+}

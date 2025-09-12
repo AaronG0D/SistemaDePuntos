@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import { BookOpen, ChevronRight, GraduationCap, LineChart, Star, Users } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
@@ -19,9 +19,39 @@ interface Estudiante {
     puntaje: number;
 }
 
-interface Materia {
+interface MateriaInfo {
     idMateria: number;
     nombre: string;
+    asignadosPeriodoActual?: number;
+    totalEstudiantes?: number;
+}
+
+interface CursoCardInfo {
+    idCursoParalelo: string | number;
+    curso: { nombre: string; paralelo: string };
+    materias: MateriaInfo[];
+    estudiantes: Estudiante[];
+}
+
+interface Materia {
+    asignadosPeriodoActual: number;
+    totalEstudiantes: number;
+    idMateria: number;
+    nombre: string;
+}
+
+interface BimestreMateriaChip {
+    idMateria: number;
+    nombre: string;
+    asignados: number;
+    totalEstudiantes: number;
+}
+
+interface BimestreInfo {
+    idPeriodo: number;
+    nombre: string;
+    codigo: string;
+    materias: BimestreMateriaChip[];
 }
 
 interface CursoInfo {
@@ -30,8 +60,9 @@ interface CursoInfo {
         nombre: string;
         paralelo: string;
     };
-    materias: Materia[];
+    materias: MateriaInfo[];
     estudiantes: Estudiante[];
+    bimestres?: BimestreInfo[];
 }
 
 interface EstudiantesResponse {
@@ -237,245 +268,56 @@ async function cargarEstadisticasMateria(idCursoParalelo: string, idMateria: num
             <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <Card v-for="info in cursosYMaterias" :key="info.idCursoParalelo">
                     <CardHeader>
-                        <CardTitle
-                            class="flex items-center gap-2"
-                            @click="
-                                cursoActivo = String(info.idCursoParalelo);
-                                cargarEstudiantes(info.idCursoParalelo);
-                            "
-                        >
+                        <CardTitle class="flex items-center gap-2">
                             <GraduationCap class="h-5 w-5" />
-                            {{ info.curso.nombre }} "{{ info.curso.paralelo }}"
+                            <Link :href="route('docente.curso.detalle', info.idCursoParalelo)" class="hover:underline">
+                                {{ info.curso.nombre }} "{{ info.curso.paralelo }}"
+                            </Link>
                         </CardTitle>
-                        <CardDescription> {{ info.materias.length || 0 }} materias · {{ info.estudiantes.length || 0 }} estudiantes </CardDescription>
+                        <CardDescription>
+                            {{ info.materias.length || 0 }} materias · {{ info.estudiantes.length || 0 }} estudiantes
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Tabs @update:value="materiaSeleccionada = null">
-                            <TabsList class="w-full">
-                                <TabsTrigger value="estudiantes">
-                                    <Users class="mr-2 h-4 w-4" />
-                                    Estudiantes
-                                </TabsTrigger>
-                                <TabsTrigger value="materias">
-                                    <BookOpen class="mr-2 h-4 w-4" />
-                                    Materias
-                                </TabsTrigger>
-                                <TabsTrigger value="reportes">
-                                    <LineChart class="mr-2 h-4 w-4" />
-                                    Reportes
-                                </TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="estudiantes">
-                                <div class="space-y-4">
-                                    <!-- Barra de búsqueda -->
-                                    <div class="flex items-center gap-2">
-                                        <div class="relative flex-1">
-                                            <i class="text-muted-foreground absolute top-2.5 left-2 h-4 w-4">🔍</i>
-                                            <Input v-model="searchQuery" placeholder="Buscar estudiantes..." class="pl-8" @input="debounceSearch" />
-                                        </div>
-                                        <Button variant="outline" size="sm" @click="cargarEstudiantes(info.idCursoParalelo)">
-                                            <i class="h-4 w-4">⟳</i>
-                                        </Button>
-                                    </div>
-
-                                    <!-- Lista de estudiantes con ScrollArea -->
-                                    <ScrollArea class="h-[400px]">
-                                        <div class="space-y-2 rounded-lg border p-4">
-                                            <div
-                                                v-for="estudiante in estudiantes.data"
-                                                :key="estudiante.id"
-                                                class="hover:bg-muted/50 flex items-center justify-between rounded-lg border p-3 transition-colors"
-                                            >
-                                                <div>
-                                                    <p class="font-medium">{{ estudiante.nombres }}</p>
-                                                    <p class="text-muted-foreground text-sm">{{ estudiante.apellidos }}</p>
-                                                </div>
-                                                <div class="flex items-center gap-4">
-                                                    <div class="flex flex-col items-end">
-                                                        <div class="flex items-center gap-1">
-                                                            <Star class="h-4 w-4 text-yellow-400" />
-                                                            {{ estudiante.puntaje }}
-                                                        </div>
-                                                        <p class="text-muted-foreground text-xs">puntos totales</p>
-                                                    </div>
-                                                    <Button variant="ghost" size="sm" @click="mostrarDetalles(estudiante)">
-                                                        <ChevronRight class="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </ScrollArea>
-
-                                    <!-- Paginación -->
-                                    <div v-if="estudiantes.total > estudiantes.per_page" class="flex justify-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            :disabled="estudiantes.current_page === 1"
-                                            @click="cambiarPagina(estudiantes.current_page - 1)"
-                                        >
-                                            Anterior
-                                        </Button>
-                                        <Button
-                                            v-for="page in estudiantes.last_page"
-                                            :key="page"
-                                            variant="outline"
-                                            size="sm"
-                                            :class="{ 'bg-primary text-white': page === estudiantes.current_page }"
-                                            @click="cambiarPagina(page)"
-                                        >
-                                            {{ page }}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            :disabled="estudiantes.current_page === estudiantes.last_page"
-                                            @click="cambiarPagina(estudiantes.current_page + 1)"
-                                        >
-                                            Siguiente
-                                        </Button>
-                                    </div>
+                        <div v-if="info.materias?.length" class="mb-3 space-y-1">
+                            <div v-for="m in info.materias" :key="m.idMateria" class="flex items-center justify-between text-sm">
+                                <span class="truncate pr-2">{{ m.nombre }}</span>
+                                <span class="text-muted-foreground">
+                                    <span class="font-medium">{{ m.asignadosPeriodoActual || 0 }}</span>
+                                    /
+                                    <span>{{ m.totalEstudiantes || 0 }}</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div v-if="info.bimestres?.length" class="space-y-2">
+                            <details v-for="b in info.bimestres" :key="b.idPeriodo" class="rounded-md border p-2">
+                                <summary class="cursor-pointer list-none text-xs font-medium text-muted-foreground">
+                                    {{ b.nombre }} ({{ b.codigo }})
+                                </summary>
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    <span
+                                        v-for="bm in b.materias"
+                                        :key="bm.idMateria"
+                                        :class="[
+                                            'inline-flex items-center rounded-full border px-2 py-0.5 text-xs',
+                                            bm.asignados === bm.totalEstudiantes ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-muted text-foreground/80'
+                                        ]"
+                                        title="{{ bm.nombre }}: {{ bm.asignados }} / {{ bm.totalEstudiantes }}"
+                                    >
+                                        {{ bm.nombre }} {{ bm.asignados }}/{{ bm.totalEstudiantes }}
+                                    </span>
                                 </div>
-
-                                <!-- Dialog de detalles del estudiante -->
-                                <Dialog v-model:open="showDetalles">
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Detalles del Estudiante</DialogTitle>
-                                            <DialogDescription> Puntos acumulados y materias seleccionadas </DialogDescription>
-                                        </DialogHeader>
-
-                                        <div v-if="estudianteSeleccionado" class="space-y-4">
-                                            <div class="flex items-center justify-between">
-                                                <div>
-                                                    <h3 class="font-medium">{{ estudianteSeleccionado.nombres }}</h3>
-                                                    <p class="text-muted-foreground text-sm">
-                                                        {{ estudianteSeleccionado.apellidos }}
-                                                    </p>
-                                                </div>
-                                                <div class="flex items-center gap-1">
-                                                    <Star class="h-5 w-5 text-yellow-400" />
-                                                    <span class="text-xl font-bold">
-                                                        {{ estudianteSeleccionado.puntaje }}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div class="space-y-2">
-                                                <Label>Validar puntos para las materias:</Label>
-                                                <div class="space-y-2">
-                                                    <div
-                                                        v-for="materia in info.materias || []"
-                                                        :key="materia.idMateria"
-                                                        class="flex items-center space-x-2"
-                                                    >
-                                                        <Checkbox
-                                                            :id="'materia-' + materia.idMateria"
-                                                            :checked="materiasSeleccionadas.includes(materia.idMateria)"
-                                                            @change="toggleMateria(materia.idMateria)"
-                                                            :value="materia.idMateria"
-                                                        />
-                                                        <Label :for="'materia-' + materia.idMateria">
-                                                            {{ materia.nombre }}
-                                                        </Label>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <Button class="w-full" @click="generarReporte"> Generar Reporte de Puntos </Button>
-                                        </div>
-                                    </DialogContent>
-                                </Dialog>
-                            </TabsContent>
-
-                            <TabsContent value="materias">
-                                <div class="space-y-2">
-                                    <div class="space-y-2">
-                                        <div
-                                            v-for="materia in info.materias || []"
-                                            :key="materia.idMateria"
-                                            class="flex items-center justify-between rounded-lg border p-2"
-                                        >
-                                            <div>
-                                                <p class="font-medium">{{ materia.nombre }}</p>
-                                            </div>
-                                            <div class="flex items-center gap-2">
-                                                <Checkbox
-                                                    :id="'masivo-' + info.idCursoParalelo + '-' + materia.idMateria"
-                                                    :checked="selectedMateriasMasivo.includes(materia.idMateria)"
-                                                    @change="toggleMateriaMasivo(materia.idMateria)"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div class="pt-2">
-                                            <Button class="w-full" @click="generarReporteMasivo(info.idCursoParalelo)"
-                                                >Generar reporte masivo para materias seleccionadas</Button
-                                            >
-                                        </div>
-                                    </div>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="reportes">
-                                <div class="space-y-4">
-                                    <div v-if="!materiaSeleccionada">
-                                        <h4 class="mb-2 font-medium">Selecciona una materia:</h4>
-                                        <div class="space-y-2">
-                                            <Button
-                                                v-for="materia in info.materias || []"
-                                                :key="materia.idMateria"
-                                                variant="outline"
-                                                class="w-full justify-start"
-                                                @click="
-                                                    materiaSeleccionada = materia.idMateria;
-                                                    cargarEstadisticasMateria(info.idCursoParalelo, materia.idMateria);
-                                                "
-                                            >
-                                                <BookOpen class="mr-2 h-4 w-4" />
-                                                {{ materia.nombre }}
-                                            </Button>
-                                        </div>
-                                    </div>
-
-                                    <div v-if="materiaSeleccionada && estadisticas" class="space-y-4">
-                                        <Button variant="ghost" size="sm" @click="materiaSeleccionada = null"> Volver a materias </Button>
-
-                                        <div class="grid gap-4">
-                                            <Card>
-                                                <CardHeader>
-                                                    <CardTitle>Estadísticas de Puntos</CardTitle>
-                                                </CardHeader>
-                                                <CardContent>
-                                                    <dl class="grid gap-2 sm:grid-cols-2">
-                                                        <div>
-                                                            <dt class="text-muted-foreground text-sm">Total Estudiantes</dt>
-                                                            <dd class="text-2xl font-bold">{{ estadisticas.total_estudiantes }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-muted-foreground text-sm">Puntos Totales</dt>
-                                                            <dd class="text-2xl font-bold">{{ estadisticas.puntos_totales }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-muted-foreground text-sm">Promedio</dt>
-                                                            <dd class="text-2xl font-bold">{{ Math.round(estadisticas.promedio_puntos) }}</dd>
-                                                        </div>
-                                                        <div>
-                                                            <dt class="text-muted-foreground text-sm">Máximo</dt>
-                                                            <dd class="text-2xl font-bold">{{ estadisticas.maximo_puntos }}</dd>
-                                                        </div>
-                                                    </dl>
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    </div>
-                                </div>
-                            </TabsContent>
-                        </Tabs>
+                            </details>
+                        </div>
+                        <Link :href="route('docente.curso.detalle', info.idCursoParalelo)">
+                            <Button class="w-full">
+                                Ver curso
+                            </Button>
+                        </Link>
                     </CardContent>
                 </Card>
             </div>
+
         </div>
     </AppLayout>
 </template>
