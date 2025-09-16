@@ -24,19 +24,23 @@ class EstudianteImportController extends Controller
     public function importar(Request $request): JsonResponse
     {
         $request->validate([
-            'archivo' => 'required|file|mimes:xlsx,xls|max:10240', // 10MB máximo
+            'archivo' => 'required|file|mimes:xlsx,xls|max:10240',
         ]);
 
         try {
             $archivo = $request->file('archivo');
-            
-            // Crear instancia del import
             $import = new EstudiantesImport();
-            
-            // Procesar el archivo directamente
             $resultados = $import->import($archivo->getPathname());
             
-            // Crear mensaje detallado basado en los resultados
+            // Obtener información del curso desde los resultados
+            $cursoInfo = null;
+            if (isset($resultados['curso_info'])) {
+                $cursoInfo = [
+                    'curso_nombre' => $resultados['curso_info']['curso'] ?? null,
+                    'paralelo_nombre' => $resultados['curso_info']['paralelo'] ?? null,
+                ];
+            }
+
             $mensaje = "Importación completada: ";
             $mensaje .= "{$resultados['insertados']} nuevos insertados, ";
             $mensaje .= "{$resultados['actualizados']} actualizados, ";
@@ -53,7 +57,8 @@ class EstudianteImportController extends Controller
                     'errores_count' => count($resultados['errores']),
                     'estudiantes_afectados' => $resultados['insertados'] + $resultados['actualizados'],
                     'errores' => $resultados['errores'],
-                    'mensajes' => $resultados['mensajes']
+                    'mensajes' => $resultados['mensajes'],
+                    'curso_info' => $cursoInfo
                 ]
             ]);
             

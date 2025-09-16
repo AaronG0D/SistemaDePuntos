@@ -230,7 +230,7 @@ class DocenteDashboardController extends Controller
                 'estudiante.idUser as id',
                 'usuario.nombres',
                 DB::raw("CONCAT(IFNULL(usuario.primerApellido,''),' ',IFNULL(usuario.segundoApellido,'')) as apellidos"),
-                DB::raw('COALESCE(SUM(puntaje.puntajeTotal),0) as puntaje')
+                DB::raw('COALESCE(SUM(puntaje.puntos),0) as puntaje')
             )
             ->orderBy('usuario.primerApellido')
             ->orderBy('usuario.segundoApellido')
@@ -279,7 +279,7 @@ class DocenteDashboardController extends Controller
                 'usuario.nombres',
                 'usuario.primerApellido',
                 'usuario.segundoApellido',
-                DB::raw('COALESCE(SUM(puntaje.puntajeTotal),0) as total_puntos')
+                DB::raw('COALESCE(SUM(puntaje.puntos),0) as total_puntos')
             )
             ->groupBy('estudiante.idUser','usuario.nombres','usuario.primerApellido','usuario.segundoApellido');
 
@@ -332,10 +332,10 @@ class DocenteDashboardController extends Controller
             ->where('estudiante.idCursoParalelo', $idCursoParalelo)
             ->select(
                 DB::raw('COUNT(DISTINCT estudiante.idUser) as total_estudiantes'),
-                DB::raw('COALESCE(SUM(puntaje.puntajeTotal),0) as puntos_totales'),
-                DB::raw('COALESCE(AVG(puntaje.puntajeTotal),0) as promedio_puntos'),
-                DB::raw('COALESCE(MAX(puntaje.puntajeTotal),0) as maximo_puntos'),
-                DB::raw('MIN(puntaje.puntajeTotal) as minimo_puntos')
+                DB::raw('COALESCE(SUM(puntaje.puntos),0) as puntos_totales'),
+                DB::raw('COALESCE(AVG(puntaje.puntos),0) as promedio_puntos'),
+                DB::raw('COALESCE(MAX(puntaje.puntos),0) as maximo_puntos'),
+                DB::raw('MIN(puntaje.puntos) as minimo_puntos')
             )
             ->first();
 
@@ -511,7 +511,7 @@ class DocenteDashboardController extends Controller
             $puntajes = DB::table('puntaje')
                 ->where('idUser', $idUser)
                 ->where('idPeriodo', $periodoId)
-                ->get(['idPuntaje','puntajeTotal']);
+                ->get(['idPuntaje','puntos']);
             $tuvoInsercion = false;
             foreach ($puntajes as $p) {
                 try {
@@ -522,7 +522,7 @@ class DocenteDashboardController extends Controller
                         'idMateria' => (int) $data['idMateria'],
                         'fecha_asignacion' => $now,
                         'porcentaje' => 100,
-                        'puntos' => (int) $p->puntajeTotal,
+                        'puntos' => (int) $p->puntos,
                         'comentario' => $data['comentario'] ?? null,
                         'created_at' => $now,
                         'updated_at' => $now,

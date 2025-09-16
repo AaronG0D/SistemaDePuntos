@@ -68,7 +68,7 @@ function aplicarFiltros() {
                 <div class="flex items-center gap-4">
                     <Link
                         v-if="page.props.auth.user"
-                        :href="route('dashboard')"
+                        :href="route('admin.dashboard')"
                         class="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-medium text-white transition hover:bg-green-700"
                     >
                         Dashboard

@@ -47,15 +47,21 @@ class DashboardController extends Controller
             ? (($puntosMes - $puntosMesAnterior) / $puntosMesAnterior) * 100 
             : 100;
 
-        // Top 10 estudiantes (usando la tabla puntos)
+        // Top 10 estudiantes (sumando puntos de la tabla puntaje)
         $topEstudiantes = User::where('rol', 'estudiante')
             ->join('puntaje', 'usuario.id', '=', 'puntaje.idUser')
-            ->orderBy('puntaje.puntajeTotal', 'desc')
+            ->groupBy('usuario.id', 'usuario.nombres', 'usuario.primerApellido')
+            ->select(
+                'usuario.nombres',
+                'usuario.primerApellido',
+                DB::raw('SUM(puntaje.puntos) as puntos_total')
+            )
+            ->orderByDesc('puntos_total')
             ->limit(10)
             ->get()
             ->map(fn($est) => [
                 'nombre' => $est->nombres . ' ' . $est->primerApellido,
-                'puntos' => $est->puntajeTotal
+                'puntos' => (int) ($est->puntos_total ?? 0)
             ]);
 
         // Ranking por curso (sumando puntos de los estudiantes)
@@ -66,7 +72,7 @@ class DashboardController extends Controller
             ->join('puntaje', 'usuario.id', '=', 'puntaje.idUser')
             ->where('usuario.rol', 'estudiante')
             ->groupBy('curso.idCurso')
-            ->select('curso.nombre', DB::raw('SUM(puntaje.puntajeTotal) as puntos'))
+            ->select('curso.nombre', DB::raw('SUM(puntaje.puntos) as puntos'))
             ->orderByDesc('puntos')
             ->get()
             ->map(fn($curso) => [
@@ -83,7 +89,7 @@ class DashboardController extends Controller
             ->groupBy('curso_paralelo.idCursoParalelo')
             ->select(
                 'curso_paralelo.*',
-                DB::raw('SUM(puntaje.puntajeTotal) as puntos')
+                DB::raw('SUM(puntaje.puntos) as puntos')
             )
             ->orderByDesc('puntos')
             ->get()
@@ -92,7 +98,7 @@ class DashboardController extends Controller
                 'puntos' => $cp->puntos ?? 0
             ]);
 
-        return Inertia::render('Dashboard', [
+        return Inertia::render('admin/Dashboard', [
             'estadisticas' => [
                 'depositos_hoy' => $depositosHoy,
                 'depositos_semana' => $depositosSemana,

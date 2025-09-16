@@ -11,7 +11,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { router, useForm } from '@inertiajs/vue3';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Pencil, Plus, Trash } from 'lucide-vue-next';
+import { Calendar, Pencil, Plus, Trash } from 'lucide-vue-next';
 import { ref, watch } from 'vue';
 import { Toaster, toast } from 'vue-sonner';
 
@@ -148,7 +148,10 @@ const debugForm = () => {
             <!-- Header -->
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 class="text-xl font-semibold sm:text-2xl">Períodos Académicos</h1>
+                    <h1 class="text-xl font-semibold sm:text-2xl flex items-center gap-3">
+                        <Calendar class="h-7 w-7 text-blue-600" />
+                        Períodos Académicos
+                    </h1>
                     <p class="text-muted-foreground text-sm">Gestiona los períodos académicos del sistema</p>
                 </div>
                 <!-- Modal de Crear -->

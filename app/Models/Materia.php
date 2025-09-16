@@ -5,14 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Materia extends Model
 {
+    use SoftDeletes;
+    
     protected $table = 'materia';
     protected $primaryKey = 'idMateria';
     
     protected $fillable = [
-        'nombre'
+        'nombre',
+        'estado'
+    ];
+
+    protected $casts = [
+        'estado' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     public function docenteMateriaCursos(): HasMany

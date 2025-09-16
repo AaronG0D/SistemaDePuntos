@@ -8,10 +8,11 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import UserQrCode from '@/components/UserQrCode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Plus } from 'lucide-vue-next';
-import { ref, watch } from 'vue';
+import { Plus, Users } from 'lucide-vue-next';
+import { ref, watch, onMounted } from 'vue';
 import { Toaster, toast } from 'vue-sonner';
 import { route } from 'ziggy-js';
+import { usePage } from '@inertiajs/vue3';
 
 type User = {
     id: number;
@@ -36,6 +37,8 @@ const props = defineProps<{
     };
 }>();
 
+const page = usePage();
+
 // Confirm dialog state
 const confirmOpen = ref(false);
 const userToDelete = ref<number | null>(null);
@@ -46,25 +49,34 @@ function promptDestroyUser(id: number) {
 }
 
 function confirmDestroy() {
-    if (!userToDelete.value) return;
-    const id = userToDelete.value;
-    confirmOpen.value = false;
-    router.delete(route('users.destroy', id), {
-        onSuccess: () =>
-            toast('Usuario eliminado', {
-                description: 'El usuario ha sido eliminado exitosamente',
-                position: 'top-center',
-                duration: 3000,
-            }),
-        onError: () =>
-            toast('Error al eliminar', {
-                description: 'No se pudo eliminar el usuario',
-                position: 'top-center',
-                duration: 3000,
-            }),
-    });
-    userToDelete.value = null;
+    if (userToDelete.value) {
+        router.delete(route('users.destroy', userToDelete.value), {
+            onSuccess: () => {
+                toast.success('Usuario eliminado correctamente');
+                confirmOpen.value = false;
+                userToDelete.value = null;
+            },
+            onError: (errors) => {
+                toast.error('Error al eliminar el usuario');
+                console.error('Delete errors:', errors);
+            }
+        });
+    }
 }
+
+// Handle flash messages from server
+onMounted(() => {
+    const flashSuccess = page.props.flash?.success;
+    const flashError = page.props.flash?.error;
+    
+    if (flashSuccess) {
+        toast.success(flashSuccess);
+    }
+    
+    if (flashError) {
+        toast.error(flashError);
+    }
+});
 
 // Filters
 const filters = ref({
@@ -99,7 +111,10 @@ const roles = [
             <!-- Header modificado -->
             <div class="mb-6 flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-semibold">Usuarios</h1>
+                    <h1 class="text-2xl font-semibold flex items-center gap-3">
+                        <Users class="h-7 w-7 text-purple-600" />
+                        Usuarios
+                    </h1>
                     <p class="text-muted-foreground">Gestiona los usuarios del sistema</p>
                 </div>
                 <Button asChild>

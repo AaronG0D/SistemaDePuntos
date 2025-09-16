@@ -10,7 +10,7 @@ import UserQrCode from '@/components/UserQrCode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { AdminDocentesProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { BookOpen, Check, Edit, Eye, GraduationCap, Search, Trash2, XCircle } from 'lucide-vue-next';
+import { BookOpen, Check, Edit, Eye, GraduationCap, Search, Trash2, UserCheck, XCircle } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
@@ -196,7 +196,10 @@ watch(
         <div class="container mx-auto py-6">
             <!-- ===== HEADER ===== -->
             <header class="mb-6">
-                <h1 class="text-3xl font-bold">Docentes</h1>
+                <h1 class="text-3xl font-bold flex items-center gap-3">
+                    <UserCheck class="h-8 w-8 text-blue-600" />
+                    Docentes
+                </h1>
                 <p class="text-muted-foreground">Gestiona la lista de docentes y sus materias</p>
             </header>
 

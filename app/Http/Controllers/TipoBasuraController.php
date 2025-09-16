@@ -93,4 +93,12 @@ class TipoBasuraController extends Controller
         return redirect()->route('admin.tipos-basura.index')
             ->with('success', 'Tipo de basura eliminado exitosamente');
     }
-} 
+
+    public function toggleEstado(TipoBasura $tipoBasura)
+    {
+        $tipoBasura->estado = $tipoBasura->estado ? 0 : 1;
+        $tipoBasura->save();
+
+        return back()->with('success', $tipoBasura->estado ? 'Tipo de basura activado' : 'Tipo de basura desactivado');
+    }
+}

@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TipoBasura extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'tipoBasura';
     protected $primaryKey = 'idTipoBasura';
@@ -18,10 +19,14 @@ class TipoBasura extends Model
         'nombre',
         'descripcion',
         'puntos',
+        'estado'
     ];
 
     protected $casts = [
         'puntos' => 'integer',
+        'estado' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     // ===== RELACIONES =====

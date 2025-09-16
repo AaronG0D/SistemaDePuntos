@@ -5,9 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Estudiante extends Model
 {
+    use SoftDeletes;
+    
     protected $table = 'estudiante';
     protected $primaryKey = 'idUser';
     public $incrementing = false; // porque no es autoincremental
@@ -53,10 +57,11 @@ class Estudiante extends Model
 
     public function scopeOrderByPuntaje(Builder $query, string $direction = 'desc'): Builder
     {
-        // Ordena por puntajeTotal haciendo join a la tabla puntaje
+        // Ordena por la suma de puntos del estudiante en la tabla puntaje
         $query->leftJoin('puntaje', 'estudiante.idUser', '=', 'puntaje.idUser')
-              ->select('estudiante.*')
-              ->orderBy('puntaje.puntajeTotal', $direction);
+              ->select('estudiante.*', DB::raw('COALESCE(SUM(puntaje.puntos),0) as total_puntos'))
+              ->groupBy('estudiante.idUser')
+              ->orderBy('total_puntos', $direction);
         return $query;
     }
 } 

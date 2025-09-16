@@ -21,15 +21,8 @@ import { Link, usePage } from '@inertiajs/vue3';
 import { Book, BoxIcon, Calendar, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
-import AppLogo from './AppLogo.vue';
 
-const commonNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutGrid,
-    },
-];
+
 
 // Estado para los menús colapsables
 const openAcademico = ref(false);
@@ -46,6 +39,7 @@ const collapsible = computed(() => 'collapsed'); // Ajusta el valor según tu l�
 // Definición de la navegación del sidebar
 
 import { docenteNavigation } from '@/config/navigation';
+import AppLogo from './AppLogo.vue';
 
 const navigationGroups: NavGroup[] = [
     {
@@ -183,7 +177,7 @@ watch(openResiduos, (val) => {
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="route('dashboard')" class="flex items-center justify-center">
+                        <Link :href="route('admin.dashboard')" class="flex items-center justify-center">
                             <AppLogo class="h-6 w-auto" />
                         </Link>
                     </SidebarMenuButton>
@@ -196,13 +190,13 @@ watch(openResiduos, (val) => {
                 <SidebarGroupLabel class="text-muted-foreground px-3 py-1 text-xs font-medium uppercase"> Sistema de Puntos </SidebarGroupLabel>
                 <SidebarGroupContent>
                     <SidebarMenu>
-                        <!-- Dashboard -->
-                        <SidebarMenuItem>
+                        <!-- Dashboard (solo admin) -->
+                        <SidebarMenuItem v-if="userRole === 'administrador'">
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger as-child>
                                         <SidebarMenuButton as-child>
-                                            <Link href="/dashboard" class="flex items-center gap-2 px-2 py-1.5">
+                                            <Link :href="route('admin.dashboard')" class="flex items-center gap-2 px-2 py-1.5">
                                                 <LayoutGrid class="h-4 w-4" />
                                                 <span class="sidebar-label">Dashboard</span>
                                             </Link>
@@ -301,8 +295,8 @@ watch(openResiduos, (val) => {
                             </SidebarMenuItem>
                         </template>
 
-                        <!-- Sección de Reportes -->
-                        <SidebarMenuItem>
+                        <!-- Sección de Reportes (solo admin) -->
+                        <SidebarMenuItem v-if="userRole === 'administrador'">
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger as-child>

@@ -3,7 +3,10 @@
     <AppLayout>
         <div class="container mx-auto py-6">
             <div class="mb-8">
-                <Heading title="Reportes de Gestión de Residuos" />
+                <h1 class="text-3xl font-bold flex items-center gap-3">
+                    <FileText class="h-8 w-8 text-emerald-600" />
+                    Reportes de Gestión de Residuos
+                </h1>
                 <p class="text-muted-foreground mt-2">Estadísticas y reportes del sistema de gestión de residuos</p>
             </div>
 
@@ -340,7 +343,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import type { Basurero, DatosGraficos, Estadisticas, TipoResiduo } from '@/types';
 import { FileText, Table2 } from 'lucide-vue-next';
 import { ref } from 'vue';
-import { Head} from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { useToast } from '../../../composables/useToast';
 
 const props = withDefaults(

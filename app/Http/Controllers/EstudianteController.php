@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Estudiante;
 use App\Models\User;
+use App\Models\HistorialImportacion;
 use App\Imports\EstudiantesImport;
 use App\Exports\PlantillaEstudiantesExport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class EstudianteController extends Controller
@@ -60,10 +62,29 @@ class EstudianteController extends Controller
         $cursos = \App\Models\Curso::orderBy('nombre')->get(['idCurso', 'nombre']);
         $paralelos = \App\Models\Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
 
+        // Obtener historial de importaciones recientes con formato de fecha corregido
+        $historialImportaciones = HistorialImportacion::with(['cursoParalelo.curso', 'cursoParalelo.paralelo'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'curso_nombre' => $item->cursoParalelo->curso->nombre ?? '-',
+                    'paralelo_nombre' => $item->cursoParalelo->paralelo->nombre ?? '-',
+                    'insertados' => $item->insertados,
+                    'actualizados' => $item->actualizados,
+                    'omitidos' => $item->omitidos,
+                    'errores' => $item->errores_count,
+                    'created_at' => $item->created_at->format('Y-m-d H:i:s')
+                ];
+            });
+
         return Inertia::render('admin/EstudiantesLIST', [
             'estudiantes' => $estudiantes,
             'cursos' => $cursos,
             'paralelos' => $paralelos,
+            'historialImportaciones' => $historialImportaciones,
         ]);
     }
 
@@ -232,53 +253,126 @@ class EstudianteController extends Controller
     }
 
     /**
+     * Mostrar vista de importación de estudiantes
+     */
+    public function showImport()
+    {
+        // Obtener historial de importaciones recientes
+        $historialImportaciones = HistorialImportacion::with(['cursoParalelo.curso', 'cursoParalelo.paralelo'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'curso_nombre' => $item->cursoParalelo->curso->nombre ?? '-',
+                    'paralelo_nombre' => $item->cursoParalelo->paralelo->nombre ?? '-',
+                    'insertados' => $item->insertados,
+                    'actualizados' => $item->actualizados,
+                    'omitidos' => $item->omitidos,
+                    'errores' => $item->errores_count,
+                    'created_at' => $item->created_at->format('Y-m-d H:i:s')
+                ];
+            });
+
+        return Inertia::render('admin/EstudiantesImport', [
+            'historialImportaciones' => $historialImportaciones,
+        ]);
+    }
+
+    /**
      * Importar estudiantes desde Excel
      */
     public function importarEstudiantes(Request $request)
     {
+        $request->validate([
+            'archivo' => 'required|file|mimes:xlsx,xls|max:10240'
+        ]);
+    
         try {
-            $request->validate([
-                'archivo' => 'required|file|mimes:xlsx,xls|max:10240'
-            ]);
-
-            if (!$request->hasFile('archivo') || !$request->file('archivo')->isValid()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Archivo no válido o corrupto'
-                ], 400);
-            }
-
             $file = $request->file('archivo');
-            $path = $file->store('temp');
-            $fullPath = storage_path('app/' . $path);
+            // Asegurar uso del disco local y que el directorio exista
+            Storage::disk('local')->makeDirectory('temp');
+            $path = $file->store('temp', 'local'); // devuelve 'temp/filename.xlsx'
+            $fullPath = Storage::disk('local')->path($path);
 
+            if (!Storage::disk('local')->exists($path)) {
+                throw new \RuntimeException('No se pudo guardar el archivo temporal en storage/app/temp');
+            }
+    
             $import = new EstudiantesImport();
-            $import->filePath = $fullPath;
-            $results = $import->import();
-
-            // Limpiar archivo temporal
-            if (file_exists($fullPath)) {
-                unlink($fullPath);
+            $resultados = $import->import($fullPath);
+    
+            // Obtener historial actualizado inmediatamente después de la importación
+            $historialReciente = HistorialImportacion::with(['cursoParalelo.curso', 'cursoParalelo.paralelo'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'curso_nombre' => $item->cursoParalelo->curso->nombre ?? '-',
+                        'paralelo_nombre' => $item->cursoParalelo->paralelo->nombre ?? '-',
+                        'insertados' => $item->insertados,
+                        'actualizados' => $item->actualizados,
+                        'omitidos' => $item->omitidos,
+                        'errores' => $item->errores_count,
+                        'created_at' => $item->created_at->format('Y-m-d H:i:s')
+                    ];
+                });
+    
+            // Agregar el historial SIEMPRE dentro de "data"
+            $resultados['historial'] = $historialReciente;
+    
+            // Eliminar archivo temporal de forma segura
+            if (Storage::disk('local')->exists($path)) {
+                Storage::disk('local')->delete($path);
+            }
+    
+            // Si es una petición AJAX, devolver JSON
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $resultados
+                ]);
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'insertados' => $results['exitosos'],
-                    'actualizados' => $results['actualizados'],
-                    'errores' => $results['errores'],
-                    'mensajes' => $results['mensajes']
-                ]
-            ]);
-
+            // Si es navegación normal, redirigir con mensaje de éxito
+            return redirect()->route('admin.estudiantes.import')
+                ->with('success', 'Importación completada exitosamente')
+                ->with('importResults', $resultados);
+    
         } catch (\Exception $e) {
             \Log::error('Error en importación: ' . $e->getMessage());
+    
+            // ⚡ También devolvemos historial en caso de error
+            $historialReciente = HistorialImportacion::with(['cursoParalelo.curso', 'cursoParalelo.paralelo'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get()
+                ->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'curso_nombre' => $item->cursoParalelo->curso->nombre ?? '-',
+                        'paralelo_nombre' => $item->cursoParalelo->paralelo->nombre ?? '-',
+                        'insertados' => $item->insertados,
+                        'actualizados' => $item->actualizados,
+                        'omitidos' => $item->omitidos,
+                        'errores' => $item->errores_count,
+                        'created_at' => $item->created_at->format('Y-m-d H:i:s')
+                    ];
+                });
+    
             return response()->json([
                 'success' => false,
-                'message' => 'Error al procesar el archivo: ' . $e->getMessage()
+                'message' => 'Error al procesar el archivo: ' . $e->getMessage(),
+                'data' => [
+                    'historial' => $historialReciente
+                ]
             ], 500);
         }
     }
+    
 
     /**
      * Descargar plantilla Excel para importar estudiantes
@@ -287,12 +381,9 @@ public function descargarPlantillaEstudiantes(Request $request)
 {
     try {
         $fileName = 'Plantilla_Estudiantes_' . now()->format('Y-m-d') . '.xlsx';
-
-        return \Maatwebsite\Excel\Facades\Excel::download(
-            new PlantillaEstudiantesExport(),
-            $fileName,
-            \Maatwebsite\Excel\Excel::XLSX
-        );
+        // Usar exportador propio basado en PhpSpreadsheet (no dependemos de Laravel Excel)
+        $export = new PlantillaEstudiantesExport();
+        return $export->download($fileName);
     } catch (\Exception $e) {
         \Log::error('Error al descargar plantilla: ' . $e->getMessage());
         return response()->json(['error' => $e->getMessage()], 500);

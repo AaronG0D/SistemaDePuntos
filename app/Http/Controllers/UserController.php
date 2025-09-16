@@ -101,7 +101,17 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        $user->delete();
-        return redirect()->route('users.index')->with('success', 'Usuario eliminado correctamente');
+        try {
+            // Con soft deletes, simplemente "eliminamos" el usuario
+            // Los registros relacionados se mantienen intactos
+            $user->delete();
+            
+            return redirect()->route('users.index')
+                ->with('success', 'Usuario eliminado correctamente');
+                
+        } catch (\Exception $e) {
+            return redirect()->route('users.index')
+                ->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
+        }
     }
 }

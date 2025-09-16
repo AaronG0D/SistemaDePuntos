@@ -10,7 +10,7 @@ import { useResiduos } from '@/composables/useResiduos';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { Basurero, Deposito, FiltrosDepositos, PaginacionDepositos, TipoBasura } from '@/types/residuos';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, Award, Calendar, Edit, Eye, FileText, Filter, Plus, Search, Table2, Trash2 } from 'lucide-vue-next';
+import { ArrowLeft, Award, BoxIcon, Calendar, Edit, Eye, FileText, Filter, Plus, Search, Table2, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 // ===== PROPS =====
@@ -117,7 +117,10 @@ function limpiarFiltros() {
                             </Link>
                         </Button>
                         <div>
-                            <h1 class="text-3xl font-bold">Gestión de Depósitos</h1>
+                            <h1 class="text-3xl font-bold flex items-center gap-3">
+                                <BoxIcon class="h-8 w-8 text-orange-600" />
+                                Gestión de Depósitos
+                            </h1>
                             <p class="text-muted-foreground">Administra los registros de depósitos de residuos</p>
                         </div>
                     </div>

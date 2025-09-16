@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/AppLayout.vue';
 import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { Head, router } from '@inertiajs/vue3';
@@ -20,16 +21,19 @@ interface Curso {
     nombre: string;
     cursoParalelos?: CursoParalelo[];
     curso_paralelos?: CursoParalelo[];
+    estado?: boolean;
 }
 
 interface Paralelo {
     idParalelo: number;
     nombre: string;
+    estado?: boolean;
 }
 
 interface Materia {
     idMateria: number;
     nombre: string;
+    estado?: boolean;
 }
 
 interface CursoParalelo {
@@ -106,6 +110,18 @@ function seleccionarCurso(cursoId: number) {
 
 function seleccionarParalelo(paraleloId: number) {
     selectedParalelo.value = paraleloId;
+}
+
+function toggleCursoEstado(curso: any) {
+    router.patch(`/admin/cursos/${curso.idCurso}/toggle-estado`);
+}
+
+function toggleParaleloEstado(paralelo: any) {
+    router.patch(`/admin/paralelos/${paralelo.idParalelo}/toggle-estado`);
+}
+
+function toggleMateriaEstado(materia: any) {
+    router.patch(`/admin/materias/${materia.idMateria}/toggle-estado`);
 }
 
 // ===== CRUD CURSOS =====
@@ -371,7 +387,10 @@ function onConfirmDelete() {
         <div class="container mx-auto py-6">
             <!-- ===== HEADER ===== -->
             <header class="mb-6">
-                <h1 class="text-3xl font-bold">Cursos y Materias</h1>
+                <h1 class="text-3xl font-bold flex items-center gap-3">
+                    <BookOpen class="h-8 w-8 text-indigo-600" />
+                    Cursos y Materias
+                </h1>
                 <p class="text-muted-foreground">Gestiona los cursos, paralelos, materias y sus asignaciones</p>
             </header>
 
@@ -416,7 +435,15 @@ function onConfirmDelete() {
                         >
                             <CardHeader>
                                 <CardTitle class="flex items-center justify-between">
-                                    {{ curso.nombre }}
+                                    <div class="flex items-center gap-2">
+                                        {{ curso.nombre }}
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <Switch :checked="Boolean((curso as any).estado)" @update:checked="() => toggleCursoEstado(curso)" />
+                                            <span :class="{ 'text-green-600': (curso as any).estado, 'text-muted-foreground': !(curso as any).estado }">
+                                                {{ (curso as any).estado ? 'Activo' : 'Inactivo' }}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <div class="flex gap-1">
                                         <Button variant="ghost" size="sm" @click.stop="abrirDialogoCurso(curso)">
                                             <Edit class="h-4 w-4" />
@@ -458,7 +485,15 @@ function onConfirmDelete() {
                         <Card v-for="paralelo in paralelos" :key="paralelo.idParalelo" class="transition-shadow hover:shadow-md">
                             <CardHeader>
                                 <CardTitle class="flex items-center justify-between">
-                                    Paralelo {{ paralelo.nombre }}
+                                    <div class="flex items-center gap-2">
+                                        Paralelo {{ paralelo.nombre }}
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <Switch :checked="Boolean((paralelo as any).estado)" @update:checked="() => toggleParaleloEstado(paralelo)" />
+                                            <span :class="{ 'text-green-600': (paralelo as any).estado, 'text-muted-foreground': !(paralelo as any).estado }">
+                                                {{ (paralelo as any).estado ? 'Activo' : 'Inactivo' }}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <div class="flex gap-1">
                                         <Button variant="ghost" size="sm" @click="abrirDialogoParalelo(paralelo)">
                                             <Edit class="h-4 w-4" />
@@ -487,7 +522,15 @@ function onConfirmDelete() {
                         <Card v-for="materia in materias" :key="materia.idMateria" class="transition-shadow hover:shadow-md">
                             <CardHeader>
                                 <CardTitle class="flex items-center justify-between">
-                                    {{ materia.nombre }}
+                                    <div class="flex items-center gap-2">
+                                        {{ materia.nombre }}
+                                        <div class="flex items-center gap-1 text-xs">
+                                            <Switch :checked="Boolean((materia as any).estado)" @update:checked="() => toggleMateriaEstado(materia)" />
+                                            <span :class="{ 'text-green-600': (materia as any).estado, 'text-muted-foreground': !(materia as any).estado }">
+                                                {{ (materia as any).estado ? 'Activo' : 'Inactivo' }}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <div class="flex gap-1">
                                         <Button variant="ghost" size="sm" @click="abrirDialogoMateria(materia)">
                                             <Edit class="h-4 w-4" />

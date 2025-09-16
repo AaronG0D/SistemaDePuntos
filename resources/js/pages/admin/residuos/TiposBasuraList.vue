@@ -8,9 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useResiduos } from '@/composables/useResiduos';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { PaginacionTiposBasura, TipoBasura } from '@/types/residuos';
-import { Head, Link } from '@inertiajs/vue3';
-import { ArrowLeft, Award, Edit, Eye, Plus, Search, Trash2 } from 'lucide-vue-next';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ArrowLeft, Award, Edit, Eye, Plus, Recycle, Search, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { Switch } from '@/components/ui/switch';
 
 // ===== PROPS =====
 const props = defineProps<{
@@ -42,6 +43,10 @@ function handleEliminar(tipo: TipoBasura) {
 function handleSearch() {
     // La búsqueda se hace en el cliente por simplicidad
 }
+
+function toggleEstado(tipo: TipoBasura) {
+    router.patch(`/admin/tipos-basura/${tipo.idTipoBasura}/toggle-estado`);
+}
 </script>
 
 <template>
@@ -60,7 +65,10 @@ function handleSearch() {
                             </Link>
                         </Button>
                         <div>
-                            <h1 class="text-3xl font-bold">Gestión de Tipos de Basura</h1>
+                            <h1 class="text-3xl font-bold flex items-center gap-3">
+                                <Recycle class="h-8 w-8 text-green-600" />
+                                Gestión de Tipos de Basura
+                            </h1>
                             <p class="text-muted-foreground">Administra los tipos de residuos y sus puntos</p>
                         </div>
                     </div>
@@ -143,6 +151,7 @@ function handleSearch() {
                                     <TableHead>Descripción</TableHead>
                                     <TableHead>Puntos</TableHead>
                                     <TableHead>Depósitos</TableHead>
+                                    <TableHead>Estado</TableHead>
                                     <TableHead>Acciones</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -162,6 +171,14 @@ function handleSearch() {
                                     </TableCell>
                                     <TableCell>
                                         <span class="font-medium">{{ tipo.depositos_count || 0 }}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div class="flex items-center gap-2">
+                                            <Switch :checked="Boolean((tipo as any).estado)" @update:checked="() => toggleEstado(tipo)" />
+                                            <span class="text-sm" :class="{ 'text-green-600': (tipo as any).estado, 'text-muted-foreground': !(tipo as any).estado }">
+                                                {{ (tipo as any).estado ? 'Activo' : 'Inactivo' }}
+                                            </span>
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <div class="flex items-center gap-2">

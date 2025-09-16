@@ -18,24 +18,21 @@ use App\Http\Controllers\PeriodoAcademicoController;
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('home');
 
-Route::get('dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
-
+// Rutas del Administrador
 Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(function () {
     Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard');
     
-    // Rutas de importación y plantillas de estudiantes (DEBEN IR ANTES que las rutas con parámetros)
-    Route::get('/admin/estudiantes/plantilla', [EstudianteImportController::class, 'descargarPlantilla'])
-        ->name('admin.estudiantes.plantilla');
-    Route::post('/admin/estudiantes/importar', [EstudianteImportController::class, 'importar'])
-        ->name('admin.estudiantes.importar');
-    
-    // Rutas de estudiantes
+    // Rutas de estudiantes (importación ANTES que rutas con parámetros)
     Route::get('/admin/estudiantes', [EstudianteController::class, 'index'])
         ->name('admin.estudiantes');
     Route::get('/admin/estudiantes/create', [EstudianteController::class, 'create'])
         ->name('admin.estudiantes.create');
+    Route::get('/admin/estudiantes/importar', [EstudianteController::class, 'showImport'])
+        ->name('admin.estudiantes.import');
+    Route::post('/admin/estudiantes/importar', [EstudianteController::class, 'importarEstudiantes'])
+        ->name('admin.estudiantes.importar');
+    Route::get('/admin/estudiantes/plantilla', [EstudianteController::class, 'descargarPlantillaEstudiantes'])
+        ->name('admin.estudiantes.plantilla');
     Route::post('/admin/estudiantes', [EstudianteController::class, 'store'])
         ->name('admin.estudiantes.store');
     Route::get('/admin/estudiantes/{id}', [EstudianteController::class, 'show'])
@@ -88,6 +85,8 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.cursos.update');
     Route::delete('/admin/cursos/{id}', [CursosMateriasController::class, 'destroyCurso'])
         ->name('admin.cursos.destroy');
+    Route::patch('/admin/cursos/{id}/toggle-estado', [CursosMateriasController::class, 'toggleCurso'])
+        ->name('admin.cursos.toggle-estado');
 
     // CRUD de paralelos
     Route::post('/admin/paralelos', [CursosMateriasController::class, 'storeParalelo'])
@@ -96,6 +95,8 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.paralelos.update');
     Route::delete('/admin/paralelos/{id}', [CursosMateriasController::class, 'destroyParalelo'])
         ->name('admin.paralelos.destroy');
+    Route::patch('/admin/paralelos/{id}/toggle-estado', [CursosMateriasController::class, 'toggleParalelo'])
+        ->name('admin.paralelos.toggle-estado');
 
     // CRUD de materias
     Route::post('/admin/materias', [CursosMateriasController::class, 'storeMateria'])
@@ -104,6 +105,8 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.materias.update');
     Route::delete('/admin/materias/{id}', [CursosMateriasController::class, 'destroyMateria'])
         ->name('admin.materias.destroy');
+    Route::patch('/admin/materias/{id}/toggle-estado', [CursosMateriasController::class, 'toggleMateria'])
+        ->name('admin.materias.toggle-estado');
 
     // ===== RUTAS DE GESTIÓN DE RESIDUOS =====
     // Basureros
@@ -139,6 +142,8 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.tipos-basura.update');
     Route::delete('/admin/tipos-basura/{tipoBasura}', [TipoBasuraController::class, 'destroy'])
         ->name('admin.tipos-basura.destroy');
+    Route::patch('/admin/tipos-basura/{tipoBasura}/toggle-estado', [TipoBasuraController::class, 'toggleEstado'])
+        ->name('admin.tipos-basura.toggle-estado');
 
     // Depósitos
     Route::get('/admin/depositos', [DepositoController::class, 'index'])

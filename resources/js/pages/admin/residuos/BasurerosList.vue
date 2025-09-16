@@ -67,7 +67,10 @@ function handleSearch() {
                             </Link>
                         </Button>
                         <div>
-                            <h1 class="text-3xl font-bold">Gestión de Basureros</h1>
+                            <h1 class="text-3xl font-bold flex items-center gap-3">
+                                <Trash2 class="h-8 w-8 text-red-600" />
+                                Gestión de Basureros
+                            </h1>
                             <p class="text-muted-foreground">Administra los puntos de recolección de residuos</p>
                         </div>
                     </div>

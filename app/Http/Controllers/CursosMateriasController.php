@@ -307,4 +307,29 @@ class CursosMateriasController extends Controller
 
         return redirect()->back()->with('success', 'Materia eliminada correctamente');
     }
-} 
+
+    // ===== TOGGLE ESTADO =====
+    public function toggleCurso($id)
+    {
+        $curso = Curso::findOrFail($id);
+        $curso->estado = $curso->estado ? 0 : 1;
+        $curso->save();
+        return back()->with('success', $curso->estado ? 'Curso activado' : 'Curso desactivado');
+    }
+
+    public function toggleParalelo($id)
+    {
+        $paralelo = Paralelo::findOrFail($id);
+        $paralelo->estado = $paralelo->estado ? 0 : 1;
+        $paralelo->save();
+        return back()->with('success', $paralelo->estado ? 'Paralelo activado' : 'Paralelo desactivado');
+    }
+
+    public function toggleMateria($id)
+    {
+        $materia = Materia::findOrFail($id);
+        $materia->estado = $materia->estado ? 0 : 1;
+        $materia->save();
+        return back()->with('success', $materia->estado ? 'Materia activada' : 'Materia desactivada');
+    }
+}
