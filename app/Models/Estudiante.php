@@ -59,8 +59,7 @@ class Estudiante extends Model
     {
         // Ordena por la suma de puntos del estudiante en la tabla puntaje
         $query->leftJoin('puntaje', 'estudiante.idUser', '=', 'puntaje.idUser')
-              ->select('estudiante.*', DB::raw('COALESCE(SUM(puntaje.puntos),0) as total_puntos'))
-              ->groupBy('estudiante.idUser')
+              ->select('estudiante.*', 'puntaje.puntos as total_puntos')
               ->orderBy('total_puntos', $direction);
         return $query;
     }

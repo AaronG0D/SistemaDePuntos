@@ -18,13 +18,11 @@ class Deposito extends Model
         'idUser',
         'idTipoBasura',
         'fechaHora',
-        'peso',
         'puntos'
     ];
 
     protected $casts = [
         'fechaHora' => 'datetime',
-        'peso' => 'float',
         'puntos' => 'integer'
     ];
 

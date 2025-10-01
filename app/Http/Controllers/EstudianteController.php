@@ -25,7 +25,7 @@ class EstudianteController extends Controller
         \Log::info('Parámetros recibidos:', $request->all());
 
         $query = Estudiante::with([
-            'user.puntaje',
+            'user.puntajes',
             'cursoParalelo.curso',
             'cursoParalelo.paralelo'
         ]);
@@ -199,7 +199,7 @@ class EstudianteController extends Controller
     {
         try {
             $estudiante = Estudiante::with([
-                'user.puntaje',
+                'user.puntajes',
                 'cursoParalelo.curso',
                 'cursoParalelo.paralelo'
             ])->findOrFail($id);

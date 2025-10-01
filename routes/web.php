@@ -15,6 +15,7 @@ use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocenteDashboardController;
 use App\Http\Controllers\PeriodoAcademicoController;
+use App\Http\Controllers\StudentController;
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('home');
 
@@ -201,6 +202,11 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
 Route::middleware(['auth', RoleMiddleware::class.':docente'])->group(function () {
     Route::get('/docente/dashboard', [DocenteDashboardController::class, 'index'])->name('docente.dashboard');
     Route::get('/docente/curso/{idCursoParalelo}', [DocenteDashboardController::class, 'cursoDetalle'])->name('docente.curso.detalle');
+
+    // Asegurar que exista la ruta que la vista CursosRanking.vue usa
+    Route::get('/docente/curso/{idCursoParalelo}/ranking', [DocenteDashboardController::class, 'cursoRanking'])
+        ->name('docente.curso.ranking');
+
     Route::post('/docente/curso/{idCursoParalelo}/asignar-puntos', [DocenteDashboardController::class, 'asignarPuntos'])->name('docente.curso.asignar');
     Route::get('/docente/estudiantes/{idCursoParalelo}', [DocenteDashboardController::class, 'estudiantesPorCurso'])
         ->name('docente.estudiantes');
@@ -213,8 +219,18 @@ Route::middleware(['auth', RoleMiddleware::class.':docente'])->group(function ()
     // Ruta para descargar plantilla de estudiantes
     Route::get('/docente/plantilla-estudiantes', [DocenteDashboardController::class, 'descargarPlantillaEstudiantes'])
         ->name('docente.plantilla-estudiantes');
+    Route::get('/docente/ranking-cursos', [DocenteDashboardController::class, 'rankingCursos'])
+        ->name('docente.ranking-cursos');
 });
+
+// Rutas del Estudiante
+Route::middleware(['auth', RoleMiddleware::class.':estudiante'])->group(function () {
+    Route::get('/estudiante/dashboard', [StudentController::class, 'dashboard'])->name('students.dashboard');
+    Route::get('/estudiante/historial', [StudentController::class, 'pointsHistory'])->name('students.points-history');
+    Route::get('/estudiante/perfil', [StudentController::class, 'profile'])->name('students.profile');
+    Route::get('/estudiante/ranking', [StudentController::class, 'ranking'])->name('students.ranking');
+});
+
 require __DIR__.'/auth.php';
 
 require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';

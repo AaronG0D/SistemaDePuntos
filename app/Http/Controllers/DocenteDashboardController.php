@@ -19,21 +19,6 @@ class DocenteDashboardController extends Controller
 {
     public function index()
     {
-        // Obtener el docente autenticado con relaciones necesarias
-        $docente = Docente::with([
-            'docenteMateriaCursos.materia',
-            'docenteMateriaCursos.cursoParalelo.curso',
-            'docenteMateriaCursos.cursoParalelo.paralelo',
-            'docenteMateriaCursos.cursoParalelo.estudiantes.user.puntaje'
-        ])->where('idUser', Auth::id())->first();
-
-        if (!$docente) {
-            abort(404, 'No se encontró el docente');
-        }
-
-        // Consolidar por curso-paralelo en un array plano para Inertia
-        $cursosYMaterias = [];
-
         // Determinar período actual (para mostrar conteos en las tarjetas)
         $hoy = now()->toDateString();
         $anioActual = now()->year;
@@ -47,6 +32,25 @@ class DocenteDashboardController extends Controller
         // Priorizar el período ACTIVO explícito
         $periodoActivoModelo = \App\Models\PeriodoAcademico::where('activo', true)->first();
         $periodoActualId = optional($periodoActivoModelo ?? $periodoPorFecha ?? $periodosHoy->first())->idPeriodo;
+
+        // Obtener el docente autenticado con relaciones necesarias
+        $docente = Docente::with([
+            'docenteMateriaCursos.materia',
+            'docenteMateriaCursos.cursoParalelo.curso',
+            'docenteMateriaCursos.cursoParalelo.paralelo',
+            'docenteMateriaCursos.cursoParalelo.estudiantes.user.puntajes' => function ($query) use ($periodoActualId) {
+                if ($periodoActualId) {
+                    $query->where('puntaje.idPeriodo', $periodoActualId);
+                }
+            }
+        ])->where('idUser', Auth::id())->first();
+
+        if (!$docente) {
+            abort(404, 'No se encontró el docente');
+        }
+
+        // Consolidar por curso-paralelo en un array plano para Inertia
+        $cursosYMaterias = [];
 
         foreach ($docente->docenteMateriaCursos as $asignacion) {
             $cp = $asignacion->cursoParalelo;
@@ -70,12 +74,14 @@ class DocenteDashboardController extends Controller
                 // agregar estudiantes del curso-paralelo
                 foreach ($cp->estudiantes ?? [] as $estudiante) {
                     $user = $estudiante->user ?? null;
-                    $cursosYMaterias[$key]['estudiantes'][] = [
-                        'id' => $estudiante->idUser,
-                        'nombres' => $user->nombres ?? '',
-                        'apellidos' => trim(($user->primerApellido ?? '') . ' ' . ($user->segundoApellido ?? '')),
-                        'puntaje' => $user->puntaje->total ?? 0
-                    ];
+                    if ($user) {
+                        $cursosYMaterias[$key]['estudiantes'][] = [
+                            'id' => $estudiante->idUser,
+                            'nombres' => $user->nombres ?? '',
+                            'apellidos' => trim(($user->primerApellido ?? '') . ' ' . ($user->segundoApellido ?? '')),
+                            'puntaje' => $user->puntajes->first()->puntos ?? 0
+                        ];
+                    }
                 }
             }
 
@@ -106,7 +112,7 @@ class DocenteDashboardController extends Controller
             }
         }
 
-        // normalizar materias a arrays indexados
+        // normalizar materias a arrays indexados y ordenar estudiantes
         $final = [];
         foreach ($cursosYMaterias as $k => $v) {
             // Construir bimestres compactos con chips por materia (solo año actual)
@@ -142,7 +148,11 @@ class DocenteDashboardController extends Controller
             }
             $v['bimestres'] = $bimestres;
             $v['materias'] = array_values($v['materias']);
-            $v['estudiantes'] = array_values($v['estudiantes']);
+            
+            // Ordenar estudiantes por puntaje descendente y tomar el top 10
+            $estudiantes = collect($v['estudiantes'])->sortByDesc('puntaje')->values()->all();
+            $v['estudiantes'] = array_slice($estudiantes, 0, 10);
+
             $v['idCursoParalelo'] = $k;
             $final[] = $v;
         }
@@ -216,7 +226,7 @@ class DocenteDashboardController extends Controller
         }
 
         // Estudiantes con total de puntos por periodo seleccionado
-        $estudiantes = DB::table('estudiante')
+        $estudiantesQuery = DB::table('estudiante')
             ->join('usuario', 'estudiante.idUser', '=', 'usuario.id')
             ->leftJoin('puntaje', function($join) use ($periodoId) {
                 $join->on('usuario.id', '=', 'puntaje.idUser');
@@ -225,14 +235,24 @@ class DocenteDashboardController extends Controller
                 }
             })
             ->where('estudiante.idCursoParalelo', $idCursoParalelo)
-            ->groupBy('estudiante.idUser','usuario.nombres','usuario.primerApellido','usuario.segundoApellido')
+           
             ->select(
                 'estudiante.idUser as id',
                 'usuario.nombres',
                 DB::raw("CONCAT(IFNULL(usuario.primerApellido,''),' ',IFNULL(usuario.segundoApellido,'')) as apellidos"),
-                DB::raw('COALESCE(SUM(puntaje.puntos),0) as puntaje')
-            )
-            ->orderBy('usuario.primerApellido')
+                DB::raw('COALESCE(puntaje.puntos,0) as puntaje')
+            );
+
+        if ($request->has('search') && $request->input('search')) {
+            $search = $request->input('search');
+            $estudiantesQuery->where(function($q) use ($search) {
+                $q->where('usuario.nombres', 'like', "%{$search}%")
+                  ->orWhere('usuario.primerApellido', 'like', "%{$search}%")
+                  ->orWhere('usuario.segundoApellido', 'like', "%{$search}%");
+            });
+        }
+
+        $estudiantes = $estudiantesQuery->orderBy('usuario.primerApellido')
             ->orderBy('usuario.segundoApellido')
             ->orderBy('usuario.nombres')
             ->paginate(10);
@@ -691,4 +711,154 @@ class DocenteDashboardController extends Controller
             ], 500);
         }
     }
+     public function rankingCursos(Request $request)
+    {
+        $docente = Docente::where('idUser', Auth::id())->firstOrFail();
+
+        // Obtener todos los cursos paralelos del docente
+        $cursosParalelos = $docente->docenteMateriaCursos()
+            ->with(['cursoParalelo.curso', 'cursoParalelo.paralelo'])
+            ->get()
+            ->pluck('cursoParalelo')
+            ->unique('idCursoParalelo');
+
+        // Periodo activo
+        $periodoActivo = \App\Models\PeriodoAcademico::where('activo', true)->first();
+        
+        $ranking = [];
+        foreach ($cursosParalelos as $cp) {
+            if ($cp && $cp->curso && $cp->paralelo) {  // Verificar que existan las relaciones
+                // Obtener la suma de puntos de todos los estudiantes del curso-paralelo
+                // El campo 'puntos' ya está calculado por el trigger, no necesitamos SUM()
+                $puntajeTotal = DB::table('estudiante')
+                    ->join('puntaje', 'estudiante.idUser', '=', 'puntaje.idUser')
+                    ->where('estudiante.idCursoParalelo', $cp->idCursoParalelo)
+                    ->where('puntaje.idPeriodo', $periodoActivo->idPeriodo)
+                    ->sum('puntaje.puntos'); // Sumar los puntos ya calculados por el trigger
+
+                $ranking[] = [
+                    'idCursoParalelo' => $cp->idCursoParalelo,
+                    'nombreCurso' => $cp->curso->nombre . ' "' . $cp->paralelo->nombre . '"',
+                    'puntajeTotal' => (int) $puntajeTotal,
+                ];
+            }
+        }
+
+        // Ordenar por puntaje descendente
+        $ranking = collect($ranking)->sortByDesc('puntajeTotal')->values()->all();
+
+        return Inertia::render('docente/CursosRanking', [
+            'ranking' => $ranking,
+            'periodoActivo' => $periodoActivo,
+        ]);
+    }
+
+    public function cursoRanking(Request $request, $idCursoParalelo)
+	{
+		$docente = Docente::where('idUser', Auth::id())->firstOrFail();
+
+		// Seguridad: verificar acceso al curso-paralelo
+		if (!$docente->docenteMateriaCursos()->where('idCursoParalelo', $idCursoParalelo)->exists()) {
+			abort(403, 'No tienes acceso a este curso');
+		}
+
+		// Obtener asignaciones para construir información del curso y materias
+		$asignaciones = $docente->docenteMateriaCursos()
+			->with(['materia', 'cursoParalelo.curso', 'cursoParalelo.paralelo'])
+			->where('idCursoParalelo', $idCursoParalelo)
+			->get();
+
+		if ($asignaciones->isEmpty()) {
+			abort(404, 'Curso no encontrado');
+		}
+
+		$cp = $asignaciones->first()->cursoParalelo;
+		// Garantizar que los datos de curso y paralelo estén definidos
+		$cursoInfo = [
+			'idCursoParalelo' => (string) $idCursoParalelo,
+			'curso' => [
+				'nombre' => $cp->curso->nombre ?? 'Curso no definido',
+				'paralelo' => $cp->paralelo->nombre ?? 'Paralelo no definido'
+			],
+			'materias' => $asignaciones->map(fn($a) => [
+				'idMateria' => $a->materia->idMateria,
+				'nombre' => $a->materia->nombre,
+			])->values()->all(),
+		];
+
+		// Periodos del año actual y por defecto el que cubre la fecha de hoy
+		$hoy = now()->toDateString();
+		$anioActual = now()->year;
+		$periodos = \App\Models\PeriodoAcademico::whereYear('fecha_inicio', $anioActual)
+			->orWhereYear('fecha_fin', $anioActual)
+			->orderBy('fecha_inicio', 'desc')
+			->get(['idPeriodo','nombre','codigo','fecha_inicio','fecha_fin','activo']);
+
+		$periodoPorFecha = $periodos->first(function($p) use ($hoy) {
+			return ($p->fecha_inicio <= $hoy) && ($p->fecha_fin >= $hoy);
+		});
+		$periodoActivoModelo = \App\Models\PeriodoAcademico::where('activo', true)->first();
+		$periodoDefault = $periodoPorFecha ?? $periodoActivoModelo ?? $periodos->first();
+		$periodoId = (int) ($request->query('periodo_id') ?? optional($periodoDefault)->idPeriodo);
+
+		// Query: estudiantes con total de puntos por periodo seleccionado
+		$estudiantesQuery = DB::table('estudiante')
+			->join('usuario', 'estudiante.idUser', '=', 'usuario.id')
+			->leftJoin('puntaje', function($join) use ($periodoId) {
+				$join->on('usuario.id', '=', 'puntaje.idUser');
+				if ($periodoId) {
+					$join->where('puntaje.idPeriodo', '=', $periodoId);
+				}
+			})
+			->where('estudiante.idCursoParalelo', $idCursoParalelo)
+			->groupBy('estudiante.idUser','usuario.nombres','usuario.primerApellido','usuario.segundoApellido','usuario.email')
+			->select(
+				'estudiante.idUser as id',
+				'usuario.nombres',
+				'usuario.primerApellido',
+				'usuario.segundoApellido',
+				'usuario.email',
+				DB::raw("CONCAT(IFNULL(usuario.primerApellido,''),' ',IFNULL(usuario.segundoApellido,'')) as apellidos"),
+				DB::raw('COALESCE(SUM(puntaje.puntos),0) as puntaje')
+			);
+
+		// Filtro por búsqueda
+		if ($request->has('search') && $request->input('search')) {
+			$search = $request->input('search');
+			$estudiantesQuery->where(function($q) use ($search) {
+				$q->where('usuario.nombres', 'like', "%{$search}%")
+				  ->orWhere('usuario.primerApellido', 'like', "%{$search}%")
+				  ->orWhere('usuario.segundoApellido', 'like', "%{$search}%");
+			});
+		}
+
+		$estudiantes = $estudiantesQuery
+			->orderBy('usuario.primerApellido')
+			->orderBy('usuario.segundoApellido')
+			->orderBy('usuario.nombres')
+			->paginate(10);
+
+		// Transformar colección para la vista
+		$estudiantes->getCollection()->transform(function ($row) {
+			return [
+				'id' => $row->id,
+				'nombres' => $row->nombres,
+				'apellidos' => trim(($row->primerApellido ?? '') . ' ' . ($row->segundoApellido ?? '')),
+				'email' => $row->email ?? null,
+				'puntaje' => (int) $row->puntaje,
+			];
+		});
+
+		$periodoActivoId = $periodoActivoModelo?->idPeriodo;
+
+		return Inertia::render('docente/CursosRanking', [
+			'curso' => $cursoInfo,
+			'periodos' => $periodos,
+			'periodoSeleccionado' => $periodoId,
+			'estudiantes' => $estudiantes,
+			'periodoActivoId' => $periodoActivoId,
+		]);
+	}
 }
+	
+

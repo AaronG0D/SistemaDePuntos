@@ -13,15 +13,11 @@ class Puntaje extends Model
     protected $fillable = [
         'idUser',
         'idPeriodo',
-        'puntajeTotal',
+        'puntos',
         'fechaAsignacion',
         'comentario',
         'estado',
         'fechaAcumulacion'
-    ];
-
-    protected $attributes = [
-        'puntajeTotal' => 0, // Valor por defecto
     ];
 
     protected $casts = [

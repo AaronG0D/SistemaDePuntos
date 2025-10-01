@@ -76,9 +76,11 @@ export interface Estudiante {
         segundoApellido?: string;
         email: string;
         qr_codigo?: string;
-        puntaje?: {
-            puntajeTotal: number;
-        };
+        puntajes?: Array<{
+            idPuntaje: number;
+            puntos: number;
+            idPeriodo: number;
+        }>;
     };
     curso_paralelo?: {
         idCursoParalelo: number;

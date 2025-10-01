@@ -45,6 +45,16 @@ function formatDateTime(dateStr: string | null): string {
     }
 }
 
+// Función para calcular el total de puntos de un estudiante
+function getTotalPuntos(puntajes: any[] | undefined): string {
+    if (!puntajes || !Array.isArray(puntajes) || puntajes.length === 0) {
+        return '-';
+    }
+    
+    const total = puntajes.reduce((sum, puntaje) => sum + (puntaje.puntos || 0), 0);
+    return total.toString();
+}
+
 // ===== TIPOS Y INTERFACES =====
 interface Curso {
     idCurso: number;
@@ -517,7 +527,7 @@ watch(editParalelo, (val) => {
                                 {{ estudiante.curso_paralelo?.paralelo?.nombre ?? '-' }}
                             </TableCell>
                             <TableCell>
-                                {{ estudiante.user?.puntaje?.puntajeTotal ?? '-' }}
+                                {{ getTotalPuntos(estudiante.user?.puntajes) }}
                             </TableCell>
                             <TableCell>
                                 <UserQrCode v-if="estudiante.user.qr_codigo" :user="formatUserForQr(estudiante.user)" />

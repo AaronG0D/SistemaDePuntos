@@ -41,6 +41,7 @@ const collapsible = computed(() => 'collapsed'); // Ajusta el valor según tu l�
 import { docenteNavigation } from '@/config/navigation';
 import AppLogo from './AppLogo.vue';
 
+
 const navigationGroups: NavGroup[] = [
     {
         title: 'Gestión Académica',

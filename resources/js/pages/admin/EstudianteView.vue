@@ -11,6 +11,17 @@ import  UserQrCode  from '@/components/UserQrCode.vue';
 import 'vue-sonner/style.css';
 import { ref } from 'vue';
 
+// ===== UTILIDADES =====
+// Función para calcular el total de puntos de un estudiante
+function getTotalPuntos(puntajes: any[] | undefined): string {
+    if (!puntajes || !Array.isArray(puntajes) || puntajes.length === 0) {
+        return '0';
+    }
+    
+    const total = puntajes.reduce((sum, puntaje) => sum + (puntaje.puntos || 0), 0);
+    return total.toString();
+}
+
 // ===== PROPS =====
 const props = defineProps<{
     estudiante: Estudiante;
@@ -209,7 +220,7 @@ const formatUserForQr = (user: any) => {
                     <CardContent>
                         <div class="flex items-center gap-4">
                             <div class="text-primary text-4xl font-bold">
-                                {{ estudiante.user?.puntaje?.puntajeTotal || 0 }}
+                                {{ getTotalPuntos(estudiante.user?.puntajes) }}
                             </div>
                             <span class="bg-secondary text-secondary-foreground rounded-md px-2 py-1 text-lg">puntos</span>
                         </div>

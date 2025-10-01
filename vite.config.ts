@@ -18,7 +18,6 @@ export default defineConfig({
         laravel({
             input: ['resources/js/app.ts'],
             refresh: true,
-            buildDirectory: 'build',
         }),
         vue({
             template: {

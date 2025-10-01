@@ -34,21 +34,31 @@ interface CursoInfo {
 }
 
 interface Props {
-    curso: CursoInfo;
-    estudiantes: {
+    curso?: CursoInfo;
+    estudiantes?: {
         data: Estudiante[];
         total: number;
         per_page: number;
         current_page: number;
         last_page: number;
     };
-    periodos: Array<{
+    periodos?: Array<{
         idPeriodo: number;
         nombre: string;
         codigo: string;
     }>;
     periodoSeleccionado?: number | null;
     periodoActivoId?: number | null;
+    ranking?: Array<{
+        idCursoParalelo: string;
+        nombreCurso: string;
+        puntajeTotal: number;
+    }>;
+    periodoActivo?: {
+        idPeriodo: number;
+        nombre: string;
+        codigo: string;
+    };
 }
 
 const props = defineProps<Props>();
@@ -62,18 +72,20 @@ const materiaSeleccionada = ref<string>('');
 const exportandoExcel = ref(false);
 
 const currentPeriodo = computed(() => 
-    props.periodos.find((p) => String(p.idPeriodo) === periodoId.value)
+    props.periodos?.find((p) => String(p.idPeriodo) === periodoId.value)
 );
 
 const estudiantesConPosicion = computed(() => {
-    return props.estudiantes.data.map((estudiante, index) => ({
+    if (!props.estudiantes?.data) return [];
+    const estudiantes = props.estudiantes;
+    return estudiantes.data.map((estudiante, index) => ({
         ...estudiante,
-        posicion: (props.estudiantes.current_page - 1) * props.estudiantes.per_page + index + 1
+        posicion: (estudiantes.current_page - 1) * estudiantes.per_page + index + 1
     }));
 });
 
 const estadisticas = computed(() => {
-    const estudiantes = props.estudiantes.data;
+    const estudiantes = props.estudiantes?.data || [];
     const totalEstudiantes = estudiantes.length;
     const estudiantesConPuntos = estudiantes.filter(e => e.puntaje > 0).length;
     const puntajeTotal = estudiantes.reduce((sum, e) => sum + (e.puntaje || 0), 0);
@@ -94,6 +106,7 @@ function goBack() {
 }
 
 function applyFilters() {
+    if (!props.curso?.idCursoParalelo) return;
     const params: Record<string, string> = {};
     if (periodoId.value !== '') params['periodo_id'] = periodoId.value;
     if (searchQuery.value) params['search'] = searchQuery.value;
@@ -108,6 +121,7 @@ function applyFilters() {
 }
 
 function buscar(page?: number) {
+    if (!props.curso?.idCursoParalelo) return;
     const params: Record<string, string> = {};
     if (periodoId.value !== '') params['periodo_id'] = periodoId.value;
     if (searchQuery.value) params['search'] = searchQuery.value;
@@ -129,6 +143,7 @@ async function exportarRanking() {
         if (periodoId.value) params.append('periodo_id', periodoId.value);
         if (materiaSeleccionada.value) params.append('materia_id', materiaSeleccionada.value);
         
+        if (!props.curso?.idCursoParalelo) return;
         const url = route('docente.curso.exportar-ranking', props.curso.idCursoParalelo) + 
                    (params.toString() ? `?${params.toString()}` : '');
 
@@ -175,18 +190,22 @@ onMounted(() => {
 
 <template>
     <AppLayout>
-        <Head :title="`Ranking - ${props.curso.curso.nombre} ${props.curso.curso.paralelo}`" />
+        <Head :title="props.curso ? `Ranking - ${props.curso.curso?.nombre || 'Curso'} ${props.curso.curso?.paralelo || ''}` : 'Ranking de Cursos'" />
         
         <div class="mx-auto w-full max-w-6xl p-4 sm:p-6">
             <header class="mb-6 flex items-center justify-between">
                 <div class="min-w-0">
                     <h1 class="truncate text-2xl font-bold sm:text-3xl">
-                        🏆 Ranking de Estudiantes
+                        🏆 {{ props.curso ? 'Ranking de Estudiantes' : 'Ranking de Cursos' }}
                     </h1>
-                    <p class="text-muted-foreground text-sm">
-                        {{ props.curso.curso.nombre }} "{{ props.curso.curso.paralelo }}" · 
+                    <p class="text-muted-foreground text-sm" v-if="props.curso">
+                        {{ props.curso.curso?.nombre || 'Curso' }} "{{ props.curso.curso?.paralelo || '' }}" · 
                         <span v-if="currentPeriodo">{{ currentPeriodo.nombre }} ({{ currentPeriodo.codigo }})</span>
                         <span v-else>Todos los períodos</span>
+                    </p>
+                    <p class="text-muted-foreground text-sm" v-else>
+                        Comparación de puntajes totales por curso
+                        <span v-if="props.periodoActivo"> · {{ props.periodoActivo.nombre }}</span>
                     </p>
                 </div>
                 <Button variant="outline" class="shrink-0" @click="goBack">
@@ -195,8 +214,8 @@ onMounted(() => {
                 </Button>
             </header>
 
-            <!-- Filtros -->
-            <div class="mb-6 grid gap-4">
+            <!-- Filtros - Solo para ranking de estudiantes -->
+            <div v-if="props.curso" class="mb-6 grid gap-4">
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
                         <Input 
@@ -211,7 +230,7 @@ onMounted(() => {
                 <div class="flex items-center gap-2 overflow-x-auto py-2">
                     <Label class="text-sm whitespace-nowrap">Período:</Label>
                     <Button
-                        v-for="p in props.periodos"
+                        v-for="p in (props.periodos || [])"
                         :key="p.idPeriodo"
                         :id="`periodo-btn-${p.idPeriodo}`"
                         size="sm"
@@ -227,7 +246,66 @@ onMounted(() => {
                 </div>
             </div>
 
-            <Tabs default-value="ranking">
+            <!-- Ranking de Cursos -->
+            <div v-if="props.ranking && !props.curso" class="mb-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle class="flex items-center gap-2">
+                            <Trophy class="h-5 w-5 text-yellow-500" />
+                            Ranking de Cursos
+                        </CardTitle>
+                        <CardDescription>
+                            Clasificación de cursos por puntaje total acumulado
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="space-y-3">
+                            <div 
+                                v-for="(curso, index) in props.ranking" 
+                                :key="curso.idCursoParalelo"
+                                :class="[
+                                    'flex items-center justify-between p-4 rounded-lg border transition-all duration-200',
+                                    index < 3 
+                                        ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 dark:from-yellow-950/20 dark:to-orange-950/20 dark:border-yellow-800' 
+                                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750'
+                                ]"
+                            >
+                                <div class="flex items-center gap-4">
+                                    <!-- Posición -->
+                                    <div class="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-lg shadow-md">
+                                        <component 
+                                            v-if="getMedalIcon(index + 1)" 
+                                            :is="getMedalIcon(index + 1)" 
+                                            :class="['h-6 w-6', getMedalColor(index + 1)]"
+                                        />
+                                        <span v-else>{{ index + 1 }}</span>
+                                    </div>
+                                    
+                                    <!-- Nombre del curso -->
+                                    <div>
+                                        <div class="font-semibold text-lg text-gray-900 dark:text-gray-100">
+                                            {{ curso.nombreCurso }}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Puntaje -->
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                        {{ curso.puntajeTotal }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                                        puntos totales
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <!-- Ranking de Estudiantes -->
+            <Tabs v-if="props.curso" default-value="ranking">
                 <TabsList class="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
                     <TabsTrigger value="ranking" class="data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:data-[state=active]:bg-primary dark:data-[state=active]:text-gray-100 text-gray-700 dark:text-gray-300">
                         🏆 Ranking
@@ -256,7 +334,7 @@ onMounted(() => {
                                         class="rounded-md border px-3 py-2 text-sm bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-primary-600 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
                                     >
                                         <option value="">Todas las materias</option>
-                                        <option v-for="m in props.curso.materias" :key="m.idMateria" :value="String(m.idMateria)">
+                                        <option v-for="m in (props.curso?.materias || [])" :key="m.idMateria" :value="String(m.idMateria)">
                                             {{ m.nombre }}
                                         </option>
                                     </select>
@@ -321,21 +399,21 @@ onMounted(() => {
                             </ScrollArea>
 
                             <!-- Paginación -->
-                            <div v-if="props.estudiantes.total > props.estudiantes.per_page" class="mt-6 flex justify-center gap-2">
+                            <div v-if="(props.estudiantes?.total || 0) > (props.estudiantes?.per_page || 0)" class="mt-6 flex justify-center gap-2">
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    :disabled="props.estudiantes.current_page === 1"
-                                    @click="buscar(props.estudiantes.current_page - 1)"
+                                    :disabled="(props.estudiantes?.current_page || 1) === 1"
+                                    @click="buscar((props.estudiantes?.current_page || 1) - 1)"
                                 >
                                     Anterior
                                 </Button>
                                 <Button
-                                    v-for="page in props.estudiantes.last_page"
+                                    v-for="page in (props.estudiantes?.last_page || 0)"
                                     :key="page"
                                     variant="outline"
                                     size="sm"
-                                    :class="{ 'bg-primary text-white': page === props.estudiantes.current_page }"
+                                    :class="{ 'bg-primary text-white': page === (props.estudiantes?.current_page || 1) }"
                                     @click="buscar(page)"
                                 >
                                     {{ page }}
@@ -343,8 +421,8 @@ onMounted(() => {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    :disabled="props.estudiantes.current_page === props.estudiantes.last_page"
-                                    @click="buscar(props.estudiantes.current_page + 1)"
+                                    :disabled="(props.estudiantes?.current_page || 1) === (props.estudiantes?.last_page || 1)"
+                                    @click="buscar((props.estudiantes?.current_page || 1) + 1)"
                                 >
                                     Siguiente
                                 </Button>
@@ -412,7 +490,7 @@ onMounted(() => {
                                 <ScrollArea class="h-80">
                                     <div class="space-y-2">
                                         <div 
-                                            v-for="(estudiante, index) in props.estudiantes.data.slice(0, 10)" 
+                                            v-for="(estudiante, index) in (props.estudiantes?.data || []).slice(0, 10)" 
                                             :key="estudiante.id"
                                             class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                                         >

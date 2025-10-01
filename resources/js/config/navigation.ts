@@ -16,6 +16,11 @@ export const docenteNavigation: NavGroup[] = [
                 href: '/docente/cursos',
                 icon: Book,
             },
+            { 
+                title: 'Ranking de Cursos',
+                href: '/docente/ranking-cursos',
+                icon: LineChart,
+            },
         ],
     },
     {

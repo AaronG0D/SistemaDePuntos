@@ -16,4 +16,9 @@ export const docenteNavigation = [
         href: '/docente/reportes',
         icon: LineChart,
     },
+    {
+        title: 'Ranking de Cursos',
+        href: '/docente/ranking-cursos',
+        icon: LineChart,
+    },
 ];

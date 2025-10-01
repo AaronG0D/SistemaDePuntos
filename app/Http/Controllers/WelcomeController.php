@@ -5,8 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Estudiante;
 use App\Models\Curso;
 use App\Models\Paralelo;
+use App\Models\Deposito;
+use App\Models\TipoBasura;
+use App\Models\Basurero;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class WelcomeController extends Controller
 {
@@ -113,16 +118,89 @@ class WelcomeController extends Controller
             $paralelos = collect([]);
         }
 
+        // Obtener estadísticas generales del sistema
+        try {
+            $estadisticas = [
+                'totalEstudiantes' => User::where('rol', 'estudiante')->count(),
+                'totalDepositos' => Deposito::count(),
+                'totalPuntos' => DB::table('puntaje')->sum('puntos'),
+                'totalBasureros' => Basurero::where('estado', 'activo')->count(),
+                'tiposBasura' => TipoBasura::where('estado', 'activo')->count(),
+                'depositosHoy' => Deposito::whereDate('fechaDeposito', today())->count(),
+                'puntosHoy' => Deposito::whereDate('fechaDeposito', today())->sum('puntosAsignados'),
+                'cursoMasActivo' => $this->getCursoMasActivo(),
+                'tipoBasuraMasComun' => $this->getTipoBasuraMasComun()
+            ];
+        } catch (\Exception $e) {
+            \Log::error('Error obteniendo estadísticas: ' . $e->getMessage());
+            $estadisticas = [
+                'totalEstudiantes' => 0,
+                'totalDepositos' => 0,
+                'totalPuntos' => 0,
+                'totalBasureros' => 0,
+                'tiposBasura' => 0,
+                'depositosHoy' => 0,
+                'puntosHoy' => 0,
+                'cursoMasActivo' => null,
+                'tipoBasuraMasComun' => null
+            ];
+        }
+
         // Verifica que los datos no sean null antes de enviarlos
         $data = [
             'topEstudiantes' => $topEstudiantes ?? collect([]),
             'cursos' => $cursos ?? collect([]),
-            'paralelos' => $paralelos ?? collect([])
+            'paralelos' => $paralelos ?? collect([]),
+            'estadisticas' => $estadisticas
         ];
 
         // Log final de los datos que se envían
         \Log::info('Enviando datos a la vista:', $data);
         
         return Inertia::render('Welcome', $data);
+    }
+
+    private function getCursoMasActivo()
+    {
+        try {
+            return DB::table('deposito')
+                ->join('usuario', 'deposito.idUser', '=', 'usuario.id')
+                ->join('estudiante', 'usuario.id', '=', 'estudiante.idUser')
+                ->join('curso_paralelo', 'estudiante.idCursoParalelo', '=', 'curso_paralelo.idCursoParalelo')
+                ->join('curso', 'curso_paralelo.idCurso', '=', 'curso.idCurso')
+                ->join('paralelo', 'curso_paralelo.idParalelo', '=', 'paralelo.idParalelo')
+                ->select(
+                    'curso.nombre as curso_nombre',
+                    'paralelo.nombre as paralelo_nombre',
+                    DB::raw('COUNT(deposito.idDeposito) as total_depositos'),
+                    DB::raw('SUM(deposito.puntosAsignados) as total_puntos')
+                )
+                ->groupBy('curso.idCurso', 'paralelo.idParalelo', 'curso.nombre', 'paralelo.nombre')
+                ->orderBy('total_depositos', 'desc')
+                ->first();
+        } catch (\Exception $e) {
+            \Log::error('Error obteniendo curso más activo: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function getTipoBasuraMasComun()
+    {
+        try {
+            return DB::table('deposito')
+                ->join('tipoBasura', 'deposito.idTipoBasura', '=', 'tipoBasura.idTipoBasura')
+                ->select(
+                    'tipoBasura.nombre',
+                    'tipoBasura.descripcion',
+                    DB::raw('COUNT(deposito.idDeposito) as total_depositos'),
+                    DB::raw('SUM(deposito.puntosAsignados) as total_puntos')
+                )
+                ->groupBy('tipoBasura.idTipoBasura', 'tipoBasura.nombre', 'tipoBasura.descripcion')
+                ->orderBy('total_depositos', 'desc')
+                ->first();
+        } catch (\Exception $e) {
+            \Log::error('Error obteniendo tipo de basura más común: ' . $e->getMessage());
+            return null;
+        }
     }
 }

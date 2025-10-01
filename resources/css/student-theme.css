@@ -1,0 +1,221 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:is(.dark *));
+/* Tema Verde para Estudiantes - Colegio Darío Montaño */
+
+/* Variables CSS para el tema verde */
+:root {
+    --student-green-50: #f0fdf4;
+    --student-green-100: #dcfce7;
+    --student-green-200: #bbf7d0;
+    --student-green-300: #86efac;
+    --student-green-400: #4ade80;
+    --student-green-500: #22c55e;
+    --student-green-600: #16a34a;
+    --student-green-700: #15803d;
+    --student-green-800: #166534;
+    --student-green-900: #14532d;
+    --student-green-950: #052e16;
+    
+    --student-emerald-50: #ecfdf5;
+    --student-emerald-100: #d1fae5;
+    --student-emerald-200: #a7f3d0;
+    --student-emerald-300: #6ee7b7;
+    --student-emerald-400: #34d399;
+    --student-emerald-500: #10b981;
+    --student-emerald-600: #059669;
+    --student-emerald-700: #047857;
+    --student-emerald-800: #065f46;
+    --student-emerald-900: #064e3b;
+    
+    --student-teal-50: #f0fdfa;
+    --student-teal-100: #ccfbf1;
+    --student-teal-200: #99f6e4;
+    --student-teal-300: #5eead4;
+    --student-teal-400: #2dd4bf;
+    --student-teal-500: #14b8a6;
+    --student-teal-600: #0d9488;
+    --student-teal-700: #0f766e;
+    --student-teal-800: #115e59;
+    --student-teal-900: #134e4a;
+}
+
+/* Gradientes personalizados */
+.student-gradient-primary {
+    background: linear-gradient(135deg, var(--student-green-600), var(--student-emerald-600), var(--student-teal-600));
+}
+
+.student-gradient-secondary {
+    background: linear-gradient(135deg, var(--student-green-50), var(--student-emerald-50), var(--student-teal-50));
+}
+
+.student-gradient-card {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Animaciones ecológicas */
+@keyframes leaf-float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-10px) rotate(2deg); }
+    50% { transform: translateY(-5px) rotate(-1deg); }
+    75% { transform: translateY(-15px) rotate(1deg); }
+}
+
+@keyframes eco-pulse {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+    50% { 
+        transform: scale(1.05);
+        box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+    }
+}
+
+@keyframes recycle-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Clases de utilidad para animaciones */
+.leaf-float {
+    animation: leaf-float 3s ease-in-out infinite;
+}
+
+.eco-pulse {
+    animation: eco-pulse 2s ease-in-out infinite;
+}
+
+.recycle-spin {
+    animation: recycle-spin 4s linear infinite;
+}
+
+/* Efectos hover ecológicos */
+.eco-hover {
+    transition: all 0.3s ease;
+}
+
+.eco-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(34, 197, 94, 0.2);
+}
+
+/* Patrones de fondo ecológicos */
+.eco-pattern {
+    background-image: 
+        radial-gradient(circle at 25% 25%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+}
+
+.leaf-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2322c55e' fill-opacity='0.05'%3E%3Cpath d='M30 30c0-11.046-8.954-20-20-20s-20 8.954-20 20 8.954 20 20 20 20-8.954 20-20zm0 0c0 11.046 8.954 20 20 20s20-8.954 20-20-8.954-20-20-20-20 8.954-20 20z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Estilos para tarjetas de estudiante */
+.student-card {
+    @apply bg-white/80 backdrop-blur-sm border border-green-200/50 rounded-xl shadow-lg;
+    transition: all 0.3s ease;
+}
+
+.student-card:hover {
+    @apply shadow-xl border-green-300/50;
+    transform: translateY(-2px);
+}
+
+/* Estilos para badges ecológicos */
+.eco-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    background: linear-gradient(135deg, var(--student-green-100), var(--student-emerald-100));
+    color: var(--student-green-800);
+    border: 1px solid var(--student-green-200);
+}
+
+/* Estilos para botones ecológicos */
+.eco-button {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    background: linear-gradient(135deg, var(--student-green-600), var(--student-emerald-600));
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.eco-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+}
+
+.eco-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+/* Estilos para progress bars ecológicos */
+.eco-progress {
+    @apply w-full bg-green-100 rounded-full overflow-hidden;
+    height: 8px;
+}
+
+.eco-progress-bar {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+    background: linear-gradient(90deg, var(--student-green-500), var(--student-emerald-500));
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+}
+
+/* Estilos para iconos ecológicos */
+.eco-icon {
+    @apply inline-flex items-center justify-center;
+    color: var(--student-green-600);
+    filter: drop-shadow(0 2px 4px rgba(34, 197, 94, 0.2));
+}
+
+/* Responsive design para móviles */
+@media (max-width: 768px) {
+    .student-card {
+        @apply mx-2;
+    }
+    
+    .eco-button {
+        @apply w-full;
+    }
+}
+
+/* Modo oscuro para estudiantes (opcional) */
+@media (prefers-color-scheme: dark) {
+    .student-card {
+        @apply bg-gray-800/80 border-green-700/50;
+    }
+    
+    .eco-badge {
+        background: linear-gradient(135deg, var(--student-green-800), var(--student-emerald-800));
+        color: var(--student-green-200);
+        border-color: var(--student-green-700);
+    }
+}
+
+/* Efectos especiales para logros */
+.achievement-glow {
+    animation: eco-pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+}
+
+/* Estilos para estadísticas */
+.stat-number {
+    @apply text-3xl font-bold;
+    background: linear-gradient(135deg, var(--student-green-600), var(--student-emerald-600));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Efectos de carga */
+.eco-loading {
+    @apply inline-block w-6 h-6 border-2 border-green-200 border-t-green-600 rounded-full;
+    animation: recycle-spin 1s linear infinite;
+}
