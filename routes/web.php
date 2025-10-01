@@ -195,6 +195,11 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
             'destroy' => 'admin.periodos.destroy',
         ]);
     });
+
+    // Rutas para monitoreo de Raspberry Pi
+    Route::get('/admin/raspberry/eventos', function () {
+        return Inertia::render('admin/RaspberryEventos');
+    })->name('admin.raspberry.eventos');
 });
 
 

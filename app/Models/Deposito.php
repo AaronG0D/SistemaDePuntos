@@ -17,13 +17,16 @@ class Deposito extends Model
         'idBasurero',
         'idUser',
         'idTipoBasura',
+        'idPeriodo',
+        'puntajeTipoBasura',
         'fechaHora',
         'puntos'
     ];
 
     protected $casts = [
         'fechaHora' => 'datetime',
-        'puntos' => 'integer'
+        'puntos' => 'integer',
+        'puntajeTipoBasura' => 'integer'
     ];
 
     public function basurero(): BelongsTo
@@ -39,5 +42,10 @@ class Deposito extends Model
     public function tipoBasura(): BelongsTo
     {
         return $this->belongsTo(TipoBasura::class, 'idTipoBasura', 'idTipoBasura');
+    }
+
+    public function periodo(): BelongsTo
+    {
+        return $this->belongsTo(PeriodoAcademico::class, 'idPeriodo', 'idPeriodo');
     }
 }
