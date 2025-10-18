@@ -95,6 +95,14 @@ const chartOptions = computed(() => ({
     <Head title="Dashboard" />
     <AppLayout>
         <div class="space-y-8">
+            <!-- Título del Dashboard -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold flex items-center gap-3 text-foreground">
+                    <LayoutGrid class="h-8 w-8 text-primary" />
+                    Dashboard Administrativo
+                </h1>
+                <p class="text-muted-foreground mt-2">Panel de control y estadísticas del sistema de puntos</p>
+            </div>
             <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card class="bg-primary/5 dark:bg-primary/10">
                     <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">

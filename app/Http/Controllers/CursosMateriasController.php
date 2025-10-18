@@ -18,6 +18,7 @@ class CursosMateriasController extends Controller
      */
     public function index()
     {
+        // Para la página de gestión, mostrar TODOS los elementos (activos e inactivos)
         $cursos = Curso::with(['cursoParalelos.paralelo', 'cursoParalelos.materias'])->get();
         $paralelos = Paralelo::orderBy('nombre')->get();
         $materias = Materia::orderBy('nombre')->get();
@@ -50,7 +51,12 @@ class CursosMateriasController extends Controller
         }
 
         $materiasAsignadas = $cursoParalelo->materias;
-        $materiasDisponibles = Materia::whereNotIn('idMateria', $materiasAsignadas->pluck('idMateria'))->get();
+        
+        // Para asignación, mostrar todas las materias activas disponibles
+        $materiasDisponibles = Materia::where('estado', 1)
+            ->whereNotIn('idMateria', $materiasAsignadas->pluck('idMateria'))
+            ->orderBy('nombre')
+            ->get();
 
         return response()->json([
             'cursoParalelo' => $cursoParalelo,

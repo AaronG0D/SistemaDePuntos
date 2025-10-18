@@ -14,161 +14,168 @@ use Illuminate\Support\Facades\Log;
 class RaspberryController extends Controller
 {
     /**
+     * Método de prueba simple
+     */
+    public function test()
+    {
+        return response()->json([
+            'success' => true,
+            'message' => 'RaspberryController funcionando',
+            'timestamp' => now()->toISOString(),
+        ]);
+    }
+
+    /**
      * Procesa un depósito enviado desde la Raspberry Pi
      */
     public function deposito(Request $request)
     {
-        // Validar datos de entrada
-        $data = $request->validate([
-            'qr_codigo' => ['required', 'string', 'max:255'],
-            'tipo_basura' => ['required', 'string', 'max:100'],
-            'peso' => ['nullable', 'numeric', 'min:0'], // opcional
-        ]);
-
-        // Crear evento inicial en estado "pending"
+        // Crear evento inicial
         $event = RaspberryEvent::create([
-            'qr_codigo' => $data['qr_codigo'],
-            'tipo_basura_nombre' => $data['tipo_basura'],
+            'qr_codigo' => $request->input('qr_codigo'),
+            'tipo_basura_nombre' => $request->input('tipo_basura'),
             'status' => 'pending',
+            'message' => 'Procesando depósito',
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'meta' => [
-                'raw_request' => $request->all(),
-                'peso' => $data['peso'] ?? null,
+                'action' => 'deposito',
+                'peso' => $request->input('peso'),
+                'timestamp_inicio' => now()->toISOString(),
+                'request_data' => $request->all(),
             ],
         ]);
 
         try {
-            return DB::transaction(function () use ($data, $event, $request) {
-                
-                // 1) Buscar usuario por código QR
-                $user = User::where('qr_codigo', $data['qr_codigo'])->first();
+            $data = $request->validate([
+                'qr_codigo' => 'required|string',
+                'tipo_basura' => 'required|string',
+                'peso' => 'nullable|numeric|min:0',
+            ]);
 
-                if (!$user) {
-                    $event->update([
-                        'status' => 'failed',
-                        'message' => 'Usuario no encontrado con el código QR proporcionado',
-                        'processed_at' => now(),
-                    ]);
-                    
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Usuario no encontrado'
-                    ], 404);
-                }
+            // 1) Buscar usuario por código QR
+            $user = User::where('qr_codigo', $data['qr_codigo'])->first();
 
-                // Verificar que sea un estudiante
-                if (!$user->isStudent()) {
-                    $event->update([
-                        'idUser' => $user->id,
-                        'status' => 'failed',
-                        'message' => 'El usuario no es un estudiante',
-                        'processed_at' => now(),
-                    ]);
-                    
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'El usuario no es un estudiante'
-                    ], 422);
-                }
-
-                // 2) Buscar tipo de basura
-                $tipoBasura = TipoBasura::where(function ($q) use ($data) {
-                    $q->where('nombre', 'LIKE', '%' . $data['tipo_basura'] . '%')
-                      ->orWhere('descripcion', 'LIKE', '%' . $data['tipo_basura'] . '%');
-                })
-                ->where('estado', true)
-                ->first();
-
-                if (!$tipoBasura) {
-                    $event->update([
-                        'idUser' => $user->id,
-                        'status' => 'failed',
-                        'message' => 'Tipo de basura no válido o inactivo',
-                        'processed_at' => now(),
-                    ]);
-                    
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Tipo de basura no válido'
-                    ], 422);
-                }
-
-                // 3) Crear el depósito
-                // Nota: Asumiendo que tienes un basurero por defecto o puedes obtenerlo de otra forma
-                $deposito = Deposito::create([
-                    'idBasurero' => 1, // Ajusta según tu lógica de basureros
-                    'idUser' => $user->id,
-                    'idTipoBasura' => $tipoBasura->idTipoBasura,
-                    'fechaHora' => now(),
-                    'puntos' => $tipoBasura->puntos,
-                ]);
-
-                // 4) Actualizar evento como exitoso
+            if (!$user) {
                 $event->update([
-                    'idUser' => $user->id,
-                    'idTipoBasura' => $tipoBasura->idTipoBasura,
-                    'idDeposito' => $deposito->idDeposito,
-                    'status' => 'success',
-                    'message' => 'Depósito registrado exitosamente',
+                    'status' => 'failed',
+                    'message' => 'Usuario no encontrado',
                     'processed_at' => now(),
                 ]);
 
-                // 5) Obtener datos actualizados del estudiante
-                $user->refresh();
-                
-                // Obtener puntos totales del estudiante
-                $puntosActuales = $user->depositos()->sum('puntos');
-                
-                // Obtener información del curso si está disponible
-                $cursoInfo = null;
-                if ($user->estudiante && $user->estudiante->cursoParalelo) {
-                    $cursoParalelo = $user->estudiante->cursoParalelo;
-                    $cursoInfo = [
-                        'curso' => $cursoParalelo->curso->nombre ?? null,
-                        'paralelo' => $cursoParalelo->paralelo->nombre ?? null,
-                    ];
-                }
-
-                // 6) Respuesta exitosa para la Raspberry
                 return response()->json([
-                    'success' => true,
-                    'message' => '¡Depósito registrado correctamente!',
-                    'estudiante' => [
-                        'id' => $user->id,
-                        'nombre' => $user->nombres,
-                        'apellidos' => ($user->primerApellido ?? '') . ' ' . ($user->segundoApellido ?? ''),
-                        'curso_info' => $cursoInfo,
-                        'puntos_actuales' => $puntosActuales,
-                    ],
-                    'deposito' => [
-                        'id' => $deposito->idDeposito,
-                        'tipo_basura' => $tipoBasura->nombre,
-                        'puntos_ganados' => $tipoBasura->puntos,
-                        'fecha' => $deposito->fechaHora->format('Y-m-d H:i:s'),
-                    ],
-                    'event_id' => $event->id,
-                ], 201);
-            });
+                    'success' => false,
+                    'message' => 'Usuario no encontrado'
+                ], 404);
+            }
+
+            // 2) Verificar que sea un estudiante
+            if ($user->rol !== 'estudiante') {
+                $event->update([
+                    'idUser' => $user->id,
+                    'status' => 'failed',
+                    'message' => 'El usuario no es un estudiante',
+                    'processed_at' => now(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'El usuario no es un estudiante'
+                ], 422);
+            }
+
+            // 3) Buscar tipo de basura
+            $tipoBasura = TipoBasura::where('nombre', 'LIKE', '%' . $data['tipo_basura'] . '%')
+                ->where('estado', true)
+                ->first();
+
+            if (!$tipoBasura) {
+                $event->update([
+                    'idUser' => $user->id,
+                    'status' => 'failed',
+                    'message' => 'Tipo de basura no válido',
+                    'processed_at' => now(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tipo de basura no válido'
+                ], 422);
+            }
+
+            // 4) Crear el depósito
+            $deposito = Deposito::create([
+                'idBasurero' => 1,
+                'idUser' => $user->id,
+                'idTipoBasura' => $tipoBasura->idTipoBasura,
+                'fechaHora' => now(),
+            ]);
+
+            // 5) Actualizar evento como exitoso
+            $event->update([
+                'idUser' => $user->id,
+                'idTipoBasura' => $tipoBasura->idTipoBasura,
+                'idDeposito' => $deposito->idDeposito,
+                'status' => 'success',
+                'message' => 'Depósito registrado exitosamente',
+                'processed_at' => now(),
+                'meta' => array_merge($event->meta ?? [], [
+                    'resultado' => 'exitoso',
+                    'puntos_ganados' => $tipoBasura->puntos,
+                    'tipo_basura_encontrado' => $tipoBasura->nombre,
+                    'timestamp_fin' => now()->toISOString(),
+                    'duracion_ms' => now()->diffInMilliseconds($event->created_at),
+                ]),
+            ]);
+
+            // 6) Respuesta exitosa
+            return response()->json([
+                'success' => true,
+                'message' => '¡Depósito registrado correctamente!',
+                'estudiante' => [
+                    'id' => $user->id,
+                    'nombre' => $user->nombres,
+                    'apellidos' => ($user->primerApellido ?? '') . ' ' . ($user->segundoApellido ?? ''),
+                ],
+                'deposito' => [
+                    'id' => $deposito->idDeposito,
+                    'tipo_basura' => $tipoBasura->nombre,
+                    'puntos_ganados' => $tipoBasura->puntos,
+                ],
+                'event_id' => $event->id,
+            ], 201);
 
         } catch (\Throwable $e) {
-            // Log del error para debugging
+            // Actualizar evento como fallido
+            $event->update([
+                'status' => 'failed',
+                'message' => 'Error interno del servidor: ' . $e->getMessage(),
+                'processed_at' => now(),
+                'meta' => array_merge($event->meta ?? [], [
+                    'resultado' => 'error',
+                    'error_type' => get_class($e),
+                    'error_file' => $e->getFile(),
+                    'error_line' => $e->getLine(),
+                    'timestamp_fin' => now()->toISOString(),
+                    'duracion_ms' => now()->diffInMilliseconds($event->created_at),
+                ]),
+            ]);
+
             Log::error('Error en RaspberryController::deposito', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'request_data' => $data,
                 'event_id' => $event->id,
-            ]);
-
-            $event->update([
-                'status' => 'failed',
-                'message' => 'Error interno del servidor',
-                'processed_at' => now(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Error interno del servidor'
+                'message' => 'Error interno del servidor',
+                'event_id' => $event->id,
+                'error_detail' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'error' => $e->getMessage(),
+                ] : null,
             ], 500);
         }
     }
@@ -179,7 +186,8 @@ class RaspberryController extends Controller
     public function getEventos(Request $request)
     {
         try {
-            $limit = (int) $request->get('limit', 50);
+            $perPage = (int) $request->get('per_page', 20); // Cambiar a paginación
+            $page = (int) $request->get('page', 1);
             $status = $request->get('status'); // pending|success|failed
 
             // Verificar que la tabla existe
@@ -189,6 +197,9 @@ class RaspberryController extends Controller
                     'message' => 'La tabla raspberry_events no existe. Ejecuta: php artisan migrate',
                     'data' => [],
                     'total' => 0,
+                    'current_page' => 1,
+                    'last_page' => 1,
+                    'per_page' => $perPage,
                 ]);
             }
 
@@ -199,14 +210,18 @@ class RaspberryController extends Controller
                 $query->where('status', $status);
             }
 
-            $eventos = $query->limit($limit)->get();
+            // Usar paginación en lugar de limit
+            $eventos = $query->paginate($perPage, ['*'], 'page', $page);
 
-            // Si no hay eventos, devolver array vacío
+            // Si no hay eventos, devolver array vacío con paginación
             if ($eventos->isEmpty()) {
                 return response()->json([
                     'success' => true,
                     'data' => [],
                     'total' => 0,
+                    'current_page' => $page,
+                    'last_page' => 1,
+                    'per_page' => $perPage,
                 ]);
             }
 
@@ -215,7 +230,14 @@ class RaspberryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'data' => $eventos->map(function ($evento) {
+                'data' => $eventos->items(),
+                'current_page' => $eventos->currentPage(),
+                'last_page' => $eventos->lastPage(),
+                'per_page' => $eventos->perPage(),
+                'total' => $eventos->total(),
+                'from' => $eventos->firstItem(),
+                'to' => $eventos->lastItem(),
+                'eventos' => $eventos->map(function ($evento) {
                     return [
                         'id' => $evento->id,
                         'qr_codigo' => $evento->qr_codigo ?? '',
@@ -237,12 +259,11 @@ class RaspberryController extends Controller
                         ] : null,
                         'deposito' => $evento->deposito ? [
                             'id' => $evento->deposito->idDeposito,
-                            'puntos' => $evento->deposito->puntos ?? 0,
+                            'puntos' => $evento->tipoBasura ? $evento->tipoBasura->puntos : 0,
                             'fecha' => $evento->deposito->fechaHora ? $evento->deposito->fechaHora->format('Y-m-d H:i:s') : null,
                         ] : null,
                     ];
                 }),
-                'total' => $eventos->count(),
             ]);
         } catch (\Throwable $e) {
             Log::error('Error en RaspberryController::getEventos', [
@@ -261,6 +282,182 @@ class RaspberryController extends Controller
                 ] : null,
                 'data' => [],
                 'total' => 0,
+            ], 500);
+        }
+    }
+
+    /**
+     * Verifica si un estudiante existe por su código QR (sin registrar depósito)
+     */
+    public function verificarEstudiante(Request $request, $qr_codigo)
+    {
+        // Verificar si ya existe un evento reciente para evitar spam
+        $eventoReciente = RaspberryEvent::where('qr_codigo', $qr_codigo)
+            ->where('meta->action', 'verificar_estudiante')
+            ->where('created_at', '>=', now()->subMinutes(1)) // Solo en el último minuto
+            ->first();
+
+        // Si existe evento reciente, no crear otro
+        if ($eventoReciente) {
+            // Solo actualizar el timestamp si es necesario
+            $eventoReciente->update([
+                'meta' => array_merge($eventoReciente->meta ?? [], [
+                    'last_check' => now()->toISOString(),
+                    'check_count' => ($eventoReciente->meta['check_count'] ?? 1) + 1
+                ])
+            ]);
+            $event = $eventoReciente;
+        } else {
+            // Crear nuevo evento solo si no hay uno reciente
+            $event = RaspberryEvent::create([
+                'qr_codigo' => $qr_codigo,
+                'status' => 'pending',
+                'message' => 'Verificando estudiante',
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'meta' => [
+                    'action' => 'verificar_estudiante',
+                    'timestamp_inicio' => now()->toISOString(),
+                    'check_count' => 1,
+                ],
+            ]);
+        }
+
+        try {
+            // Debug: Log de búsqueda
+            \Log::info("Buscando estudiante con QR: {$qr_codigo}");
+            
+            // Buscar al estudiante con diferentes variaciones
+            $user = User::where('qr_codigo', $qr_codigo)->first();
+            
+            if (!$user) {
+                // Buscar sin filtro de rol para debug
+                $anyUser = User::where('qr_codigo', $qr_codigo)->first();
+                \Log::info("Usuario encontrado sin filtro rol: " . ($anyUser ? "Sí (rol: {$anyUser->rol})" : "No"));
+                
+                // Buscar similar
+                $similar = User::where('qr_codigo', 'LIKE', "%{$qr_codigo}%")->get(['qr_codigo', 'nombres', 'rol']);
+                \Log::info("Usuarios similares encontrados: " . $similar->count());
+                
+                $event->update([
+                    'status' => 'failed',
+                    'message' => 'Usuario no encontrado - QR: ' . $qr_codigo,
+                    'processed_at' => now(),
+                    'meta' => array_merge($event->meta ?? [], [
+                        'debug_info' => [
+                            'searched_qr' => $qr_codigo,
+                            'any_user_found' => $anyUser ? true : false,
+                            'any_user_role' => $anyUser ? $anyUser->rol : null,
+                            'similar_count' => $similar->count(),
+                            'similar_codes' => $similar->pluck('qr_codigo')->toArray()
+                        ]
+                    ])
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no encontrado',
+                    'event_id' => $event->id,
+                    'debug' => [
+                        'searched_qr' => $qr_codigo,
+                        'any_user_found' => $anyUser ? true : false,
+                        'similar_users' => $similar->map(function($u) {
+                            return ['qr' => $u->qr_codigo, 'nombres' => $u->nombres, 'rol' => $u->rol];
+                        })
+                    ]
+                ], 404);
+            }
+            
+            // Verificar que sea estudiante
+            if ($user->rol !== 'estudiante') {
+                $event->update([
+                    'status' => 'failed',
+                    'message' => "Usuario encontrado pero no es estudiante (rol: {$user->rol})",
+                    'processed_at' => now(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuario no es estudiante',
+                    'event_id' => $event->id,
+                ], 403);
+            }
+
+            // Obtener puntos totales del estudiante (JOIN con tipoBasura)
+            $puntosActuales = $user->puntajes()->Sum('puntos');
+            
+            // Obtener información del curso si está disponible
+            $cursoInfo = null;
+            if ($user->estudiante && $user->estudiante->cursoParalelo) {
+                $cursoParalelo = $user->estudiante->cursoParalelo;
+                $cursoInfo = [
+                    'curso' => $cursoParalelo->curso->nombre ?? null,
+                    'paralelo' => $cursoParalelo->paralelo->nombre ?? null,
+                ];
+            }
+
+            // Actualizar evento como exitoso
+            $event->update([
+                'idUser' => $user->id,
+                'status' => 'success',
+                'message' => 'Estudiante verificado correctamente',
+                'processed_at' => now(),
+                'meta' => array_merge($event->meta ?? [], [
+                    'resultado' => 'exitoso',
+                    'estudiante_nombre' => $user->nombres . ' ' . ($user->primerApellido ?? ''),
+                    'puntos_actuales' => $puntosActuales,
+                    'tiene_curso' => !is_null($cursoInfo),
+                    'curso_info' => $cursoInfo,
+                    'timestamp_fin' => now()->toISOString(),
+                    'duracion_ms' => now()->diffInMilliseconds($event->created_at),
+                ]),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estudiante encontrado',
+                'estudiante' => [
+                    'id' => $user->idUsuario,
+                    'nombre' => $user->nombres,
+                    'apellidos' => ($user->primerApellido ?? '') . ' ' . ($user->segundoApellido ?? ''),
+                    'curso_info' => $cursoInfo,
+                    'puntos_actuales' => $puntosActuales,
+                ],
+                'event_id' => $event->id,
+            ], 200);
+
+        } catch (\Throwable $e) {
+            // Actualizar evento como fallido
+            $event->update([
+                'status' => 'failed',
+                'message' => 'Error interno del servidor: ' . $e->getMessage(),
+                'processed_at' => now(),
+                'meta' => array_merge($event->meta ?? [], [
+                    'resultado' => 'error',
+                    'error_type' => get_class($e),
+                    'error_file' => $e->getFile(),
+                    'error_line' => $e->getLine(),
+                    'timestamp_fin' => now()->toISOString(),
+                    'duracion_ms' => now()->diffInMilliseconds($event->created_at),
+                ]),
+            ]);
+
+            Log::error('Error en RaspberryController::verificarEstudiante', [
+                'error' => $e->getMessage(),
+                'qr_codigo' => $qr_codigo,
+                'trace' => $e->getTraceAsString(),
+                'event_id' => $event->id,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error interno del servidor',
+                'event_id' => $event->id,
+                'error_detail' => config('app.debug') ? [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'error' => $e->getMessage(),
+                ] : null,
             ], 500);
         }
     }

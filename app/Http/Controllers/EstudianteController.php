@@ -58,9 +58,9 @@ class EstudianteController extends Controller
 
         $estudiantes = $query->paginate(10);
 
-        // Trae todos los cursos y paralelos como objetos
-        $cursos = \App\Models\Curso::orderBy('nombre')->get(['idCurso', 'nombre']);
-        $paralelos = \App\Models\Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
+        // Trae solo cursos y paralelos activos para los selectores
+        $cursos = \App\Models\Curso::where('estado', true)->orderBy('nombre')->get(['idCurso', 'nombre']);
+        $paralelos = \App\Models\Paralelo::where('estado', true)->orderBy('nombre')->get(['idParalelo', 'nombre']);
 
         // Obtener historial de importaciones recientes con formato de fecha corregido
         $historialImportaciones = HistorialImportacion::with(['cursoParalelo.curso', 'cursoParalelo.paralelo'])
@@ -90,9 +90,12 @@ class EstudianteController extends Controller
 
     public function create()
     {
-        $cursos = \App\Models\Curso::orderBy('nombre')->get(['idCurso', 'nombre']);
-        $paralelos = \App\Models\Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
-        $cursoParalelos = \App\Models\CursoParalelo::with(['curso', 'paralelo'])->get();
+        $cursos = \App\Models\Curso::where('estado', true)->orderBy('nombre')->get(['idCurso', 'nombre']);
+        $paralelos = \App\Models\Paralelo::where('estado', true)->orderBy('nombre')->get(['idParalelo', 'nombre']);
+        $cursoParalelos = \App\Models\CursoParalelo::with(['curso', 'paralelo'])
+            ->whereHas('curso', function($q) { $q->where('estado', true); })
+            ->whereHas('paralelo', function($q) { $q->where('estado', true); })
+            ->get();
         
         // Obtener usuarios con rol estudiante que aún no están asignados
         $usuariosDisponibles = User::where('rol', 'estudiante')

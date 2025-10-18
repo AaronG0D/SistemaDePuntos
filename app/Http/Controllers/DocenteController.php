@@ -56,10 +56,10 @@ class DocenteController extends Controller
 
         $docentes = $query->paginate(10);
 
-        // Trae todos los datos necesarios para los filtros
-        $materias = Materia::orderBy('nombre')->get(['idMateria', 'nombre']);
-        $cursos = Curso::orderBy('nombre')->get(['idCurso', 'nombre']);
-        $paralelos = Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
+        // Trae solo datos activos para los filtros
+        $materias = Materia::where('estado', true)->orderBy('nombre')->get(['idMateria', 'nombre']);
+        $cursos = Curso::where('estado', true)->orderBy('nombre')->get(['idCurso', 'nombre']);
+        $paralelos = Paralelo::where('estado', true)->orderBy('nombre')->get(['idParalelo', 'nombre']);
 
         return Inertia::render('admin/DocentesLIST', [
             'docentes' => $docentes,
@@ -98,11 +98,14 @@ class DocenteController extends Controller
                 'docenteMateriaCursos.cursoParalelo.paralelo'
             ])->findOrFail($id);
 
-            // Trae todos los datos necesarios para el formulario
-            $materias = Materia::orderBy('nombre')->get(['idMateria', 'nombre']);
-            $cursos = Curso::orderBy('nombre')->get(['idCurso', 'nombre']);
-            $paralelos = Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
-            $cursoParalelos = CursoParalelo::with(['curso', 'paralelo', 'materias'])->orderBy('idCursoParalelo')->get();
+            // Trae solo datos activos para el formulario
+            $materias = Materia::where('estado', true)->orderBy('nombre')->get(['idMateria', 'nombre']);
+            $cursos = Curso::where('estado', true)->orderBy('nombre')->get(['idCurso', 'nombre']);
+            $paralelos = Paralelo::where('estado', true)->orderBy('nombre')->get(['idParalelo', 'nombre']);
+            $cursoParalelos = CursoParalelo::with(['curso', 'paralelo', 'materias'])
+                ->whereHas('curso', function($q) { $q->where('estado', true); })
+                ->whereHas('paralelo', function($q) { $q->where('estado', true); })
+                ->orderBy('idCursoParalelo')->get();
 
             // Obtener las materias disponibles por curso
             $materiasPorCurso = $this->getMateriasPorCurso();
@@ -201,7 +204,7 @@ class DocenteController extends Controller
     {
         $materiasPorCurso = [];
         
-        $cursos = Curso::with(['cursoParalelos.materias'])->get();
+        $cursos = Curso::where('estado', true)->with(['cursoParalelos.materias'])->get();
         
         foreach ($cursos as $curso) {
             $materiasDelCurso = collect();
@@ -249,7 +252,7 @@ class DocenteController extends Controller
             });
         }
         
-        $materias = $query->orderBy('nombre')->get(['idMateria', 'nombre']);
+        $materias = $query->where('estado', true)->orderBy('nombre')->get(['idMateria', 'nombre']);
         
         // Si se especifica un docente, excluir las materias ya asignadas a otros docentes
         if ($docenteId && $paraleloId) {
@@ -346,11 +349,14 @@ class DocenteController extends Controller
             return response()->json(['error' => 'Combinación curso-paralelo no encontrada'], 404);
         }
 
-        // Obtener todas las materias disponibles para este curso-paralelo
+        // Obtener todas las materias activas disponibles para este curso-paralelo
         $materiasDisponibles = MateriaCursoParalelo::where('idCursoParalelo', $cursoParalelo->idCursoParalelo)
-            ->with('materia')
+            ->with(['materia' => function($query) {
+                $query->where('estado', true);
+            }])
             ->get()
-            ->pluck('materia');
+            ->pluck('materia')
+            ->filter(); // Filtrar nulls de materias inactivas
 
         // Filtrar las materias que ya están asignadas a otros docentes
         $materiasAsignadas = DB::table('docente_materia_curso')
@@ -406,10 +412,13 @@ class DocenteController extends Controller
     });
 
 
-    // Obtener todas las materias, paralelos y curso-paralelos
-    $materias = Materia::orderBy('nombre')->get(['idMateria', 'nombre']);
-    $paralelos = Paralelo::orderBy('nombre')->get(['idParalelo', 'nombre']);
-    $cursoParalelos = CursoParalelo::with(['curso', 'paralelo'])->get();
+    // Obtener solo elementos activos para los selectores
+    $materias = Materia::where('estado', true)->orderBy('nombre')->get(['idMateria', 'nombre']);
+    $paralelos = Paralelo::where('estado', true)->orderBy('nombre')->get(['idParalelo', 'nombre']);
+    $cursoParalelos = CursoParalelo::with(['curso', 'paralelo'])
+        ->whereHas('curso', function($q) { $q->where('estado', true); })
+        ->whereHas('paralelo', function($q) { $q->where('estado', true); })
+        ->get();
 
 
     return Inertia::render('admin/Docentes/Create', [

@@ -9,7 +9,7 @@ import { useResiduos } from '@/composables/useResiduos';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { PaginacionTiposBasura, TipoBasura } from '@/types/residuos';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, Award, Edit, Eye, Plus, Recycle, Search, Trash2 } from 'lucide-vue-next';
+import { ArrowLeft, Award, Edit, Eye, Plus, Recycle, Search, ToggleLeft, ToggleRight, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { Switch } from '@/components/ui/switch';
 
@@ -45,7 +45,14 @@ function handleSearch() {
 }
 
 function toggleEstado(tipo: TipoBasura) {
-    router.patch(`/admin/tipos-basura/${tipo.idTipoBasura}/toggle-estado`);
+    router.patch(`/admin/tipos-basura/${tipo.idTipoBasura}/toggle-estado`, {}, {
+        onSuccess: () => {
+            // El estado se actualiza automáticamente por Inertia
+        },
+        onError: () => {
+            console.error('Error al cambiar estado del tipo de basura');
+        }
+    });
 }
 </script>
 
@@ -173,12 +180,9 @@ function toggleEstado(tipo: TipoBasura) {
                                         <span class="font-medium">{{ tipo.depositos_count || 0 }}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <div class="flex items-center gap-2">
-                                            <Switch :checked="Boolean((tipo as any).estado)" @update:checked="() => toggleEstado(tipo)" />
-                                            <span class="text-sm" :class="{ 'text-green-600': (tipo as any).estado, 'text-muted-foreground': !(tipo as any).estado }">
-                                                {{ (tipo as any).estado ? 'Activo' : 'Inactivo' }}
-                                            </span>
-                                        </div>
+                                        <Badge :variant="(tipo as any).estado ? 'default' : 'secondary'">
+                                            {{ (tipo as any).estado ? 'Activo' : 'Inactivo' }}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <div class="flex items-center gap-2">
@@ -191,6 +195,10 @@ function toggleEstado(tipo: TipoBasura) {
                                                 <Link :href="ROUTES.tiposBasura.edit(tipo.idTipoBasura)">
                                                     <Edit class="h-4 w-4" />
                                                 </Link>
+                                            </Button>
+                                            <Button variant="outline" size="sm" @click="toggleEstado(tipo)">
+                                                <ToggleRight v-if="(tipo as any).estado" class="h-4 w-4" />
+                                                <ToggleLeft v-else class="h-4 w-4" />
                                             </Button>
                                             <Button variant="destructive" size="sm" @click="handleEliminar(tipo)">
                                                 <Trash2 class="h-4 w-4" />

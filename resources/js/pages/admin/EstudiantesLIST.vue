@@ -395,7 +395,7 @@ watch(editParalelo, (val) => {
             </header>
 
             <!-- ===== CONTROLES DE FILTRO (STICKY) ===== -->
-            <div class="sticky top-0 z-20 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+            <div class="sticky top-0 z-20 bg-primary/95 backdrop-blur supports-[backdrop-filter]:bg-black/60 dark:bg-primary/95 dark:white dark:supports-[backdrop-filter]:bg-black/60">
                 <div class="space-y-4 border-b pb-4">
                     <!-- Título y búsqueda -->
                     <div class="flex items-center justify-between">
@@ -423,7 +423,7 @@ watch(editParalelo, (val) => {
                     <div class="flex flex-wrap gap-2">
                         <!-- Chips de Curso -->
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-sm font-medium text-gray-700">Cursos:</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Cursos:</span>
                             <button
                                 @click="selectedCurso = 'all'"
                                 class="rounded-full px-3 py-1 text-sm transition-colors"
@@ -450,7 +450,7 @@ watch(editParalelo, (val) => {
 
                         <!-- Chips de Paralelo -->
                         <div class="flex flex-wrap items-center gap-2">
-                            <span class="text-sm font-medium text-gray-700">Paralelos:</span>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Paralelos:</span>
                             <button
                                 @click="selectedParalelo = 'all'"
                                 class="rounded-full px-3 py-1 text-sm transition-colors"

@@ -1,0 +1,26 @@
+# Requirements para Sistema de Reciclaje Inteligente v2.0
+# Python 3.8+
+
+# Visión por computadora y procesamiento de imágenes
+opencv-python==4.8.1.78
+pyzbar==0.1.9
+numpy==1.24.3
+
+# Comunicación con API
+requests==2.31.0
+
+# Comunicación serial con Arduino
+pyserial==3.5
+
+# Control de LCD I2C
+RPLCD==1.3.1
+smbus2==0.4.3
+
+# Text-to-Speech
+gtts==2.4.0
+
+# Reproducción de audio
+pygame==2.5.2  # Alternativa a mpg123
+
+# JSON processing (para Arduino)
+# (Ya incluido en Python estándar)

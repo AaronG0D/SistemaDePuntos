@@ -1,16 +1,16 @@
 <script setup lang="ts">
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/AppLayout.vue';
 import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { BookOpen, Check, Edit, GraduationCap, Plus, Settings, Trash2, Users, XCircle } from 'lucide-vue-next';
+import { Check, ChevronDown, Edit, Plus, ToggleLeft, ToggleRight, Trash2, XCircle } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
@@ -99,7 +99,11 @@ const materiasDisponibles = computed(() => {
     if (!paraleloSeleccionado.value) return [];
 
     const materiasAsignadas = (paraleloSeleccionado.value.materias || []).map((m: Materia) => m.idMateria);
-    return props.materias.filter((m: Materia) => !materiasAsignadas.includes(m.idMateria));
+    
+    // Filtrar solo materias activas y no asignadas
+    return props.materias.filter((m: Materia) => 
+        (m as any).estado == 1 && !materiasAsignadas.includes(m.idMateria)
+    );
 });
 
 // ===== MÉTODOS =====
@@ -113,15 +117,60 @@ function seleccionarParalelo(paraleloId: number) {
 }
 
 function toggleCursoEstado(curso: any) {
-    router.patch(`/admin/cursos/${curso.idCurso}/toggle-estado`);
+    const nuevoEstado = !curso.estado;
+    router.patch(`/admin/cursos/${curso.idCurso}/toggle-estado`, {}, {
+        onSuccess: () => {
+            toast('Éxito', {
+                description: `Curso ${nuevoEstado ? 'activado' : 'desactivado'} correctamente`,
+                icon: Check,
+            });
+        },
+        onError: (errors) => {
+            console.error('Error al cambiar estado del curso:', errors);
+            toast('Error', {
+                description: 'No se pudo cambiar el estado del curso',
+                icon: XCircle,
+            });
+        }
+    });
 }
 
 function toggleParaleloEstado(paralelo: any) {
-    router.patch(`/admin/paralelos/${paralelo.idParalelo}/toggle-estado`);
+    const nuevoEstado = !paralelo.estado;
+    router.patch(`/admin/paralelos/${paralelo.idParalelo}/toggle-estado`, {}, {
+        onSuccess: () => {
+            toast('Éxito', {
+                description: `Paralelo ${nuevoEstado ? 'activado' : 'desactivado'} correctamente`,
+                icon: Check,
+            });
+        },
+        onError: (errors) => {
+            console.error('Error al cambiar estado del paralelo:', errors);
+            toast('Error', {
+                description: 'No se pudo cambiar el estado del paralelo',
+                icon: XCircle,
+            });
+        }
+    });
 }
 
 function toggleMateriaEstado(materia: any) {
-    router.patch(`/admin/materias/${materia.idMateria}/toggle-estado`);
+    const nuevoEstado = !materia.estado;
+    router.patch(`/admin/materias/${materia.idMateria}/toggle-estado`, {}, {
+        onSuccess: () => {
+            toast('Éxito', {
+                description: `Materia ${nuevoEstado ? 'activada' : 'desactivada'} correctamente`,
+                icon: Check,
+            });
+        },
+        onError: (errors) => {
+            console.error('Error al cambiar estado de la materia:', errors);
+            toast('Error', {
+                description: 'No se pudo cambiar el estado de la materia',
+                icon: XCircle,
+            });
+        }
+    });
 }
 
 // ===== CRUD CURSOS =====
@@ -267,7 +316,7 @@ function promptEliminarMateria(materiaId: number) {
 }
 
 // ===== GESTIÓN DE MATERIAS POR CURSO-PARALELO =====
-function abrirDialogoAsignarMateria() {
+async function abrirDialogoAsignarMateria() {
     if (!paraleloSeleccionado.value) {
         toast('Error', {
             description: 'Debes seleccionar un curso y paralelo',
@@ -275,6 +324,8 @@ function abrirDialogoAsignarMateria() {
         });
         return;
     }
+
+    // El computed materiasDisponibles ya maneja la lógica de filtrado
 
     asignarMateriaData.value.idMateria = null;
     showAsignarMateriaDialog.value = true;
@@ -437,14 +488,15 @@ function onConfirmDelete() {
                                 <CardTitle class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         {{ curso.nombre }}
-                                        <div class="flex items-center gap-1 text-xs">
-                                            <Switch :checked="Boolean((curso as any).estado)" @update:checked="() => toggleCursoEstado(curso)" />
-                                            <span :class="{ 'text-green-600': (curso as any).estado, 'text-muted-foreground': !(curso as any).estado }">
-                                                {{ (curso as any).estado ? 'Activo' : 'Inactivo' }}
-                                            </span>
-                                        </div>
+                                        <Badge :variant="(curso as any).estado ? 'default' : 'secondary'">
+                                            {{ (curso as any).estado ? 'Activo' : 'Inactivo' }}
+                                        </Badge>
                                     </div>
                                     <div class="flex gap-1">
+                                        <Button variant="outline" size="sm" @click.stop="toggleCursoEstado(curso)">
+                                            <ToggleRight v-if="(curso as any).estado" class="h-4 w-4" />
+                                            <ToggleLeft v-else class="h-4 w-4" />
+                                        </Button>
                                         <Button variant="ghost" size="sm" @click.stop="abrirDialogoCurso(curso)">
                                             <Edit class="h-4 w-4" />
                                         </Button>
@@ -487,14 +539,15 @@ function onConfirmDelete() {
                                 <CardTitle class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         Paralelo {{ paralelo.nombre }}
-                                        <div class="flex items-center gap-1 text-xs">
-                                            <Switch :checked="Boolean((paralelo as any).estado)" @update:checked="() => toggleParaleloEstado(paralelo)" />
-                                            <span :class="{ 'text-green-600': (paralelo as any).estado, 'text-muted-foreground': !(paralelo as any).estado }">
-                                                {{ (paralelo as any).estado ? 'Activo' : 'Inactivo' }}
-                                            </span>
-                                        </div>
+                                        <Badge :variant="(paralelo as any).estado ? 'default' : 'secondary'">
+                                            {{ (paralelo as any).estado ? 'Activo' : 'Inactivo' }}
+                                        </Badge>
                                     </div>
                                     <div class="flex gap-1">
+                                        <Button variant="outline" size="sm" @click="toggleParaleloEstado(paralelo)">
+                                            <ToggleRight v-if="(paralelo as any).estado" class="h-4 w-4" />
+                                            <ToggleLeft v-else class="h-4 w-4" />
+                                        </Button>
                                         <Button variant="ghost" size="sm" @click="abrirDialogoParalelo(paralelo)">
                                             <Edit class="h-4 w-4" />
                                         </Button>
@@ -524,14 +577,15 @@ function onConfirmDelete() {
                                 <CardTitle class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         {{ materia.nombre }}
-                                        <div class="flex items-center gap-1 text-xs">
-                                            <Switch :checked="Boolean((materia as any).estado)" @update:checked="() => toggleMateriaEstado(materia)" />
-                                            <span :class="{ 'text-green-600': (materia as any).estado, 'text-muted-foreground': !(materia as any).estado }">
-                                                {{ (materia as any).estado ? 'Activo' : 'Inactivo' }}
-                                            </span>
-                                        </div>
+                                        <Badge :variant="(materia as any).estado ? 'default' : 'secondary'">
+                                            {{ (materia as any).estado ? 'Activo' : 'Inactivo' }}
+                                        </Badge>
                                     </div>
                                     <div class="flex gap-1">
+                                        <Button variant="outline" size="sm" @click="toggleMateriaEstado(materia)">
+                                            <ToggleRight v-if="(materia as any).estado" class="h-4 w-4" />
+                                            <ToggleLeft v-else class="h-4 w-4" />
+                                        </Button>
                                         <Button variant="ghost" size="sm" @click="abrirDialogoMateria(materia)">
                                             <Edit class="h-4 w-4" />
                                         </Button>
@@ -736,16 +790,16 @@ function onConfirmDelete() {
                 <div class="space-y-4">
                     <div class="space-y-2">
                         <Label for="materia-select">Materia</Label>
-                        <Select v-model="asignarMateriaData.idMateria">
-                            <SelectTrigger>
-                                <SelectValue placeholder="Selecciona una materia" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem v-for="materia in materiasDisponibles" :key="materia.idMateria" :value="materia.idMateria">
-                                    {{ materia.nombre }}
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <select 
+                            id="materia-select"
+                            v-model="asignarMateriaData.idMateria" 
+                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            <option value="">Selecciona una materia</option>
+                            <option v-for="materia in materiasDisponibles" :key="materia.idMateria" :value="materia.idMateria">
+                                {{ materia.nombre }}
+                            </option>
+                        </select>
                     </div>
                 </div>
 

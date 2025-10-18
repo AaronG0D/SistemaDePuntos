@@ -128,14 +128,18 @@ const roles = [
             <!-- Filtros -->
             <div class="mb-6 flex items-center gap-4">
                 <div class="flex-1">
-                    <Input v-model="filters.search" placeholder="Buscar por nombre o email..." class="max-w-sm" />
+                    <Input 
+                        v-model="filters.search" 
+                        placeholder="Buscar por nombre o email..." 
+                        class="max-w-sm bg-background border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring" 
+                    />
                 </div>
                 <Select v-model="filters.role">
-                    <SelectTrigger class="w-[180px]">
+                    <SelectTrigger class="w-[180px] bg-background border-input text-foreground">
                         <SelectValue :placeholder="filters.role || 'Filtrar por rol'" />
                     </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem v-for="role in roles" :key="role.value" :value="role.value">
+                    <SelectContent class="bg-popover border-border">
+                        <SelectItem v-for="role in roles" :key="role.value" :value="role.value" class="text-popover-foreground hover:bg-accent hover:text-accent-foreground">
                             {{ role.label }}
                         </SelectItem>
                     </SelectContent>

@@ -396,8 +396,18 @@ async function exportarExcel() {
                     <Clock class="text-primary h-5 w-5 animate-pulse" />
                     <div>
                         <p class="text-xs text-gray-500 dark:text-gray-400">Período Actual</p>
-                        <p class="text-primary text-sm font-bold">{{ currentPeriodo?.nombre || 'No seleccionado' }}</p>
-                        <p class="text-primary/80 text-xs font-medium">{{ currentPeriodo?.codigo }}</p>
+                        <!-- Mostrar código + nombre en la misma línea para "2025-2026 Tercer Bimestre" -->
+                        <p class="text-sm font-bold text-gray-900 dark:text-white">
+                            {{ currentPeriodo?.codigo ? `${currentPeriodo.codigo} ` : '' }}{{ currentPeriodo?.nombre || 'No seleccionado' }}
+                        </p>
+                        <!-- mantener etiqueta secundaria si hace falta -->
+                        <p
+                            class="text-xs font-medium text-gray-600 dark:text-gray-300"
+                            v-if="currentPeriodo?.fecha_inicio || currentPeriodo?.fecha_fin"
+                        >
+                            {{ currentPeriodo?.fecha_inicio ? new Date(currentPeriodo.fecha_inicio).getFullYear() : '' }}
+                            <!-- opcional -->
+                        </p>
                     </div>
                 </div>
             </div>
@@ -590,17 +600,18 @@ async function exportarExcel() {
                                                             (selectAllFiltered && e.puntaje > 0 && !(materiaId && atribuidosSet.has(e.id)))
                                                         "
                                                         @change="toggleOne(e.id, ($event.target as HTMLInputElement).checked)"
-                                                        class="h-4 w-4 rounded border-gray-300"
+                                                        class="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
                                                     />
                                                 </div>
                                             </td>
-                                            <td class="px-3 py-2 text-center text-sm text-gray-500">
+                                            <td class="px-3 py-2 text-center text-sm text-gray-500 dark:text-gray-400">
                                                 {{ (estudiantes.current_page - 1) * estudiantes.per_page + idx + 1 }}
                                             </td>
                                             <td class="px-3 py-2">
                                                 <div class="flex flex-col justify-center">
-                                                    <p class="truncate font-medium text-gray-900">{{ e.apellidos }}</p>
-                                                    <p class="truncate text-sm text-gray-500">{{ e.nombres }}</p>
+                                                    <!-- Añadidas variantes dark: para mejor contraste -->
+                                                    <p class="truncate font-medium text-gray-900 dark:text-gray-100">{{ e.apellidos }}</p>
+                                                    <p class="truncate text-sm text-gray-500 dark:text-gray-400">{{ e.nombres }}</p>
                                                 </div>
                                             </td>
                                             <td class="px-3 py-2 text-center">
@@ -612,15 +623,16 @@ async function exportarExcel() {
                                                 </span>
                                                 <span
                                                     v-else-if="e.puntaje === 0"
-                                                    class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
+                                                    class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300"
                                                 >
                                                     Sin puntos
                                                 </span>
                                             </td>
                                             <td class="px-3 py-2 text-center">
                                                 <div class="flex flex-col items-center justify-center">
-                                                    <span class="text-base font-semibold text-gray-900">{{ e.puntaje }}</span>
-                                                    <span class="text-xs text-gray-500">puntos</span>
+                                                    <!-- Puntaje legible en modo oscuro -->
+                                                    <span class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ e.puntaje }}</span>
+                                                    <span class="text-xs text-gray-500 dark:text-gray-400">puntos</span>
                                                 </div>
                                             </td>
                                         </tr>

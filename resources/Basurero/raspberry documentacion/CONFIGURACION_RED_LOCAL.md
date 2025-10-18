@@ -141,10 +141,10 @@ Si no funciona, verifica que ambos dispositivos estén en la misma red.
 
 #### 2. Probar con curl:
 ```bash
-curl -X POST "http://192.168.1.100:8000/api/raspberry/deposito" \
+curl -X POST "http://192.168.100.4:8000/api/raspberry/deposito" \
   -H "Content-Type: application/json" \
-  -H "X-API-KEY: RaspberryPi2024_MiClaveSecreta_ABC123XYZ" \
-  -d '{"qr_codigo": "EST001", "tipo_basura": "plastico"}'
+  -H "X-API-KEY: RaspberryPi2024_SecureKey_SistemaPuntos_ABC123XYZ789" \
+  -d '{"qr_codigo": "javier-cortes-villarroel-omhch7", "tipo_basura": "Plastico"}'
 ```
 
 **Respuesta esperada (si el estudiante existe):**

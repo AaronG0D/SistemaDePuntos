@@ -225,26 +225,43 @@
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="h-64">
+                        <div class="h-64 w-full overflow-hidden">
                             <DepositosChart
+                                v-if="datosGraficos?.porTipo?.labels?.length"
                                 :data="{
-                                    ...datosGraficos.porTipo,
-                                    datasets: datosGraficos.porTipo.datasets.map(dataset => ({
-                                        ...dataset,
+                                    labels: datosGraficos.porTipo.labels || [],
+                                    datasets: (datosGraficos.porTipo.datasets || []).map(dataset => ({
+                                        label: dataset.label || 'Sin etiqueta',
+                                        data: dataset.data || [],
                                         backgroundColor: Array.isArray(dataset.backgroundColor) 
-                                            ? dataset.backgroundColor 
-                                            : [dataset.backgroundColor].filter(color => color !== undefined),
+                                            ? dataset.backgroundColor.filter(color => color !== undefined)
+                                            : [dataset.backgroundColor || '#3B82F6'].filter(color => color !== undefined),
+                                        borderColor: dataset.borderColor || '#1E40AF',
+                                        borderWidth: dataset.borderWidth || 1,
                                     })),
                                 }"
                                 type="doughnut"
                                 :options="{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
                                     plugins: {
                                         title: {
                                             display: false,
                                         },
+                                        legend: {
+                                            position: 'bottom',
+                                            labels: {
+                                                boxWidth: 12,
+                                                padding: 10,
+                                                usePointStyle: true,
+                                            },
+                                        },
                                     },
                                 }"
                             />
+                            <div v-else class="flex h-full items-center justify-center text-muted-foreground">
+                                <p>No hay datos disponibles para mostrar</p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -258,31 +275,55 @@
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="h-64">
+                        <div class="h-64 w-full overflow-hidden">
                             <DepositosChart
+                                v-if="datosGraficos?.porMes?.labels?.length"
                                 :data="{
-                                    ...datosGraficos.porMes,
-                                    datasets: datosGraficos.porMes.datasets.map(dataset => ({
-                                        ...dataset,
-                                        backgroundColor: Array.isArray(dataset.backgroundColor) 
-                                            ? dataset.backgroundColor 
-                                            : [dataset.backgroundColor].filter(color => color !== undefined),
+                                    labels: datosGraficos.porMes.labels || [],
+                                    datasets: (datosGraficos.porMes.datasets || []).map(dataset => ({
+                                        label: dataset.label || 'Depósitos',
+                                        data: dataset.data || [],
+                                        borderColor: dataset.borderColor || '#1E40AF',
+                                        borderWidth: dataset.borderWidth || 2,
+                                        fill: false,
+                                        tension: 0.1,
                                     })),
                                 }"
                                 type="line"
                                 :options="{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
                                     plugins: {
                                         title: {
                                             display: false,
+                                        },
+                                        legend: {
+                                            position: 'top',
+                                            labels: {
+                                                boxWidth: 12,
+                                                padding: 10,
+                                                usePointStyle: true,
+                                            },
                                         },
                                     },
                                     scales: {
                                         y: {
                                             beginAtZero: true,
+                                            ticks: {
+                                                stepSize: 1,
+                                            },
+                                        },
+                                        x: {
+                                            ticks: {
+                                                maxRotation: 45,
+                                            },
                                         },
                                     },
                                 }"
                             />
+                            <div v-else class="flex h-full items-center justify-center text-muted-foreground">
+                                <p>No hay datos de tendencias disponibles</p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -296,32 +337,50 @@
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="h-64">
+                        <div class="h-64 w-full overflow-hidden">
                             <DepositosChart
+                                v-if="datosGraficos?.topUsuarios?.labels?.length"
                                 :data="{
-                                    ...datosGraficos.topUsuarios,
-                                    datasets: datosGraficos.topUsuarios.datasets.map(dataset => ({
-                                        ...dataset,
-                                        backgroundColor: Array.isArray(dataset.backgroundColor) 
-                                            ? dataset.backgroundColor.filter(color => color !== undefined) 
-                                            : [dataset.backgroundColor].filter(color => color !== undefined),
+                                    labels: datosGraficos.topUsuarios.labels || [],
+                                    datasets: (datosGraficos.topUsuarios.datasets || []).map(dataset => ({
+                                        label: dataset.label || 'Puntos',
+                                        data: dataset.data || [],
+                                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'],
+                                        borderColor: dataset.borderColor || '#1E40AF',
+                                        borderWidth: dataset.borderWidth || 1,
                                     })),
                                 }"
                                 type="bar"
                                 :options="{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
                                     plugins: {
                                         title: {
+                                            display: false,
+                                        },
+                                        legend: {
                                             display: false,
                                         },
                                     },
                                     scales: {
                                         y: {
                                             beginAtZero: true,
+                                            ticks: {
+                                                stepSize: 1,
+                                            },
+                                        },
+                                        x: {
+                                            ticks: {
+                                                maxRotation: 45,
+                                            },
                                         },
                                     },
                                     indexAxis: 'y',
                                 }"
                             />
+                            <div v-else class="flex h-full items-center justify-center text-muted-foreground">
+                                <p>No hay datos de usuarios disponibles</p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

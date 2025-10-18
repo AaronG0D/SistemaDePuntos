@@ -24,8 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // Configurar Sanctum para autenticación de API
-        $middleware->statefulApi();
+        // Configurar Sanctum para autenticación de API (comentado temporalmente)
+         $middleware->statefulApi();
 
         // Registrar middleware para API de Raspberry
         $middleware->alias([
