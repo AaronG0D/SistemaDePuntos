@@ -70,6 +70,20 @@
                             <Trophy class="mr-2 h-4 w-4" />
                             Ranking
                         </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            :class="
+                                isCurrentRoute('students.academic-grades')
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                                    : 'text-gray-600 hover:bg-green-50 hover:text-green-700 dark:text-gray-300 dark:hover:bg-green-900 dark:hover:text-green-400'
+                            "
+                            @click="router.visit(route('students.academic-grades'))"
+                        >
+                            <GraduationCap class="mr-2 h-4 w-4" />
+                            Mis Notas
+                        </Button>
                     </div>
 
                     <!-- Mobile Menu Button -->
@@ -223,6 +237,17 @@
                             <Trophy class="mr-2 h-4 w-4" />
                             Ranking
                         </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            class="w-full justify-start"
+                            :class="isCurrentRoute('students.academic-grades') ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'text-gray-600 dark:text-gray-300'"
+                            @click="navigateAndCloseMobile('students.academic-grades')"
+                        >
+                            <GraduationCap class="mr-2 h-4 w-4" />
+                            Mis Notas
+                        </Button>
                         
                         <!-- Separador -->
                         <div class="border-t border-green-200 dark:border-gray-700 my-2"></div>
@@ -326,6 +351,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import { 
     BarChart3, 
     ChevronDown, 
+    GraduationCap,
     Heart, 
     Home, 
     Leaf, 

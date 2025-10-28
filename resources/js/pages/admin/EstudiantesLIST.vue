@@ -50,7 +50,7 @@ function getTotalPuntos(puntajes: any[] | undefined): string {
     if (!puntajes || !Array.isArray(puntajes) || puntajes.length === 0) {
         return '-';
     }
-    
+
     const total = puntajes.reduce((sum, puntaje) => sum + (puntaje.puntos || 0), 0);
     return total.toString();
 }
@@ -390,13 +390,20 @@ watch(editParalelo, (val) => {
         <div class="container mx-auto py-6">
             <!-- ===== HEADER ===== -->
             <header class="mb-6">
-                <h1 class="text-3xl font-bold">Estudiantes</h1>
+                <h1 class="flex items-center gap-3 text-3xl font-bold">
+                    <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-800">
+                        <SquarePen class="h-6 w-6 text-blue-600 dark:text-blue-300" />
+                    </div>
+                    Estudiantes
+                </h1>
                 <p class="text-muted-foreground">Gestiona la lista de estudiantes del sistema</p>
             </header>
 
             <!-- ===== CONTROLES DE FILTRO (STICKY) ===== -->
-            <div class="sticky top-0 z-20 bg-primary/95 backdrop-blur supports-[backdrop-filter]:bg-black/60 dark:bg-primary/95 dark:white dark:supports-[backdrop-filter]:bg-black/60">
-                <div class="space-y-4 border-b pb-4">
+            <div
+                class="sticky top-0 z-20 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-gray-900/95 dark:supports-[backdrop-filter]:bg-gray-900/60"
+            >
+                <div class="space-y-4 border-b border-gray-200 pb-4 dark:border-gray-700">
                     <!-- Título y búsqueda -->
                     <div class="flex items-center justify-between">
                         <Input v-model="searchQuery" placeholder="Buscar estudiantes..." class="w-[300px]" @input="handleSearchChange">
@@ -498,7 +505,7 @@ watch(editParalelo, (val) => {
             </div>
 
             <!-- ===== TABLA DE ESTUDIANTES ===== -->
-            <div class="min-h-[500px] rounded-lg border">
+            <div v-if="filteredEstudiantes.length > 0" class="min-h-[500px] rounded-lg border border-gray-200 dark:border-gray-700">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -571,6 +578,16 @@ watch(editParalelo, (val) => {
                         </TableRow>
                     </TableBody>
                 </Table>
+            </div>
+
+            <!-- Mensaje cuando no hay estudiantes -->
+            <div v-else class="flex flex-col items-center justify-center py-12 text-center">
+                <div class="mb-4 rounded-full bg-gray-100 p-6 dark:bg-gray-800">
+                    <SquarePen class="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">No hay estudiantes</h3>
+                <p class="mb-4 text-gray-500 dark:text-gray-400">No se encontraron estudiantes con los filtros aplicados</p>
+                <Button @click="limpiarFiltros" variant="outline"> Limpiar filtros </Button>
             </div>
 
             <!-- ===== PAGINACIÓN ===== -->

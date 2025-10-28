@@ -1,14 +1,32 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { 
-    ArrowRight, ChartBar, GraduationCap, Medal, Recycle, Star, Trash2, Trophy, 
-    Users, BarChart3, Target, Calendar, Phone, Mail, MapPin, Award,
-    TrendingUp, Activity, Zap, Globe, Heart, Shield
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import {
+    Activity,
+    ArrowRight,
+    Award,
+    BarChart3,
+    Calendar,
+    ChartBar,
+    Globe,
+    GraduationCap,
+    Heart,
+    Mail,
+    MapPin,
+    Medal,
+    Phone,
+    Recycle,
+    Shield,
+    Star,
+    Target,
+    Trash2,
+    TrendingUp,
+    Trophy,
+    Users,
+    Zap,
 } from 'lucide-vue-next';
-import { ref, computed } from 'vue';
-import { usePage } from '@inertiajs/vue3'
+import { ref } from 'vue';
 
-const page = usePage()
+const page = usePage();
 
 // Propiedades para recibir el ranking y los filtros
 const props = defineProps<{
@@ -92,10 +110,10 @@ function scrollToSection(sectionId: string) {
 function getDashboardRoute() {
     const user = page.props.auth.user as any;
     if (!user) return route('login');
-    
+
     // Verificar el rol del usuario
     const roles = user.rol || [];
-    
+
     if (roles === 'administrador') {
         return route('admin.dashboard');
     } else if (roles === 'docente') {
@@ -103,7 +121,7 @@ function getDashboardRoute() {
     } else if (roles === 'estudiante') {
         return route('students.dashboard');
     }
-    
+
     // Por defecto, redirigir al dashboard de admin
     return route('admin.dashboard');
 }
@@ -127,30 +145,50 @@ const formatNumber = (num: number) => {
                     <Recycle class="h-8 w-8 text-green-600 dark:text-green-400" />
                     <span class="text-xl font-bold text-green-800 dark:text-green-200">EcoPoints</span>
                 </div>
-                
+
                 <!-- Navegación central -->
-                <div class="hidden md:flex items-center gap-6">
+                <div class="hidden items-center gap-6 md:flex">
                     <button
                         @click="scrollToSection('inicio')"
-                        :class="['px-3 py-2 rounded-lg font-medium transition', activeSection === 'inicio' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400']"
+                        :class="[
+                            'rounded-lg px-3 py-2 font-medium transition',
+                            activeSection === 'inicio'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                : 'text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400',
+                        ]"
                     >
                         Inicio
                     </button>
                     <button
                         @click="scrollToSection('nosotros')"
-                        :class="['px-3 py-2 rounded-lg font-medium transition', activeSection === 'nosotros' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400']"
+                        :class="[
+                            'rounded-lg px-3 py-2 font-medium transition',
+                            activeSection === 'nosotros'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                : 'text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400',
+                        ]"
                     >
                         Nosotros
                     </button>
                     <button
                         @click="scrollToSection('ranking')"
-                        :class="['px-3 py-2 rounded-lg font-medium transition', activeSection === 'ranking' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400']"
+                        :class="[
+                            'rounded-lg px-3 py-2 font-medium transition',
+                            activeSection === 'ranking'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                : 'text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400',
+                        ]"
                     >
                         Ranking
                     </button>
                     <button
                         @click="scrollToSection('contacto')"
-                        :class="['px-3 py-2 rounded-lg font-medium transition', activeSection === 'contacto' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400']"
+                        :class="[
+                            'rounded-lg px-3 py-2 font-medium transition',
+                            activeSection === 'contacto'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                : 'text-gray-600 hover:text-green-600 dark:text-gray-400 dark:hover:text-green-400',
+                        ]"
                     >
                         Contacto
                     </button>
@@ -189,8 +227,9 @@ const formatNumber = (num: number) => {
                 <div class="space-y-6">
                     <h1 class="text-4xl font-bold text-gray-900 lg:text-5xl dark:text-white">Gestiona tus Residuos de Manera Inteligente</h1>
                     <p class="text-lg text-gray-600 dark:text-gray-300">
-                       Registra y monitorea tus depósitos de residuos de manera eficiente y organizada.
-Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por cada depósito y envía la información al sistema en tiempo real para fomentar el reciclaje responsable.
+                        Registra y monitorea tus depósitos de residuos de manera eficiente y organizada. Tu basurero inteligente detecta el tipo de
+                        basura, asigna puntos ecológicos por cada depósito y envía la información al sistema en tiempo real para fomentar el reciclaje
+                        responsable.
                     </p>
                     <div class="flex gap-4">
                         <Link
@@ -277,7 +316,10 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                 <!-- Estadísticas Destacadas -->
                 <div v-if="estadisticas.cursoMasActivo || estadisticas.tipoBasuraMasComun" class="mt-12 grid gap-6 lg:grid-cols-2">
                     <!-- Curso Más Activo -->
-                    <div v-if="estadisticas.cursoMasActivo" class="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 dark:from-indigo-900/20 dark:to-indigo-800/20">
+                    <div
+                        v-if="estadisticas.cursoMasActivo"
+                        class="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 dark:from-indigo-900/20 dark:to-indigo-800/20"
+                    >
                         <div class="flex items-start gap-4">
                             <div class="rounded-lg bg-indigo-500 p-3">
                                 <Award class="h-6 w-6 text-white" />
@@ -296,7 +338,10 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                     </div>
 
                     <!-- Tipo de Basura Más Común -->
-                    <div v-if="estadisticas.tipoBasuraMasComun" class="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 dark:from-emerald-900/20 dark:to-emerald-800/20">
+                    <div
+                        v-if="estadisticas.tipoBasuraMasComun"
+                        class="rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 dark:from-emerald-900/20 dark:to-emerald-800/20"
+                    >
                         <div class="flex items-start gap-4">
                             <div class="rounded-lg bg-emerald-500 p-3">
                                 <Target class="h-6 w-6 text-white" />
@@ -359,9 +404,9 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
         <!-- Sección Nosotros -->
         <section id="nosotros" class="border-t border-green-100 bg-white dark:border-green-900 dark:bg-gray-900">
             <div class="container mx-auto px-4 py-16">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Sobre EcoPoints</h2>
-                    <p class="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                <div class="mb-12 text-center">
+                    <h2 class="mb-4 text-3xl font-bold text-gray-900 dark:text-white">Sobre EcoPoints</h2>
+                    <p class="mx-auto max-w-3xl text-lg text-gray-600 dark:text-gray-300">
                         Somos una plataforma innovadora que combina tecnología y conciencia ambiental para crear un futuro más sostenible.
                     </p>
                 </div>
@@ -370,10 +415,10 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                     <div class="space-y-6">
                         <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Nuestra Misión</h3>
                         <p class="text-gray-600 dark:text-gray-300">
-                            Transformar la gestión de residuos en las instituciones educativas mediante un sistema inteligente 
-                            que motiva a los estudiantes a adoptar prácticas sostenibles a través de gamificación y reconocimiento.
+                            Transformar la gestión de residuos en las instituciones educativas mediante un sistema inteligente que motiva a los
+                            estudiantes a adoptar prácticas sostenibles a través de gamificación y reconocimiento.
                         </p>
-                        
+
                         <div class="grid gap-4 sm:grid-cols-2">
                             <div class="flex items-start gap-3">
                                 <div class="rounded-lg bg-green-100 p-2 dark:bg-green-900">
@@ -384,7 +429,7 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                                     <p class="text-sm text-gray-600 dark:text-gray-300">Sistema seguro y preciso</p>
                                 </div>
                             </div>
-                            
+
                             <div class="flex items-start gap-3">
                                 <div class="rounded-lg bg-blue-100 p-2 dark:bg-blue-900">
                                     <Zap class="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -394,7 +439,7 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                                     <p class="text-sm text-gray-600 dark:text-gray-300">Tecnología de vanguardia</p>
                                 </div>
                             </div>
-                            
+
                             <div class="flex items-start gap-3">
                                 <div class="rounded-lg bg-purple-100 p-2 dark:bg-purple-900">
                                     <Heart class="h-5 w-5 text-purple-600 dark:text-purple-400" />
@@ -404,7 +449,7 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                                     <p class="text-sm text-gray-600 dark:text-gray-300">Compromiso ambiental</p>
                                 </div>
                             </div>
-                            
+
                             <div class="flex items-start gap-3">
                                 <div class="rounded-lg bg-orange-100 p-2 dark:bg-orange-900">
                                     <Globe class="h-5 w-5 text-orange-600 dark:text-orange-400" />
@@ -416,10 +461,12 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="relative">
-                        <div class="aspect-square rounded-3xl bg-gradient-to-br from-blue-100 to-purple-200 dark:from-blue-900 dark:to-purple-800 p-8">
-                            <div class="grid grid-cols-2 gap-4 h-full">
+                        <div
+                            class="aspect-square rounded-3xl bg-gradient-to-br from-blue-100 to-purple-200 p-8 dark:from-blue-900 dark:to-purple-800"
+                        >
+                            <div class="grid h-full grid-cols-2 gap-4">
                                 <div class="flex items-center justify-center rounded-2xl bg-white/50 dark:bg-gray-800/50">
                                     <Activity class="h-12 w-12 text-green-600 dark:text-green-400" />
                                 </div>
@@ -479,52 +526,60 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                     </div>
                 </div>
 
-                <div v-if="topEstudiantes && topEstudiantes.length > 0" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div v-if="topEstudiantes && topEstudiantes.length > 0" class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <div
                         v-for="(estudiante, index) in topEstudiantes"
                         :key="index"
-                        class="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl dark:bg-gray-800"
+                        class="group hover:shadow-3xl relative overflow-hidden rounded-3xl bg-white p-8 shadow-xl transition-all duration-500 hover:scale-110 dark:bg-gray-800"
                         :class="{
-                            'ring-4 ring-yellow-400/50 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20': index === 0,
-                            'ring-4 ring-gray-400/50 bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20': index === 1,
-                            'ring-4 ring-orange-400/50 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20': index === 2,
+                            'transform bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-50 ring-4 ring-yellow-400/60 hover:rotate-1 dark:from-yellow-900/30 dark:via-orange-900/20 dark:to-amber-900/20':
+                                index === 0,
+                            'transform bg-gradient-to-br from-gray-50 via-slate-50 to-zinc-50 ring-4 ring-gray-400/60 hover:rotate-1 dark:from-gray-900/30 dark:via-slate-900/20 dark:to-zinc-900/20':
+                                index === 1,
+                            'transform bg-gradient-to-br from-orange-50 via-red-50 to-pink-50 ring-4 ring-orange-400/60 hover:rotate-1 dark:from-orange-900/30 dark:via-red-900/20 dark:to-pink-900/20':
+                                index === 2,
+                            'bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 ring-2 ring-green-400/40 dark:from-green-900/20 dark:via-emerald-900/10 dark:to-teal-900/10':
+                                index >= 3,
                         }"
                     >
                         <!-- Efecto de brillo para los primeros 3 -->
-                        <div v-if="index < 3" class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-full group-hover:translate-x-[-200%] transition-transform duration-1000"></div>
-                        
-                        <!-- Posición destacada -->
-                        <div class="absolute -top-2 -right-2">
+                        <div
+                            v-if="index < 3"
+                            class="absolute inset-0 translate-x-full -skew-x-12 transform bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-1000 group-hover:translate-x-[-200%]"
+                        ></div>
+
+                        <!-- Posición destacada con animación -->
+                        <div class="absolute -top-3 -right-3">
                             <div
-                                class="flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold text-white shadow-lg"
+                                class="flex h-12 w-12 animate-pulse items-center justify-center rounded-full text-xl font-black text-white shadow-2xl"
                                 :class="{
-                                    'bg-gradient-to-br from-yellow-400 to-yellow-600': index === 0,
-                                    'bg-gradient-to-br from-gray-400 to-gray-600': index === 1,
-                                    'bg-gradient-to-br from-orange-400 to-orange-600': index === 2,
-                                    'bg-gradient-to-br from-green-400 to-green-600': index >= 3,
+                                    'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 ring-4 ring-yellow-200/50': index === 0,
+                                    'bg-gradient-to-br from-gray-400 via-gray-500 to-gray-600 ring-4 ring-gray-200/50': index === 1,
+                                    'bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 ring-4 ring-orange-200/50': index === 2,
+                                    'bg-gradient-to-br from-green-400 via-green-500 to-green-600 ring-2 ring-green-200/30': index >= 3,
                                 }"
                             >
                                 {{ index + 1 }}
                             </div>
                         </div>
 
-                        <!-- Medalla para los tres primeros lugares -->
-                        <div v-if="index < 3" class="absolute -top-1 -left-1">
+                        <!-- Medalla para los tres primeros lugares con animación -->
+                        <div v-if="index < 3" class="absolute -top-2 -left-2">
                             <div
-                                class="rounded-full p-2 shadow-lg"
+                                class="animate-bounce rounded-full p-3 shadow-2xl"
                                 :class="{
-                                    'bg-gradient-to-br from-yellow-400 to-yellow-600': index === 0,
-                                    'bg-gradient-to-br from-gray-400 to-gray-600': index === 1,
-                                    'bg-gradient-to-br from-orange-400 to-orange-600': index === 2,
+                                    'bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 ring-4 ring-yellow-200/50': index === 0,
+                                    'bg-gradient-to-br from-gray-400 via-gray-500 to-gray-600 ring-4 ring-gray-200/50': index === 1,
+                                    'bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 ring-4 ring-orange-200/50': index === 2,
                                 }"
                             >
-                                <Medal class="h-5 w-5 text-white" />
+                                <Medal class="h-6 w-6 text-white drop-shadow-lg" />
                             </div>
                         </div>
 
                         <div class="relative z-10">
                             <div class="mb-4 flex items-center gap-4">
-                                <div 
+                                <div
                                     class="flex h-14 w-14 items-center justify-center rounded-full shadow-lg"
                                     :class="{
                                         'bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900 dark:to-yellow-800': index === 0,
@@ -533,7 +588,7 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                                         'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800': index >= 3,
                                     }"
                                 >
-                                    <Trophy 
+                                    <Trophy
                                         class="h-7 w-7"
                                         :class="{
                                             'text-yellow-600 dark:text-yellow-400': index === 0,
@@ -564,32 +619,76 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                                 </div>
                             </div>
 
-                            <div class="mt-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50">
+                            <div
+                                class="mt-6 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 p-6 shadow-inner dark:from-gray-700/50 dark:to-gray-600/50"
+                            >
                                 <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
-                                        <Star 
-                                            class="h-5 w-5"
-                                            :class="{
-                                                'text-yellow-500': index === 0,
-                                                'text-gray-500': index === 1,
-                                                'text-orange-500': index === 2,
-                                                'text-green-500': index >= 3,
-                                            }"
-                                        />
-                                        <span class="text-lg font-bold text-gray-900 dark:text-white">
-                                            {{ formatNumber(estudiante?.user?.puntaje?.puntajeTotal || 0) }} puntos
-                                        </span>
+                                    <div class="flex items-center gap-3">
+                                        <div class="relative">
+                                            <Star
+                                                class="h-6 w-6 animate-pulse"
+                                                :class="{
+                                                    'text-yellow-500 drop-shadow-lg': index === 0,
+                                                    'text-gray-500 drop-shadow-lg': index === 1,
+                                                    'text-orange-500 drop-shadow-lg': index === 2,
+                                                    'text-green-500 drop-shadow-lg': index >= 3,
+                                                }"
+                                            />
+                                            <div
+                                                v-if="index < 3"
+                                                class="absolute -top-1 -right-1 h-2 w-2 animate-ping rounded-full"
+                                                :class="{
+                                                    'bg-yellow-400': index === 0,
+                                                    'bg-gray-400': index === 1,
+                                                    'bg-orange-400': index === 2,
+                                                }"
+                                            ></div>
+                                        </div>
+                                        <div>
+                                            <span class="text-2xl font-black text-gray-900 drop-shadow-sm dark:text-white">
+                                                {{ formatNumber(estudiante?.user?.puntaje?.puntajeTotal || 0) }}
+                                            </span>
+                                            <span class="ml-2 text-sm font-semibold text-gray-600 dark:text-gray-400">puntos</span>
+                                        </div>
                                     </div>
-                                    <div 
-                                        class="rounded-full px-3 py-1 text-xs font-medium"
+                                    <div
+                                        class="transform rounded-full px-4 py-2 text-sm font-bold shadow-lg transition-transform hover:scale-105"
                                         :class="{
-                                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100': index === 0,
-                                            'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100': index === 1,
-                                            'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100': index === 2,
-                                            'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100': index >= 3,
+                                            'bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 ring-2 ring-yellow-300/50 dark:from-yellow-900 dark:to-yellow-800 dark:text-yellow-100':
+                                                index === 0,
+                                            'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 ring-2 ring-gray-300/50 dark:from-gray-900 dark:to-gray-800 dark:text-gray-100':
+                                                index === 1,
+                                            'bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 ring-2 ring-orange-300/50 dark:from-orange-900 dark:to-orange-800 dark:text-orange-100':
+                                                index === 2,
+                                            'bg-gradient-to-r from-green-100 to-green-200 text-green-800 ring-2 ring-green-300/50 dark:from-green-900 dark:to-green-800 dark:text-green-100':
+                                                index >= 3,
                                         }"
                                     >
-                                        Top {{ index + 1 }}
+                                        🏆 Top {{ index + 1 }}
+                                    </div>
+                                </div>
+
+                                <!-- Barra de progreso visual -->
+                                <div class="mt-4">
+                                    <div class="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-600">
+                                        <div
+                                            class="h-full rounded-full transition-all duration-1000 ease-out"
+                                            :class="{
+                                                'bg-gradient-to-r from-yellow-400 to-yellow-600': index === 0,
+                                                'bg-gradient-to-r from-gray-400 to-gray-600': index === 1,
+                                                'bg-gradient-to-r from-orange-400 to-orange-600': index === 2,
+                                                'bg-gradient-to-r from-green-400 to-green-600': index >= 3,
+                                            }"
+                                            :style="{
+                                                width:
+                                                    Math.min(
+                                                        100,
+                                                        ((estudiante?.user?.puntaje?.puntajeTotal || 0) /
+                                                            Math.max(1, topEstudiantes[0]?.user?.puntaje?.puntajeTotal || 1)) *
+                                                            100,
+                                                    ) + '%',
+                                            }"
+                                        ></div>
                                     </div>
                                 </div>
                             </div>
@@ -604,9 +703,9 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
         <!-- Sección Contacto -->
         <section id="contacto" class="border-t border-green-100 bg-white dark:border-green-900 dark:bg-gray-900">
             <div class="container mx-auto px-4 py-16">
-                <div class="text-center mb-12">
-                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">Contáctanos</h2>
-                    <p class="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                <div class="mb-12 text-center">
+                    <h2 class="mb-4 text-3xl font-bold text-gray-900 dark:text-white">Contáctanos</h2>
+                    <p class="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-300">
                         ¿Tienes preguntas sobre EcoPoints? Estamos aquí para ayudarte a crear un futuro más sostenible.
                     </p>
                 </div>
@@ -615,8 +714,8 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                     <!-- Información de Contacto -->
                     <div class="space-y-8">
                         <div class="rounded-2xl bg-gradient-to-br from-green-50 to-green-100 p-8 dark:from-green-900/20 dark:to-green-800/20">
-                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Información de Contacto</h3>
-                            
+                            <h3 class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Información de Contacto</h3>
+
                             <div class="space-y-6">
                                 <div class="flex items-start gap-4">
                                     <div class="rounded-lg bg-green-500 p-3">
@@ -624,7 +723,7 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                                     </div>
                                     <div>
                                         <h4 class="font-semibold text-gray-900 dark:text-white">Email</h4>
-                                        <p class="text-gray-600 dark:text-gray-300">contacto@ecopoints.edu</p>
+                                        <p class="text-gray-600 dark:text-gray-300">contacto@dariomontano.edu.bo</p>
                                         <p class="text-sm text-gray-500 dark:text-gray-400">Respuesta en 24 horas</p>
                                     </div>
                                 </div>
@@ -635,7 +734,7 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                                     </div>
                                     <div>
                                         <h4 class="font-semibold text-gray-900 dark:text-white">Teléfono</h4>
-                                        <p class="text-gray-600 dark:text-gray-300">+593 2 234-5678</p>
+                                        <p class="text-gray-600 dark:text-gray-300">+591 4 123-4567</p>
                                         <p class="text-sm text-gray-500 dark:text-gray-400">Lun - Vie: 8:00 AM - 6:00 PM</p>
                                     </div>
                                 </div>
@@ -646,8 +745,8 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
                                     </div>
                                     <div>
                                         <h4 class="font-semibold text-gray-900 dark:text-white">Ubicación</h4>
-                                        <p class="text-gray-600 dark:text-gray-300">Quito, Ecuador</p>
-                                        <p class="text-sm text-gray-500 dark:text-gray-400">Oficinas principales</p>
+                                        <p class="text-gray-600 dark:text-gray-300">Cochabamba, Bolivia</p>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400">Unidad Educativa Dario Montaño</p>
                                     </div>
                                 </div>
                             </div>
@@ -655,15 +754,19 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
 
                         <!-- Estadísticas de Soporte -->
                         <div class="grid gap-4 sm:grid-cols-2">
-                            <div class="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-6 text-center dark:from-blue-900/20 dark:to-blue-800/20">
+                            <div
+                                class="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-6 text-center dark:from-blue-900/20 dark:to-blue-800/20"
+                            >
                                 <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-500">
                                     <Calendar class="h-6 w-6 text-white" />
                                 </div>
                                 <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">24/7</p>
                                 <p class="text-sm text-blue-600/70 dark:text-blue-400/70">Soporte Disponible</p>
                             </div>
-                            
-                            <div class="rounded-xl bg-gradient-to-br from-green-50 to-green-100 p-6 text-center dark:from-green-900/20 dark:to-green-800/20">
+
+                            <div
+                                class="rounded-xl bg-gradient-to-br from-green-50 to-green-100 p-6 text-center dark:from-green-900/20 dark:to-green-800/20"
+                            >
                                 <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-500">
                                     <Activity class="h-6 w-6 text-white" />
                                 </div>
@@ -675,57 +778,49 @@ Tu basurero inteligente detecta el tipo de basura, asigna puntos ecológicos por
 
                     <!-- Formulario de Contacto -->
                     <div class="rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 p-8 dark:from-gray-800/50 dark:to-gray-700/50">
-                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Envíanos un Mensaje</h3>
-                        
+                        <h3 class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Envíanos un Mensaje</h3>
+
                         <form class="space-y-6">
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Nombre
-                                    </label>
+                                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"> Nombre </label>
                                     <input
                                         type="text"
-                                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                         placeholder="Tu nombre"
                                     />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        Email
-                                    </label>
+                                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"> Email </label>
                                     <input
                                         type="email"
-                                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                         placeholder="tu@email.com"
                                     />
                                 </div>
                             </div>
-                            
+
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Asunto
-                                </label>
+                                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"> Asunto </label>
                                 <input
                                     type="text"
-                                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                     placeholder="¿En qué podemos ayudarte?"
                                 />
                             </div>
-                            
+
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Mensaje
-                                </label>
+                                <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"> Mensaje </label>
                                 <textarea
                                     rows="4"
-                                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500/20 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                    class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                     placeholder="Escribe tu mensaje aquí..."
                                 ></textarea>
                             </div>
-                            
+
                             <button
                                 type="submit"
-                                class="w-full rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-6 py-3 font-medium text-white transition-all hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+                                class="w-full rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-6 py-3 font-medium text-white transition-all hover:from-green-700 hover:to-green-800 focus:ring-2 focus:ring-green-500/20 focus:outline-none"
                             >
                                 Enviar Mensaje
                             </button>

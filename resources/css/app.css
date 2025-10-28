@@ -130,8 +130,8 @@
 }
 
 .dark {
-  --background: hsl(72, 20%, 5%);
-  --foreground: hsl(0 0% 95%);
+    --background: hsl(72, 20%, 5%);
+    --foreground: hsl(0 0% 95%);
 
     --card: hsl(24 9.8% 10%);
     --card-foreground: hsl(0 0% 95%);
@@ -151,7 +151,7 @@
     --accent: hsl(12 6.5% 15.1%);
     --accent-foreground: hsl(0 0% 98%);
 
-    --destructive:hsl(0 62.8% 30.6%);
+    --destructive: hsl(0 62.8% 30.6%);
     --destructive-foreground: hsl(0 85.7% 97.3%);
 
     --border: hsl(240 3.7% 15.9%);
@@ -195,4 +195,23 @@
     body {
         @apply bg-background text-foreground;
     }
+}
+
+/* Ocultar scrollbar globalmente */
+html {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+html::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+
+body {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+body::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
 }

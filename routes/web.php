@@ -16,6 +16,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocenteDashboardController;
 use App\Http\Controllers\PeriodoAcademicoController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\QrController;
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('home');
 
@@ -42,6 +43,11 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.estudiantes.update');
     Route::delete('/admin/estudiantes/{id}', [EstudianteController::class, 'destroy'])
         ->name('admin.estudiantes.destroy');
+
+    // Gestión de QR
+    Route::get('/admin/qr-management', function () {
+        return Inertia::render('admin/QrManagement');
+    })->name('admin.qr-management');
 
     // Rutas de docentes
     Route::get('/admin/docentes', [DocenteController::class, 'index'])
@@ -226,6 +232,77 @@ Route::middleware(['auth', RoleMiddleware::class.':docente'])->group(function ()
         ->name('docente.plantilla-estudiantes');
     Route::get('/docente/ranking-cursos', [DocenteDashboardController::class, 'rankingCursos'])
         ->name('docente.ranking-cursos');
+
+    // ===== NUEVAS RUTAS PARA VISTAS AVANZADAS =====
+    // Reportes por Materia
+    Route::get('/docente/reportes-materia', [DocenteDashboardController::class, 'reportesPorMateria'])
+        ->name('docente.reportes-materia');
+    
+    // Asignación de Puntos
+    Route::get('/docente/asignacion-puntos', [DocenteDashboardController::class, 'asignacionPuntos'])
+        ->name('docente.asignacion-puntos');
+    Route::post('/docente/asignaciones', [DocenteDashboardController::class, 'storeAsignacion'])
+        ->name('docente.asignaciones.store');
+    Route::post('/docente/asignaciones/masiva', [DocenteDashboardController::class, 'storeBulkAsignacion'])
+        ->name('docente.asignaciones.bulk');
+    
+    // Estadísticas Avanzadas
+    Route::get('/docente/estadisticas-avanzadas', [DocenteDashboardController::class, 'estadisticasAvanzadas'])
+        ->name('docente.estadisticas-avanzadas');
+    
+    // Gestión de Estudiantes
+    Route::get('/docente/gestion-estudiantes', [DocenteDashboardController::class, 'gestionEstudiantes'])
+        ->name('docente.gestion-estudiantes');
+
+    // ===== RUTAS PARA EXPORTACIÓN =====
+    // Descargar PDF
+    Route::get('/docente/download-pdf', [DocenteDashboardController::class, 'downloadReportePDF'])
+        ->name('docente.download-pdf');
+    
+    // Exportar Excel
+    Route::get('/docente/export-excel', [DocenteDashboardController::class, 'exportarReporteExcel'])
+        ->name('docente.export-excel');
+});
+
+// ===== RUTAS PARA GENERACIÓN DE QR =====
+Route::middleware(['auth'])->group(function () {
+    // QR individual
+    Route::get('/qr/generate/{userId}', [QrController::class, 'generateUserQr'])
+        ->name('qr.generate.user');
+    
+    // QR para todos los estudiantes
+    Route::get('/qr/generate-all-students', [QrController::class, 'generateAllStudentsQr'])
+        ->name('qr.generate.all-students');
+    
+    // QR para curso específico
+    Route::get('/qr/generate-course/{cursoParaleloId}', [QrController::class, 'generateCourseStudentsQr'])
+        ->name('qr.generate.course');
+    
+    // Generar PDF con QRs
+    Route::get('/qr/generate-pdf', [QrController::class, 'generateCredentialsPdf'])
+        ->name('qr.generate.pdf');
+    
+    // Descargar PDF de credenciales
+    Route::get('/qr/download-pdf', [QrController::class, 'downloadCredentialsPdf'])
+        ->name('qr.download.pdf');
+    
+    // Descargar QR individual
+    Route::get('/qr/download/{userId}', [QrController::class, 'downloadQr'])
+        ->name('qr.download');
+    
+    // Limpiar archivos QR antiguos
+    Route::post('/qr/cleanup', [QrController::class, 'cleanupQrFiles'])
+        ->name('qr.cleanup');
+    
+    // Estadísticas de QR
+    Route::get('/qr/stats', [QrController::class, 'getQrStats'])
+        ->name('qr.stats');
+    
+    // APIs para el módulo QR
+    Route::get('/api/students', [QrController::class, 'getStudentsForQr'])
+        ->name('api.students');
+    Route::get('/api/courses', [QrController::class, 'getCoursesForQr'])
+        ->name('api.courses');
 });
 
 // Rutas del Estudiante
@@ -234,6 +311,7 @@ Route::middleware(['auth', RoleMiddleware::class.':estudiante'])->group(function
     Route::get('/estudiante/historial', [StudentController::class, 'pointsHistory'])->name('students.points-history');
     Route::get('/estudiante/perfil', [StudentController::class, 'profile'])->name('students.profile');
     Route::get('/estudiante/ranking', [StudentController::class, 'ranking'])->name('students.ranking');
+    Route::get('/estudiante/notas', [StudentController::class, 'getGradesByBimester'])->name('students.academic-grades');
 });
 
 require __DIR__.'/auth.php';

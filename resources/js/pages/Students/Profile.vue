@@ -23,7 +23,7 @@
 
         <!-- Content -->
         <div class="px-6 py-8 sm:px-8 lg:px-12">
-            <div class="mx-auto max-w-4xl space-y-8">
+            <div class="mx-auto max-w-7xl space-y-8">
                 <!-- Profile Card -->
                 <Card class="border-green-200">
                     <CardContent class="p-8">
@@ -149,58 +149,95 @@
                     </Card>
                 </div>
 
-                <!-- Academic Information -->
-                <Card class="border-blue-200 dark:border-blue-700">
-                    <CardHeader>
-                        <CardTitle class="flex items-center text-blue-800 dark:text-blue-300">
-                            <BookOpen class="mr-2 h-5 w-5" />
-                            Información Académica
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="grid gap-6 md:grid-cols-2">
-                            <div class="space-y-4">
-                                <div>
-                                    <h4 class="mb-2 font-semibold text-gray-900 dark:text-gray-100">Detalles del Curso</h4>
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Curso:</span>
-                                            <span class="font-medium dark:text-gray-200">{{ student.curso?.nombre }}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Paralelo:</span>
-                                            <span class="font-medium dark:text-gray-200">{{ student.paralelo?.nombre }}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Período:</span>
-                                            <span class="font-medium dark:text-gray-200">{{ currentPeriod?.nombre }}</span>
-                                        </div>
-                                    </div>
+                <!-- Horizontal Information Grid -->
+                <div class="grid gap-6 lg:grid-cols-3">
+                    <!-- Academic Information -->
+                    <Card class="border-blue-200 dark:border-blue-700">
+                        <CardHeader>
+                            <CardTitle class="flex items-center text-blue-800 dark:text-blue-300">
+                                <BookOpen class="mr-2 h-5 w-5" />
+                                Información Académica
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Curso:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ student.curso?.nombre }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Paralelo:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ student.paralelo?.nombre }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Período:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ currentPeriod?.nombre }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Código:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ student.codigo_estudiante || 'No asignado' }}</span>
                                 </div>
                             </div>
+                        </CardContent>
+                    </Card>
 
-                            <div class="space-y-4">
-                                <div>
-                                    <h4 class="mb-2 font-semibold text-gray-900 dark:text-gray-100">Rendimiento Ecológico</h4>
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Promedio por depósito:</span>
-                                            <span class="font-medium dark:text-gray-200">{{ averagePointsPerDeposit }} pts</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Mejor bimestre:</span>
-                                            <span class="font-medium dark:text-gray-200">{{ bestBimester }}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Peso total reciclado:</span>
-                                            <span class="font-medium dark:text-gray-200">{{ totalWeight }}kg</span>
-                                        </div>
-                                    </div>
+                    <!-- Performance Metrics -->
+                    <Card class="border-green-200 dark:border-green-700">
+                        <CardHeader>
+                            <CardTitle class="flex items-center text-green-800 dark:text-green-300">
+                                <TrendingUp class="mr-2 h-5 w-5" />
+                                Rendimiento Ecológico
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Promedio por depósito:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ averagePointsPerDeposit }} pts</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Mejor bimestre:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ bestBimester }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Peso total reciclado:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ totalWeight }}kg</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Depósitos totales:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ deposits.length }}</span>
                                 </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+
+                    <!-- Recent Academic Grades -->
+                    <Card class="border-yellow-200 dark:border-yellow-700">
+                        <CardHeader>
+                            <CardTitle class="flex items-center text-yellow-800 dark:text-yellow-300">
+                                <GraduationCap class="mr-2 h-5 w-5" />
+                                Notas Recientes
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="space-y-3">
+                                <div class="text-center py-4">
+                                    <GraduationCap class="mx-auto mb-2 h-8 w-8 text-gray-400" />
+                                    <p class="text-sm text-gray-500">Próximamente</p>
+                                    <p class="text-xs text-gray-400">Sistema de notas académicas</p>
+                                </div>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    class="w-full border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                                    @click="router.visit(route('students.academic-grades'))"
+                                >
+                                    Ver todas las notas
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
                 <!-- QR Code -->
                 <Card class="border-green-200 dark:border-green-700">
@@ -300,6 +337,7 @@ import {
     Recycle,
     Target,
     TreePine,
+    TrendingUp,
     Trophy,
     Users,
     Zap,

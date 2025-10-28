@@ -7,6 +7,7 @@ use App\Models\Estudiante;
 use App\Models\Puntaje;
 use App\Exports\EstudiantesMateriaExport;
 use App\Exports\PlantillaEstudiantesExport;
+use App\Exports\ReporteDocenteExport;
 use App\Imports\EstudiantesImport;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,7 +18,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class DocenteDashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         // Determinar período actual (para mostrar conteos en las tarjetas)
         $hoy = now()->toDateString();
@@ -157,8 +158,27 @@ class DocenteDashboardController extends Controller
             $final[] = $v;
         }
 
+        // Obtener datos para las vistas avanzadas
+        $reportesData = $this->getReportesData($request);
+        $asignacionData = $this->getAsignacionData($request);
+        $estadisticasData = $this->getEstadisticasData($request);
+        $gestionData = $this->getGestionData($request);
+
         return Inertia::render('docente/Dashboard', [
-            'cursosYMaterias' => $final
+            'docente' => [
+                'id' => $docente->idDocente,
+                'nombres' => $docente->user->nombres,
+                'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+            ],
+            'cursosYMaterias' => $final,
+            'periodoActualId' => $periodoActualId,
+            'periodos' => $periodosHoy,
+            // Datos para las vistas avanzadas integradas
+            'reportesData' => $reportesData,
+            'asignacionData' => $asignacionData,
+            'estadisticasData' => $estadisticasData,
+            'gestionData' => $gestionData,
+            'activeView' => $request->get('view', 'overview') // Vista activa por defecto
         ]);
     }
 
@@ -858,6 +878,1089 @@ class DocenteDashboardController extends Controller
 			'estudiantes' => $estudiantes,
 			'periodoActivoId' => $periodoActivoId,
 		]);
+	}
+
+	// ===== NUEVOS MÉTODOS PARA VISTAS AVANZADAS =====
+
+	/**
+	 * Vista de Reportes por Materia
+	 */
+	public function reportesPorMateria(Request $request)
+	{
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			abort(404, 'No se encontró el docente');
+		}
+
+		// Obtener cursos-paralelos del docente
+		$coursesParallels = DB::table('docente_materia_curso as dmc')
+			->join('curso_paralelo as cp', 'dmc.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'cp.idCursoParalelo as id',
+				'c.idCurso',
+				'c.nombre as curso_nombre',
+				'p.idParalelo',
+				'p.nombre as paralelo_nombre',
+				DB::raw("CONCAT(c.nombre, ' - ', p.nombre) as nombre_completo")
+			)
+			->distinct()
+			->get();
+
+		// Obtener TODAS las materias del docente con su curso_paralelo_id
+		$subjects = DB::table('docente_materia_curso as dmc')
+			->join('materia as m', 'dmc.idMateria', '=', 'm.idMateria')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'm.idMateria as id',
+				'm.nombre',
+				'dmc.idCursoParalelo as curso_paralelo_id'
+			)
+			->get();
+
+		// Obtener períodos académicos
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+
+		// Obtener las materias y cursos-paralelos que el docente enseña
+		$docenteMateriaCurso = DB::table('docente_materia_curso as dmc')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select('dmc.idMateria', 'dmc.idCursoParalelo')
+			->get();
+
+		// Crear combinaciones válidas de materia-curso-paralelo
+		$combinacionesValidas = $docenteMateriaCurso->map(function($item) {
+			return $item->idMateria . '-' . $item->idCursoParalelo;
+		})->toArray();
+
+		// Obtener asignaciones de puntos del docente con filtros
+		$assignmentsQuery = DB::table('asignaciones_puntaje as ap')
+			->join('puntaje as pt', 'ap.idPuntaje', '=', 'pt.idPuntaje')
+			->join('usuario as u', 'pt.idUser', '=', 'u.id')
+			->join('estudiante as e', 'u.id', '=', 'e.idUser')
+			->join('curso_paralelo as cp', 'e.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->join('materia as m', 'ap.idMateria', '=', 'm.idMateria')
+			->join('periodos_academicos as pa', 'ap.idPeriodo', '=', 'pa.idPeriodo')
+			->where('ap.idDocente', $docente->idDocente)
+			->whereRaw("CONCAT(ap.idMateria, '-', cp.idCursoParalelo) IN ('" . implode("','", $combinacionesValidas) . "')"); // Solo combinaciones válidas
+
+		// Aplicar filtros
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$assignmentsQuery->where('cp.idCursoParalelo', $request->curso_paralelo_id);
+		}
+		if ($request->has('materia_id') && $request->materia_id) {
+			$assignmentsQuery->where('ap.idMateria', $request->materia_id);
+		}
+		if ($request->has('periodo_id') && $request->periodo_id) {
+			$assignmentsQuery->where('ap.idPeriodo', $request->periodo_id);
+		}
+
+		$assignments = $assignmentsQuery
+			->select([
+				'ap.idAsignacion as id',
+				'ap.puntos',
+				'ap.fecha_asignacion',
+				'ap.comentario',
+				'u.nombres as estudiante_nombres',
+				'u.primerApellido as estudiante_primer_apellido',
+				'u.segundoApellido as estudiante_segundo_apellido',
+				'c.nombre as curso_nombre',
+				'p.nombre as paralelo_nombre',
+				'm.nombre as materia_nombre',
+				'pa.nombre as periodo_nombre',
+				'm.idMateria',
+				'pa.idPeriodo',
+				'cp.idCursoParalelo'
+			])
+			->orderBy('c.nombre')
+            ->orderBy('p.nombre')
+            ->orderBy('m.nombre')
+            ->orderBy('u.primerApellido')
+            ->orderBy('u.segundoApellido')
+            ->orderBy('u.nombres')
+			->orderBy('ap.fecha_asignacion', 'desc')
+			->get()
+			->map(function ($assignment) {
+				return [
+					'id' => $assignment->id,
+					'puntos' => $assignment->puntos,
+					'fecha_asignacion' => $assignment->fecha_asignacion,
+					'comentario' => $assignment->comentario,
+					'estudiante' => [
+						'nombres' => $assignment->estudiante_nombres ?? '',
+						'apellidos' => trim(($assignment->estudiante_primer_apellido ?? '') . ' ' . ($assignment->estudiante_segundo_apellido ?? '')),
+						'curso' => ['nombre' => $assignment->curso_nombre],
+						'paralelo' => ['nombre' => $assignment->paralelo_nombre]
+					],
+					'materia' => [
+						'id' => $assignment->idMateria,
+						'nombre' => $assignment->materia_nombre
+					],
+					'periodo' => [
+						'id' => $assignment->idPeriodo,
+						'nombre' => $assignment->periodo_nombre
+					]
+				];
+			});
+
+		// Estadísticas para el dashboard
+		$stats = [
+			'total_assignments' => $assignments->count(),
+			'total_points' => $assignments->sum('puntos'),
+			'average_points' => $assignments->count() > 0 ? round($assignments->avg('puntos'), 1) : 0,
+			'unique_students' => $assignments->unique(function($item) {
+				return $item['estudiante']['nombres'] . ' ' . $item['estudiante']['apellidos'];
+			})->count()
+		];
+
+		return Inertia::render('docente/ReportesPorMateria', [
+			'teacher' => [
+				'id' => $docente->idDocente,
+				'nombres' => $docente->user->nombres,
+				'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+			],
+			'coursesParallels' => $coursesParallels,
+			'subjects' => $subjects,
+			'periods' => $periods,
+			'assignments' => $assignments,
+			'stats' => $stats,
+			'filters' => [
+				'curso_paralelo_id' => $request->curso_paralelo_id,
+				'materia_id' => $request->materia_id,
+				'periodo_id' => $request->periodo_id
+			]
+		]);
+	}
+
+	/**
+	 * Vista de Asignación de Puntos
+	 */
+	public function asignacionPuntos(Request $request)
+	{
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			abort(404, 'No se encontró el docente');
+		}
+
+		// Obtener cursos-paralelos del docente
+		$coursesParallels = DB::table('docente_materia_curso as dmc')
+			->join('curso_paralelo as cp', 'dmc.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'cp.idCursoParalelo as id',
+				'c.idCurso',
+				'c.nombre as curso_nombre',
+				'p.idParalelo',
+				'p.nombre as paralelo_nombre',
+				DB::raw("CONCAT(c.nombre, ' - ', p.nombre) as nombre_completo")
+			)
+			->distinct()
+			->get();
+
+		// Obtener TODAS las materias del docente con su curso_paralelo_id
+		$subjects = DB::table('docente_materia_curso as dmc')
+			->join('materia as m', 'dmc.idMateria', '=', 'm.idMateria')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'm.idMateria as id',
+				'm.nombre',
+				'dmc.idCursoParalelo as curso_paralelo_id'
+			)
+			->get();
+
+		// Obtener períodos académicos
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+
+		// Obtener TODOS los estudiantes del docente con su curso_paralelo_id
+		$students = DB::table('estudiante as e')
+			->join('usuario as u', 'e.idUser', '=', 'u.id')
+			->join('curso_paralelo as cp', 'e.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->whereIn('cp.idCursoParalelo', function($query) use ($docente) {
+				$query->select('idCursoParalelo')
+					->from('docente_materia_curso')
+					->where('idDocente', $docente->idDocente);
+			})
+			->select([
+				'u.id',
+				'u.nombres',
+				'u.primerApellido',
+				'u.segundoApellido',
+				'c.idCurso as curso_id',
+				'c.nombre as curso_nombre',
+				'p.nombre as paralelo_nombre',
+				'cp.idCursoParalelo as curso_paralelo_id'
+			])
+			->get()
+			->map(function ($student) {
+				return [
+					'id' => $student->id,
+					'nombres' => $student->nombres,
+					'apellidos' => trim(($student->primerApellido ?? '') . ' ' . ($student->segundoApellido ?? '')),
+					'curso_id' => $student->curso_id,
+					'curso_paralelo_id' => $student->curso_paralelo_id,
+					'curso' => ['nombre' => $student->curso_nombre],
+					'paralelo' => ['nombre' => $student->paralelo_nombre]
+				];
+			});
+
+		// Obtener las materias y cursos actuales del docente
+		$docenteMateriaCurso = DB::table('docente_materia_curso as dmc')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select('dmc.idMateria', 'dmc.idCursoParalelo')
+			->get();
+
+		$materiasDocente = $docenteMateriaCurso->pluck('idMateria')->unique()->toArray();
+		$cursosParalelosDocente = $docenteMateriaCurso->pluck('idCursoParalelo')->unique()->toArray();
+
+		// Obtener asignaciones recientes
+		$recentAssignments = DB::table('asignaciones_puntaje as ap')
+			->join('puntaje as pt', 'ap.idPuntaje', '=', 'pt.idPuntaje')
+			->join('usuario as u', 'pt.idUser', '=', 'u.id')
+			->join('estudiante as e', 'u.id', '=', 'e.idUser')
+			->join('curso_paralelo as cp', 'e.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('materia as m', 'ap.idMateria', '=', 'm.idMateria')
+			->join('periodos_academicos as pa', 'ap.idPeriodo', '=', 'pa.idPeriodo')
+			->where('ap.idDocente', $docente->idDocente)
+			->whereIn('ap.idMateria', $materiasDocente)
+			->whereIn('cp.idCursoParalelo', $cursosParalelosDocente)
+			->select([
+				'ap.idAsignacion as id',
+				'ap.puntos',
+				'ap.fecha_asignacion',
+				'u.nombres as estudiante_nombres',
+				'u.primerApellido as estudiante_primer_apellido',
+				'u.segundoApellido as estudiante_segundo_apellido',
+				'm.nombre as materia_nombre',
+				'pa.nombre as periodo_nombre',
+				'm.idMateria',
+				'pa.idPeriodo'
+			])
+			->orderBy('ap.fecha_asignacion', 'desc')
+			->limit(10)
+			->get()
+			->map(function ($assignment) {
+				return [
+					'id' => $assignment->id,
+					'puntos' => $assignment->puntos,
+					'fecha_asignacion' => $assignment->fecha_asignacion,
+					'estudiante' => [
+						'nombres' => $assignment->estudiante_nombres ?? '',
+						'apellidos' => trim(($assignment->estudiante_primer_apellido ?? '') . ' ' . ($assignment->estudiante_segundo_apellido ?? ''))
+					],
+					'materia' => [
+						'id' => $assignment->idMateria,
+						'nombre' => $assignment->materia_nombre
+					],
+					'periodo' => [
+						'id' => $assignment->idPeriodo,
+						'nombre' => $assignment->periodo_nombre
+					]
+				];
+			});
+
+		return Inertia::render('docente/AsignacionPuntos', [
+			'teacher' => [
+				'id' => $docente->idDocente,
+				'nombres' => $docente->user->nombres,
+				'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+			],
+			'coursesParallels' => $coursesParallels,
+			'subjects' => $subjects,
+			'periods' => $periods,
+			'students' => $students,
+			'recentAssignments' => $recentAssignments,
+			'filters' => [
+				'curso_paralelo_id' => $request->curso_paralelo_id
+			]
+		]);
+	}
+
+	/**
+	 * Vista de Estadísticas Avanzadas
+	 */
+	public function estadisticasAvanzadas(Request $request)
+	{
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			abort(404, 'No se encontró el docente');
+		}
+
+		// Obtener cursos-paralelos del docente
+		$coursesParallels = DB::table('docente_materia_curso as dmc')
+			->join('curso_paralelo as cp', 'dmc.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'cp.idCursoParalelo as id',
+				'c.idCurso',
+				'c.nombre as curso_nombre',
+				'p.idParalelo',
+				'p.nombre as paralelo_nombre',
+				DB::raw("CONCAT(c.nombre, ' - ', p.nombre) as nombre_completo")
+			)
+			->distinct()
+			->get();
+
+		// Obtener materias del docente filtradas por curso si se especifica
+		$subjectsQuery = DB::table('docente_materia_curso as dmc')
+			->join('materia as m', 'dmc.idMateria', '=', 'm.idMateria')
+			->where('dmc.idDocente', $docente->idDocente);
+		
+		// Filtrar por curso si se especifica
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$subjectsQuery->where('dmc.idCursoParalelo', $request->curso_paralelo_id);
+		}
+		
+		$subjects = $subjectsQuery
+			->select('m.idMateria as id', 'm.nombre')
+			->distinct()
+			->get();
+
+		// Obtener TODOS los cursos del docente (nombres únicos)
+		$courses = DB::table('docente_materia_curso as dmc')
+			->join('curso_paralelo as cp', 'dmc.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select('c.idCurso as id', 'c.nombre')
+			->distinct()
+			->get();
+
+		// Obtener períodos académicos
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+
+		// Obtener TODAS las materias y cursos-paralelos que el docente enseña
+		$docenteMateriaCurso = DB::table('docente_materia_curso as dmc')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select('dmc.idMateria', 'dmc.idCursoParalelo')
+			->get();
+
+		// Crear combinaciones válidas de materia-curso-paralelo
+		$combinacionesValidas = $docenteMateriaCurso->map(function($item) {
+			return $item->idMateria . '-' . $item->idCursoParalelo;
+		})->toArray();
+
+		// Obtener todas las asignaciones del docente para análisis con filtros
+		$assignmentsQuery = DB::table('asignaciones_puntaje as ap')
+			->join('puntaje as pt', 'ap.idPuntaje', '=', 'pt.idPuntaje')
+			->join('usuario as u', 'pt.idUser', '=', 'u.id')
+			->join('estudiante as e', 'u.id', '=', 'e.idUser')
+			->join('curso_paralelo as cp', 'e.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->join('materia as m', 'ap.idMateria', '=', 'm.idMateria')
+			->join('periodos_academicos as pa', 'ap.idPeriodo', '=', 'pa.idPeriodo')
+			->where('ap.idDocente', $docente->idDocente);
+		
+		// Solo aplicar filtro de combinaciones válidas si hay combinaciones
+		if (!empty($combinacionesValidas)) {
+			$assignmentsQuery->whereRaw("CONCAT(ap.idMateria, '-', cp.idCursoParalelo) IN ('" . implode("','", $combinacionesValidas) . "')");
+		}
+
+		// Aplicar filtros
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$assignmentsQuery->where('cp.idCursoParalelo', $request->curso_paralelo_id);
+		}
+		if ($request->has('materia_id') && $request->materia_id) {
+			$assignmentsQuery->where('ap.idMateria', $request->materia_id);
+		}
+		if ($request->has('periodo_id') && $request->periodo_id) {
+			$assignmentsQuery->where('ap.idPeriodo', $request->periodo_id);
+		}
+
+		$assignments = $assignmentsQuery
+			->select([
+				'ap.idAsignacion as id',
+				'ap.puntos',
+				'ap.fecha_asignacion',
+				'u.id as estudiante_id',
+				'u.nombres as estudiante_nombres',
+				'u.primerApellido as estudiante_primer_apellido',
+				'u.segundoApellido as estudiante_segundo_apellido',
+				'c.nombre as curso_nombre',
+				'p.nombre as paralelo_nombre',
+				'm.nombre as materia_nombre',
+				'pa.nombre as periodo_nombre',
+				'm.idMateria',
+				'pa.idPeriodo'
+			])
+			->get()
+			->map(function ($assignment) {
+				return [
+					'id' => $assignment->id,
+					'puntos' => $assignment->puntos,
+					'fecha_asignacion' => $assignment->fecha_asignacion,
+					'estudiante' => [
+						'id' => $assignment->estudiante_id,
+						'nombres' => $assignment->estudiante_nombres ?? '',
+						'apellidos' => trim(($assignment->estudiante_primer_apellido ?? '') . ' ' . ($assignment->estudiante_segundo_apellido ?? '')),
+						'curso' => ['nombre' => $assignment->curso_nombre],
+						'paralelo' => ['nombre' => $assignment->paralelo_nombre]
+					],
+					'materia' => [
+						'id' => $assignment->idMateria,
+						'nombre' => $assignment->materia_nombre
+					],
+					'periodo' => [
+						'id' => $assignment->idPeriodo,
+						'nombre' => $assignment->periodo_nombre
+					]
+				];
+			});
+
+		// Calcular métricas de calidad basadas en máximo 100 puntos
+		$qualityMetrics = [
+			'excelencia' => $assignments->filter(function($item) { return $item['puntos'] >= 90; })->count(),
+			'bueno' => $assignments->filter(function($item) { return $item['puntos'] >= 70 && $item['puntos'] < 90; })->count(),
+			'regular' => $assignments->filter(function($item) { return $item['puntos'] >= 50 && $item['puntos'] < 70; })->count(),
+			'bajo' => $assignments->filter(function($item) { return $item['puntos'] < 50; })->count(),
+			'total' => $assignments->count(),
+			'promedio_general' => $assignments->count() > 0 ? round($assignments->avg('puntos'), 1) : 0
+		];
+
+		// Estadísticas por materia
+		$statsBySubject = $assignments->groupBy(function($item) {
+			return $item['materia']['nombre'];
+		})->map(function($group, $materia) {
+			return [
+				'materia' => $materia,
+				'total_asignaciones' => $group->count(),
+				'promedio' => round($group->avg('puntos'), 1),
+				'total_puntos' => $group->sum('puntos'),
+				'estudiantes_unicos' => $group->unique(function($item) {
+					return $item['estudiante']['id'];
+				})->count()
+			];
+		})->values();
+
+		return Inertia::render('docente/EstadisticasAvanzadas', [
+			'teacher' => [
+				'id' => $docente->idDocente,
+				'nombres' => $docente->user->nombres,
+				'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+			],
+			'coursesParallels' => $coursesParallels,
+			'courses' => $courses,
+			'subjects' => $subjects,
+			'periods' => $periods,
+			'assignments' => $assignments,
+			'qualityMetrics' => $qualityMetrics,
+			'statsBySubject' => $statsBySubject,
+			'filters' => [
+				'curso_paralelo_id' => $request->curso_paralelo_id,
+				'materia_id' => $request->materia_id,
+				'periodo_id' => $request->periodo_id
+			]
+		]);
+	}
+
+	/**
+	 * Vista de Gestión de Estudiantes
+	 */
+	public function gestionEstudiantes(Request $request)
+	{
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			abort(404, 'No se encontró el docente');
+		}
+
+		// Obtener cursos-paralelos del docente usando consulta directa
+		$coursesParallels = DB::table('docente_materia_curso as dmc')
+			->join('curso_paralelo as cp', 'dmc.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'cp.idCursoParalelo as id',
+				'c.nombre as curso_nombre',
+				'p.nombre as paralelo_nombre',
+				DB::raw("CONCAT(c.nombre, ' - ', p.nombre) as nombre_completo")
+			)
+			->distinct()
+			->get();
+
+		// Obtener materias del docente usando consulta directa
+		$subjectsQuery = DB::table('docente_materia_curso as dmc')
+			->join('materia as m', 'dmc.idMateria', '=', 'm.idMateria')
+			->where('dmc.idDocente', $docente->idDocente);
+		
+		// Filtrar por curso si se especifica
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$subjectsQuery->where('dmc.idCursoParalelo', $request->curso_paralelo_id);
+		}
+		
+		$subjects = $subjectsQuery
+			->select(
+				'm.idMateria as id',
+				'm.nombre',
+				'dmc.idCursoParalelo as curso_paralelo_id'
+			)
+			->distinct()
+			->get();
+
+		// Obtener períodos académicos
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+
+		// Obtener IDs de cursos-paralelos del docente usando consulta directa
+		$cursoParaleloIds = DB::table('docente_materia_curso')
+			->where('idDocente', $docente->idDocente)
+			->pluck('idCursoParalelo')
+			->toArray();
+
+		// Obtener estudiantes usando relaciones
+		$studentsQuery = Estudiante::with(['user', 'cursoParalelo.curso', 'cursoParalelo.paralelo'])
+			->whereIn('idCursoParalelo', $cursoParaleloIds);
+
+		// Aplicar filtros
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$studentsQuery->where('idCursoParalelo', $request->curso_paralelo_id);
+		}
+
+		$students = $studentsQuery->get()->map(function ($estudiante) use ($docente, $request) {
+			// Puntos asignados por el docente
+			$puntosAsignados = $estudiante->user->puntajes()
+				->whereHas('asignacionesPuntaje', function($query) use ($docente) {
+					$query->where('idDocente', $docente->idDocente);
+				})
+				->when($request->has('materia_id') && $request->materia_id, function($query) use ($request) {
+					$query->whereHas('asignacionesPuntaje', function($q) use ($request) {
+						$q->where('idMateria', $request->materia_id);
+					});
+				})
+				->when($request->has('periodo_id') && $request->periodo_id, function($query) use ($request) {
+					$query->where('idPeriodo', $request->periodo_id);
+				})
+				->sum('puntos');
+
+			$totalAsignaciones = $estudiante->user->puntajes()
+				->whereHas('asignacionesPuntaje', function($query) use ($docente) {
+					$query->where('idDocente', $docente->idDocente);
+				})
+				->when($request->has('materia_id') && $request->materia_id, function($query) use ($request) {
+					$query->whereHas('asignacionesPuntaje', function($q) use ($request) {
+						$q->where('idMateria', $request->materia_id);
+					});
+				})
+				->when($request->has('periodo_id') && $request->periodo_id, function($query) use ($request) {
+					$query->where('idPeriodo', $request->periodo_id);
+				})
+				->count();
+
+			// Puntos de depósitos
+			$puntosDepositos = $estudiante->user->puntajes()
+				->when($request->has('periodo_id') && $request->periodo_id, function($query) use ($request) {
+					$query->where('idPeriodo', $request->periodo_id);
+				})
+				->sum('puntos');
+
+			$totalDepositos = $estudiante->user->depositos()
+				->count();
+
+			// Última actividad
+			$ultimaAsignacion = $estudiante->user->puntajes()
+				->whereHas('asignacionesPuntaje', function($query) use ($docente) {
+					$query->where('idDocente', $docente->idDocente);
+				})
+				->max('fechaAsignacion');
+
+			$ultimoDeposito = $estudiante->user->depositos()
+				->max('fechaHora');
+
+			$totalPuntos = $puntosAsignados + $puntosDepositos;
+			$promedio = $totalAsignaciones > 0 ? $puntosAsignados / $totalAsignaciones : 0;
+			$rendimientoPercent = $totalAsignaciones > 0 ? round(($promedio / 100) * 100, 1) : 0;
+
+			return [
+				'id' => $estudiante->user->id,
+				'nombres' => $estudiante->user->nombres,
+				'apellidos' => trim(($estudiante->user->primerApellido ?? '') . ' ' . ($estudiante->user->segundoApellido ?? '')),
+				'curso_paralelo_id' => $estudiante->idCursoParalelo,
+				'total_puntos_asignados' => (int) $puntosAsignados,
+				'total_puntos_depositos' => (int) $puntosDepositos,
+				'total_puntos' => (int) $totalPuntos,
+				'total_asignaciones' => (int) $totalAsignaciones,
+				'total_depositos' => (int) $totalDepositos,
+				'promedio' => round($promedio, 1),
+				'rendimiento_percent' => $rendimientoPercent,
+				'ultima_asignacion' => $ultimaAsignacion ? $ultimaAsignacion : 'Sin asignaciones',
+				'ultimo_deposito' => $ultimoDeposito ? $ultimoDeposito : 'Sin depósitos',
+				'curso' => ['nombre' => $estudiante->cursoParalelo->curso->nombre],
+				'paralelo' => ['nombre' => $estudiante->cursoParalelo->paralelo->nombre]
+			];
+		});
+
+		return Inertia::render('docente/GestionEstudiantes', [
+			'teacher' => [
+				'id' => $docente->idDocente,
+				'nombres' => $docente->user->nombres,
+				'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+			],
+			'coursesParallels' => $coursesParallels,
+			'subjects' => $subjects,
+			'periods' => $periods,
+			'students' => $students,
+			'filters' => [
+				'curso_paralelo_id' => $request->curso_paralelo_id,
+				'materia_id' => $request->materia_id,
+				'periodo_id' => $request->periodo_id
+			]
+		]);
+	}
+
+	/**
+	 * Almacenar nueva asignación de puntos
+	 */
+	public function storeAsignacion(Request $request)
+	{
+		$request->validate([
+			'materia_id' => 'required|integer|exists:materia,idMateria',
+			'periodo_id' => 'required|integer|exists:periodos_academicos,idPeriodo',
+			'estudiante_id' => 'required|integer|exists:usuario,id',
+			'puntos' => 'required|integer|min:1|max:100',
+			'fecha_asignacion' => 'required|date',
+			'comentario' => 'nullable|string|max:500'
+		]);
+
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			return back()->withErrors(['error' => 'No se encontró el docente']);
+		}
+
+		// Primero crear el registro en puntaje
+		$puntajeId = DB::table('puntaje')->insertGetId([
+			'idUser' => $request->estudiante_id,
+			'idPeriodo' => $request->periodo_id,
+			'puntos' => $request->puntos,
+			'fechaAsignacion' => $request->fecha_asignacion,
+			'created_at' => now(),
+			'updated_at' => now()
+		]);
+
+		// Luego crear la asignación
+		DB::table('asignaciones_puntaje')->insert([
+			'idPuntaje' => $puntajeId,
+			'idDocente' => $docente->idDocente,
+			'idMateria' => $request->materia_id,
+			'idPeriodo' => $request->periodo_id,
+			'puntos' => $request->puntos,
+			'fecha_asignacion' => $request->fecha_asignacion,
+			'comentario' => $request->comentario,
+			'created_at' => now(),
+			'updated_at' => now()
+		]);
+
+		return back()->with('success', 'Puntos asignados correctamente');
+	}
+
+	/**
+	 * Almacenar asignación masiva de puntos
+	 */
+	public function storeBulkAsignacion(Request $request)
+	{
+		$request->validate([
+			'materia_id' => 'required|integer|exists:materia,idMateria',
+			'curso_paralelo_id' => 'required|integer|exists:curso_paralelo,idCursoParalelo',
+			'periodo_id' => 'required|integer|exists:periodos_academicos,idPeriodo',
+			'puntos' => 'required|integer|min:1|max:100',
+			'estudiantes_ids' => 'required|array|min:1',
+			'estudiantes_ids.*' => 'integer|exists:usuario,id'
+		]);
+
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			return back()->withErrors(['error' => 'No se encontró el docente']);
+		}
+
+		// Usar el período seleccionado
+		$periodoId = $request->periodo_id;
+
+		$asignaciones = [];
+		foreach ($request->estudiantes_ids as $estudianteId) {
+			// Crear registro en puntaje
+			$puntajeId = DB::table('puntaje')->insertGetId([
+				'idUser' => $estudianteId,
+				'idPeriodo' => $periodoId,
+				'puntos' => $request->puntos,
+				'fechaAsignacion' => now()->toDateString(),
+				'created_at' => now(),
+				'updated_at' => now()
+			]);
+
+			// Crear asignación
+			$asignaciones[] = [
+				'idPuntaje' => $puntajeId,
+				'idDocente' => $docente->idDocente,
+				'idMateria' => $request->materia_id,
+				'idPeriodo' => $periodoId,
+				'puntos' => $request->puntos,
+				'fecha_asignacion' => now()->toDateString(),
+				'comentario' => 'Asignación masiva',
+				'created_at' => now(),
+				'updated_at' => now()
+			];
+		}
+
+		DB::table('asignaciones_puntaje')->insert($asignaciones);
+
+		return back()->with('success', 'Puntos asignados a ' . count($request->estudiantes_ids) . ' estudiantes');
+	}
+
+	/**
+	 * Descargar reporte PDF
+	 */
+	public function downloadReportePDF(Request $request)
+	{
+		$reportesData = $this->getReportesData($request, false); // false = sin límite, obtener todos
+		
+		// Preparar filtros aplicados
+		$filters = [];
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$curso = $reportesData['coursesParallels']->firstWhere('id', $request->curso_paralelo_id);
+			if ($curso) {
+				$filters['curso'] = $curso->nombre_completo;
+			}
+		}
+		if ($request->has('materia_id') && $request->materia_id) {
+			$materia = $reportesData['subjects']->firstWhere('id', $request->materia_id);
+			if ($materia) {
+				$filters['materia'] = $materia->nombre;
+			}
+		}
+		if ($request->has('periodo_id') && $request->periodo_id) {
+			$periodo = $reportesData['periods']->firstWhere('id', $request->periodo_id);
+			if ($periodo) {
+				$filters['periodo'] = $periodo->nombre;
+			}
+		}
+		
+		$reportesData['filters'] = $filters;
+		
+		$html = view('pdf.reporte-docente', $reportesData)->render();
+		
+		// Configurar headers para descarga
+		$filename = 'reporte-docente-' . now()->format('Y-m-d-His') . '.html';
+		
+		return response($html)
+			->header('Content-Type', 'text/html')
+			->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+	}
+
+	/**
+	 * Exportar a Excel
+	 */
+	public function exportarReporteExcel(Request $request)
+	{
+		$reportesData = $this->getReportesData($request, false); // false = sin límite, obtener todos
+		
+		// Preparar filtros aplicados
+		$filters = [];
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$curso = $reportesData['coursesParallels']->firstWhere('id', $request->curso_paralelo_id);
+			if ($curso) {
+				$filters['curso'] = $curso->nombre_completo;
+			}
+		}
+		if ($request->has('materia_id') && $request->materia_id) {
+			$materia = $reportesData['subjects']->firstWhere('id', $request->materia_id);
+			if ($materia) {
+				$filters['materia'] = $materia->nombre;
+			}
+		}
+		if ($request->has('periodo_id') && $request->periodo_id) {
+			$periodo = $reportesData['periods']->firstWhere('id', $request->periodo_id);
+			if ($periodo) {
+				$filters['periodo'] = $periodo->nombre;
+			}
+		}
+		
+		$filename = 'reporte-docente-' . now()->format('Y-m-d-His') . '.xlsx';
+		
+		return Excel::download(
+			new ReporteDocenteExport($reportesData, $reportesData['teacher'], $filters),
+			$filename
+		);
+	}
+
+	// ===== MÉTODOS AUXILIARES PARA DATOS SIN RENDERIZAR =====
+
+	/**
+	 * Obtener datos de reportes (solo datos, sin renderizar)
+	 * @param Request $request
+	 * @param bool $limitResults Si es true, limita los resultados para dashboard. Si es false, obtiene todos para exportación.
+	 */
+	private function getReportesData(Request $request, $limitResults = true)
+	{
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			return [];
+		}
+
+		// Obtener cursos-paralelos del docente
+		$coursesParallels = DB::table('docente_materia_curso as dmc')
+			->join('curso_paralelo as cp', 'dmc.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'cp.idCursoParalelo as id',
+				'c.idCurso',
+				'c.nombre as curso_nombre',
+				'p.idParalelo',
+				'p.nombre as paralelo_nombre',
+				DB::raw("CONCAT(c.nombre, ' - ', p.nombre) as nombre_completo")
+			)
+			->distinct()
+			->get();
+
+		// Obtener materias por curso-paralelo seleccionado
+		$subjects = collect();
+		if ($request->has('curso_paralelo_id')) {
+			$subjects = DB::table('docente_materia_curso as dmc')
+				->join('materia as m', 'dmc.idMateria', '=', 'm.idMateria')
+				->where('dmc.idDocente', $docente->idDocente)
+				->where('dmc.idCursoParalelo', $request->curso_paralelo_id)
+				->select('m.idMateria as id', 'm.nombre')
+				->distinct()
+				->get();
+		}
+
+		// Obtener períodos académicos
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+
+		// Obtener asignaciones con filtros (limitadas para dashboard)
+		$assignmentsQuery = DB::table('asignaciones_puntaje as ap')
+			->join('puntaje as pt', 'ap.idPuntaje', '=', 'pt.idPuntaje')
+			->join('usuario as u', 'pt.idUser', '=', 'u.id')
+			->join('estudiante as e', 'u.id', '=', 'e.idUser')
+			->join('curso_paralelo as cp', 'e.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->join('materia as m', 'ap.idMateria', '=', 'm.idMateria')
+			->join('periodos_academicos as pa', 'ap.idPeriodo', '=', 'pa.idPeriodo')
+			->where('ap.idDocente', $docente->idDocente);
+
+		// Aplicar filtros
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$assignmentsQuery->where('cp.idCursoParalelo', $request->curso_paralelo_id);
+		}
+		if ($request->has('materia_id') && $request->materia_id) {
+			$assignmentsQuery->where('ap.idMateria', $request->materia_id);
+		}
+		if ($request->has('periodo_id') && $request->periodo_id) {
+			$assignmentsQuery->where('ap.idPeriodo', $request->periodo_id);
+		}
+
+		$assignments = $assignmentsQuery->orderBy('c.nombre')
+            ->orderBy('p.nombre')
+            ->orderBy('m.nombre')
+            ->orderBy('u.primerApellido')
+            ->orderBy('u.segundoApellido')
+            ->orderBy('u.nombres')
+			->orderBy('ap.fecha_asignacion', 'desc')
+			->select([
+				'ap.idAsignacion as id',
+				'ap.puntos',
+				'ap.fecha_asignacion',
+				'ap.comentario',
+				'u.nombres as estudiante_nombres',
+				'u.primerApellido as estudiante_primer_apellido',
+				'u.segundoApellido as estudiante_segundo_apellido',
+				'c.nombre as curso_nombre',
+				'p.nombre as paralelo_nombre',
+				'm.nombre as materia_nombre',
+				'pa.nombre as periodo_nombre',
+				'm.idMateria',
+				'pa.idPeriodo',
+				'cp.idCursoParalelo'
+			])
+			->get()
+			->map(function ($assignment) {
+				return [
+					'id' => $assignment->id,
+					'puntos' => $assignment->puntos,
+					'fecha_asignacion' => $assignment->fecha_asignacion,
+					'comentario' => $assignment->comentario,
+					'estudiante' => [
+						'id' => $assignment->id ?? 0,
+						'nombres' => $assignment->estudiante_nombres ?? '',
+						'apellidos' => trim(($assignment->estudiante_primer_apellido ?? '') . ' ' . ($assignment->estudiante_segundo_apellido ?? '')),
+						'curso' => ['nombre' => $assignment->curso_nombre ?? ''],
+						'paralelo' => ['nombre' => $assignment->paralelo_nombre ?? '']
+					],
+					'materia' => [
+						'id' => $assignment->idMateria,
+						'nombre' => $assignment->materia_nombre ?? ''
+					],
+					'periodo' => [
+						'id' => $assignment->idPeriodo,
+						'nombre' => $assignment->periodo_nombre ?? ''
+					]
+				];
+			});
+
+		// Estadísticas básicas
+		$statsQuery = DB::table('asignaciones_puntaje as ap')
+			->join('puntaje as pt', 'ap.idPuntaje', '=', 'pt.idPuntaje')
+			->join('usuario as u', 'pt.idUser', '=', 'u.id')
+			->join('estudiante as e', 'u.id', '=', 'e.idUser')
+			->join('curso_paralelo as cp', 'e.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->join('materia as m', 'ap.idMateria', '=', 'm.idMateria')
+			->join('periodos_academicos as pa', 'ap.idPeriodo', '=', 'pa.idPeriodo')
+			->where('ap.idDocente', $docente->idDocente);
+
+		// Aplicar los mismos filtros a las estadísticas
+		if ($request->has('curso_paralelo_id') && $request->curso_paralelo_id) {
+			$statsQuery->where('cp.idCursoParalelo', $request->curso_paralelo_id);
+		}
+		if ($request->has('materia_id') && $request->materia_id) {
+			$statsQuery->where('ap.idMateria', $request->materia_id);
+		}
+		if ($request->has('periodo_id') && $request->periodo_id) {
+			$statsQuery->where('ap.idPeriodo', $request->periodo_id);
+		}
+		
+		$statsData = $statsQuery->get();
+		
+		return [
+			'teacher' => [
+				'id' => $docente->idDocente,
+				'nombres' => $docente->user->nombres,
+				'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+			],
+			'coursesParallels' => $coursesParallels,
+			'subjects' => $subjects,
+			'periods' => $periods,
+			'assignments' => $assignments,
+			'stats' => [
+				'total_assignments' => $statsData->count(),
+				'total_points' => $statsQuery->sum('ap.puntos'),
+				'average_points' => $statsData->count() > 0 ? round($statsQuery->avg('ap.puntos'), 1) : 0,
+				'unique_students' => $assignments->pluck('estudiante.id')->unique()->count(),
+			]
+		];
+	}
+
+	/**
+	 * Obtener datos de asignación (solo datos, sin renderizar)
+	 */
+	private function getAsignacionData(Request $request)
+	{
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			return [];
+		}
+
+		// Obtener cursos-paralelos del docente
+		$coursesParallels = DB::table('docente_materia_curso as dmc')
+			->join('curso_paralelo as cp', 'dmc.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'cp.idCursoParalelo as id',
+				DB::raw("CONCAT(c.nombre, ' - ', p.nombre) as nombre_completo")
+			)
+			->distinct()
+			->get();
+
+		// Obtener períodos académicos
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+
+		return [
+			'teacher' => [
+				'id' => $docente->idDocente,
+				'nombres' => $docente->user->nombres,
+				'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+			],
+			'coursesParallels' => $coursesParallels,
+			'periods' => $periods
+		];
+	}
+
+	/**
+	 * Obtener datos de estadísticas (solo datos, sin renderizar)
+	 */
+	private function getEstadisticasData(Request $request)
+	{
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			return [];
+		}
+
+		// Obtener métricas básicas
+		$totalAssignments = DB::table('asignaciones_puntaje')
+			->where('idDocente', $docente->idDocente)
+			->count();
+
+		$totalPoints = DB::table('asignaciones_puntaje')
+			->where('idDocente', $docente->idDocente)
+			->sum('puntos');
+
+		$averagePoints = $totalAssignments > 0 ? 
+			round(DB::table('asignaciones_puntaje')->where('idDocente', $docente->idDocente)->avg('puntos'), 1) : 0;
+
+		return [
+			'teacher' => [
+				'id' => $docente->idDocente,
+				'nombres' => $docente->user->nombres,
+				'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+			],
+			'totalAssignments' => $totalAssignments,
+			'totalPoints' => $totalPoints,
+			'averagePoints' => $averagePoints
+		];
+	}
+
+	/**
+	 * Obtener datos de gestión (solo datos, sin renderizar)
+	 */
+	private function getGestionData(Request $request)
+	{
+		$docente = Docente::where('idUser', Auth::id())->first();
+		
+		if (!$docente) {
+			return [];
+		}
+
+		// Obtener cursos-paralelos del docente
+		$coursesParallels = DB::table('docente_materia_curso as dmc')
+			->join('curso_paralelo as cp', 'dmc.idCursoParalelo', '=', 'cp.idCursoParalelo')
+			->join('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+			->join('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+			->where('dmc.idDocente', $docente->idDocente)
+			->select(
+				'cp.idCursoParalelo as id',
+				DB::raw("CONCAT(c.nombre, ' - ', p.nombre) as nombre_completo")
+			)
+			->distinct()
+			->get();
+
+		return [
+			'teacher' => [
+				'id' => $docente->idDocente,
+				'nombres' => $docente->user->nombres,
+				'apellidos' => trim(($docente->user->primerApellido ?? '') . ' ' . ($docente->user->segundoApellido ?? ''))
+			],
+			'coursesParallels' => $coursesParallels
+		];
 	}
 }
 	

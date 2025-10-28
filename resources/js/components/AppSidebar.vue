@@ -16,13 +16,11 @@ import {
     SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { type NavGroup, type NavItem, type UserRole } from '@/types';
+import { type NavGroup, type UserRole } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Book, BoxIcon, Calendar, ChevronDown, LayoutGrid, Recycle, Settings, Trash2, User, Users, Activity } from 'lucide-vue-next';
+import { Activity, Book, BoxIcon, Calendar, ChevronDown, LayoutGrid, QrCode, Recycle, Settings, Trash2, User, Users } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { route } from 'ziggy-js';
-
-
 
 // Estado para los menús colapsables
 const openAcademico = ref(false);
@@ -41,7 +39,6 @@ const collapsible = computed(() => 'collapsed'); // Ajusta el valor según tu l�
 import { docenteNavigation } from '@/config/navigation';
 import AppLogo from './AppLogo.vue';
 
-
 const navigationGroups: NavGroup[] = [
     {
         title: 'Gestión Académica',
@@ -56,6 +53,11 @@ const navigationGroups: NavGroup[] = [
                 title: 'Estudiantes',
                 href: route('admin.estudiantes'),
                 icon: User,
+            },
+            {
+                title: 'Gestión QR',
+                href: route('admin.qr-management'),
+                icon: QrCode,
             },
             {
                 title: 'Cursos y Materias',
@@ -122,7 +124,7 @@ function isRouteActive(href: string): boolean {
     // Normalizar las rutas removiendo barras finales
     const normalizedCurrent = currentPath.replace(/\/$/, '');
     const normalizedHref = href.replace(/\/$/, '');
-    
+
     return normalizedCurrent === normalizedHref || normalizedCurrent.startsWith(normalizedHref + '/');
 }
 
@@ -212,13 +214,13 @@ watch(openResiduos, (val) => {
                                 <Tooltip>
                                     <TooltipTrigger as-child>
                                         <SidebarMenuButton as-child>
-                                            <Link 
-                                                :href="route('admin.dashboard')" 
-                                                :class="[ 
-                                                    'flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors',
-                                                    isRouteActive(route('admin.dashboard')) 
-                                                        ? 'active-sidebar-item' 
-                                                        : 'inactive-sidebar-item'
+                                            <Link
+                                                :href="route('admin.dashboard')"
+                                                :class="[
+                                                    'flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors',
+                                                    isRouteActive(route('admin.dashboard'))
+                                                        ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                                                        : 'hover:bg-slate-100 dark:hover:bg-slate-800',
                                                 ]"
                                             >
                                                 <LayoutGrid class="h-4 w-4" />
@@ -244,12 +246,12 @@ watch(openResiduos, (val) => {
                                             >
                                                 <!-- 🔥 FIX: Grupo resaltado si alguna subruta está activa -->
                                                 <CollapsibleTrigger asChild>
-                                                    <SidebarMenuButton 
+                                                    <SidebarMenuButton
                                                         class="flex w-full items-center px-2 py-1.5"
                                                         :class="[
                                                             isGroupActive(group)
-                                                                ? 'active-sidebar-group'
-                                                                : 'inactive-sidebar-item'
+                                                                ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                                                                : 'hover:bg-slate-100 dark:hover:bg-slate-800',
                                                         ]"
                                                     >
                                                         <component v-if="group.icon" :is="group.icon" class="mr-2 h-4 w-4" />
@@ -264,11 +266,11 @@ watch(openResiduos, (val) => {
                                                         <SidebarMenuSubItem v-for="item in group.items" :key="item.href" class="pl-4">
                                                             <Link
                                                                 :href="item.href"
-                                                                :class="[ 
+                                                                :class="[
                                                                     'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
                                                                     isRouteActive(item.href)
-                                                                        ? 'active-sidebar-item'
-                                                                        : 'hover:bg-muted hover:text-foreground'
+                                                                        ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                                                                        : 'hover:bg-slate-100 dark:hover:bg-slate-800',
                                                                 ]"
                                                                 @click="setGroupOpen(group)"
                                                             >
@@ -301,12 +303,12 @@ watch(openResiduos, (val) => {
                                             >
                                                 <!-- 🔥 FIX también para docentes -->
                                                 <CollapsibleTrigger asChild>
-                                                    <SidebarMenuButton 
+                                                    <SidebarMenuButton
                                                         class="flex w-full items-center px-2 py-1.5"
                                                         :class="[
                                                             isGroupActive(group)
                                                                 ? 'active-sidebar-item'
-                                                                : 'hover:bg-accent hover:text-accent-foreground'
+                                                                : 'hover:bg-accent hover:text-accent-foreground',
                                                         ]"
                                                     >
                                                         <component v-if="group.icon" :is="group.icon" class="mr-2 h-4 w-4" />
@@ -321,11 +323,11 @@ watch(openResiduos, (val) => {
                                                         <SidebarMenuSubItem v-for="item in group.items" :key="item.href" class="pl-4">
                                                             <Link
                                                                 :href="item.href"
-                                                                :class="[ 
+                                                                :class="[
                                                                     'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
                                                                     isRouteActive(item.href)
-                                                                        ? 'active-sidebar-item'
-                                                                        : 'hover:bg-muted hover:text-foreground'
+                                                                        ? 'border-l-4 border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                                                                        : 'hover:bg-slate-100 dark:hover:bg-slate-800',
                                                                 ]"
                                                                 @click="setGroupOpen(group)"
                                                             >
@@ -353,12 +355,12 @@ watch(openResiduos, (val) => {
                                         <Collapsible class="w-full" :open="openResiduos" @update:open="(val) => (openResiduos = val)">
                                             <!-- 🔥 FIX: Resaltar reportes activos -->
                                             <CollapsibleTrigger asChild>
-                                                <SidebarMenuButton 
+                                                <SidebarMenuButton
                                                     class="flex w-full items-center px-2 py-1.5"
                                                     :class="[
                                                         isRouteActive(route('admin.reportes.index'))
                                                             ? 'active-sidebar-item'
-                                                            : 'hover:bg-accent hover:text-accent-foreground'
+                                                            : 'hover:bg-accent hover:text-accent-foreground',
                                                     ]"
                                                 >
                                                     <BoxIcon class="mr-2 h-4 w-4" />
@@ -373,11 +375,11 @@ watch(openResiduos, (val) => {
                                                     <SidebarMenuSubItem>
                                                         <Link
                                                             :href="route('admin.reportes.index')"
-                                                            :class="[ 
+                                                            :class="[
                                                                 'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
                                                                 isRouteActive(route('admin.reportes.index'))
                                                                     ? 'active-sidebar-item'
-                                                                    : 'hover:bg-muted hover:text-foreground'
+                                                                    : 'hover:bg-muted hover:text-foreground',
                                                             ]"
                                                         >
                                                             <Icon name="file-text" class="h-4 w-4" />
@@ -403,7 +405,6 @@ watch(openResiduos, (val) => {
     </Sidebar>
 </template>
 
-
 <style scoped>
 /* Oculta el texto cuando el sidebar está colapsado (solo íconos) */
 :deep(.sidebar-label) {
@@ -418,12 +419,12 @@ watch(openResiduos, (val) => {
 
 /* Estilos para elementos activos del sidebar */
 .active-sidebar-item {
-    background-color: var(--primary) !important;
+    background-color: #64748b !important;
     color: white !important;
     font-weight: 600 !important;
     opacity: 1 !important;
     position: relative;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Barra lateral izquierda para elementos activos */
@@ -433,9 +434,9 @@ watch(openResiduos, (val) => {
     left: 0;
     top: 0;
     height: 100%;
-    width: 4px;
-    background-color: #2563eb;
-    border-radius: 0 4px 4px 0;
+    width: 3px;
+    background-color: #475569;
+    border-radius: 0 2px 2px 0;
 }
 
 /* Items inactivos */
@@ -451,11 +452,11 @@ watch(openResiduos, (val) => {
 
 /* Grupos activos */
 .active-sidebar-group {
-    background-color: var(--primary) !important;
+    background-color: #64748b !important;
     color: white !important;
     font-weight: 600 !important;
     position: relative;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
 }
 
 .active-sidebar-group::before {
@@ -464,8 +465,8 @@ watch(openResiduos, (val) => {
     left: 0;
     top: 0;
     height: 100%;
-    width: 4px;
-    background-color: #2563eb;
-    border-radius: 0 4px 4px 0;
+    width: 3px;
+    background-color: #475569;
+    border-radius: 0 2px 2px 0;
 }
 </style>

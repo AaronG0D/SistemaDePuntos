@@ -1,20 +1,49 @@
 <template>
     <StudentLayout :student="student">
         <!-- Hero Section -->
-        <div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-800 dark:via-indigo-800 dark:to-purple-800 px-6 py-12 sm:px-8 lg:px-12">
-            <div class="mx-auto max-w-7xl text-center">
-                <h1 class="text-4xl font-bold text-white sm:text-5xl">Historial de Puntos</h1>
-                <p class="mt-4 text-xl text-blue-100">{{ student.nombres }} {{ student.apellidos }}</p>
-                <div class="mt-6">
-                    <div class="text-5xl font-bold text-white">{{ totalPoints }}</div>
-                    <div class="text-lg text-blue-100">Puntos Totales Acumulados</div>
+        <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-800 dark:via-indigo-800 dark:to-purple-800 px-6 py-16 sm:px-8 lg:px-12">
+            <!-- Background Pattern -->
+            <div class="absolute inset-0 opacity-10">
+                <div class="absolute inset-0" style="background-image: radial-gradient(circle at 25% 25%, white 2px, transparent 2px), radial-gradient(circle at 75% 75%, white 2px, transparent 2px); background-size: 50px 50px;"></div>
+            </div>
+            
+            <div class="relative mx-auto max-w-7xl">
+                <div class="flex items-center justify-between">
+                    <div class="text-center lg:text-left">
+                        <h1 class="text-4xl font-bold text-white sm:text-5xl lg:text-6xl">
+                            💰 Mis Puntos
+                        </h1>
+                        <p class="mt-4 text-xl text-blue-100">{{ student.nombres }} {{ student.apellidos }}</p>
+                        <div class="mt-8 grid gap-6 sm:grid-cols-3">
+                            <div class="rounded-lg bg-white/10 p-4 backdrop-blur-sm">
+                                <div class="text-3xl font-bold text-white">{{ totalPoints }}</div>
+                                <div class="text-sm text-blue-100">Puntos Totales</div>
+                            </div>
+                            <div class="rounded-lg bg-white/10 p-4 backdrop-blur-sm">
+                                <div class="text-3xl font-bold text-white">{{ totalDeposits }}</div>
+                                <div class="text-sm text-blue-100">Depósitos</div>
+                            </div>
+                            <div class="rounded-lg bg-white/10 p-4 backdrop-blur-sm">
+                                <div class="text-3xl font-bold text-white">{{ averagePointsPerDeposit }}</div>
+                                <div class="text-sm text-blue-100">Promedio/Depósito</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden lg:block">
+                        <div class="relative">
+                            <div class="absolute inset-0 animate-pulse rounded-full bg-white/20"></div>
+                            <div class="relative rounded-full bg-white/10 p-8 backdrop-blur-sm">
+                                <BarChart3 class="h-20 w-20 text-white" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Content -->
         <div class="px-6 py-8 sm:px-8 lg:px-12">
-            <div class="mx-auto max-w-7xl space-y-8">
+            <div class="mx-auto max-w-7xl space-y-6">
                 <!-- Estado vacío general -->
                 <div v-if="(!deposits || deposits.length === 0) && (!periods || periods.length === 0)" class="text-center py-16">
                     <div class="mx-auto max-w-md">
@@ -38,26 +67,84 @@
                     <Card
                         v-for="bimester in bimesters"
                         :key="bimester.number"
-                        class="cursor-pointer border-green-200 dark:border-green-700 transition-shadow hover:shadow-lg"
-                        :class="selectedBimester === bimester.number ? 'ring-2 ring-green-500' : ''"
+                        class="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                        :class="[
+                            selectedBimester === bimester.number 
+                                ? 'ring-2 ring-blue-500 shadow-lg border-blue-300 dark:border-blue-600' 
+                                : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
+                        ]"
                         @click="selectedBimester = bimester.number"
                     >
                         <CardContent class="p-6">
                             <div class="text-center">
-                                <div class="mb-2">
-                                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                                        <span class="text-lg font-bold text-green-600">{{ bimester.number }}</span>
+                                <div class="mb-4 relative">
+                                    <div 
+                                        class="mx-auto flex h-16 w-16 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110"
+                                        :class="[
+                                            selectedBimester === bimester.number
+                                                ? 'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-lg'
+                                                : 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-800 dark:to-green-700 text-green-600 dark:text-green-300'
+                                        ]"
+                                    >
+                                        <span class="text-xl font-bold">{{ bimester.number }}</span>
+                                    </div>
+                                    <!-- Progress Ring -->
+                                    <div class="absolute inset-0 -m-1">
+                                        <svg class="h-18 w-18 transform -rotate-90" viewBox="0 0 36 36">
+                                            <path
+                                                class="text-gray-200 dark:text-gray-700"
+                                                d="M18 2.0845
+                                                a 15.9155 15.9155 0 0 1 0 31.831
+                                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                            />
+                                            <path
+                                                :class="[
+                                                    selectedBimester === bimester.number
+                                                        ? 'text-blue-500'
+                                                        : 'text-green-500'
+                                                ]"
+                                                :stroke-dasharray="`${getBimesterProgress(bimester.number)}, 100`"
+                                                d="M18 2.0845
+                                                a 15.9155 15.9155 0 0 1 0 31.831
+                                                a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                class="transition-all duration-500"
+                                            />
+                                        </svg>
                                     </div>
                                 </div>
-                                <h3 class="font-semibold text-green-800 dark:text-green-300">{{ bimester.name }}</h3>
-                                <div class="mt-2">
-                                    <div class="text-2xl font-bold text-green-900 dark:text-green-100">
-                                        {{ getBimesterPoints(bimester.number) }}
+                                <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2">{{ bimester.name }}</h3>
+                                <div class="space-y-2">
+                                    <div>
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                                            {{ getBimesterPoints(bimester.number) }}
+                                        </div>
+                                        <div class="text-sm text-gray-600 dark:text-gray-400">puntos</div>
                                     </div>
-                                    <div class="text-sm text-green-600 dark:text-green-400">puntos</div>
+                                    <div class="flex items-center justify-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                                        <span class="flex items-center">
+                                            <Trash2 class="mr-1 h-3 w-3" />
+                                            {{ getBimesterDeposits(bimester.number) }}
+                                        </span>
+                                        <span class="flex items-center">
+                                            <Weight class="mr-1 h-3 w-3" />
+                                            {{ getBimesterWeight(bimester.number) }}kg
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="mt-2">
-                                    <div class="text-muted-foreground text-sm">{{ getBimesterDeposits(bimester.number) }} depósitos</div>
+                                <!-- Selection Indicator -->
+                                <div 
+                                    v-if="selectedBimester === bimester.number"
+                                    class="mt-3 flex items-center justify-center"
+                                >
+                                    <div class="rounded-full bg-blue-100 dark:bg-blue-900 px-3 py-1">
+                                        <span class="text-xs font-medium text-blue-600 dark:text-blue-300">Seleccionado</span>
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
@@ -129,9 +216,59 @@
                                     </div>
                                 </div>
 
-                                <div v-if="getFilteredDeposits(selectedBimester).length === 0" class="py-8 text-center text-gray-500 dark:text-gray-400">
+                                <div v-if="getAllFilteredDeposits(selectedBimester).length === 0" class="py-8 text-center text-gray-500 dark:text-gray-400">
                                     <Leaf class="mx-auto mb-4 h-12 w-12 opacity-50" />
                                     <p class="dark:text-gray-400">No hay depósitos registrados en este bimestre</p>
+                                </div>
+
+                                <!-- Paginación -->
+                                <div v-if="getTotalPages(selectedBimester) > 1" class="mt-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4">
+                                    <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                        <span>
+                                            Mostrando {{ ((currentPage - 1) * itemsPerPage) + 1 }} - 
+                                            {{ Math.min(currentPage * itemsPerPage, getAllFilteredDeposits(selectedBimester).length) }} 
+                                            de {{ getAllFilteredDeposits(selectedBimester).length }} depósitos
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            @click="prevPage"
+                                            :disabled="currentPage === 1"
+                                            class="h-8 w-8 p-0"
+                                        >
+                                            <ChevronLeft class="h-4 w-4" />
+                                        </Button>
+                                        
+                                        <div class="flex items-center space-x-1">
+                                            <Button
+                                                v-for="page in getTotalPages(selectedBimester)"
+                                                :key="page"
+                                                variant="outline"
+                                                size="sm"
+                                                @click="goToPage(page)"
+                                                :class="[
+                                                    'h-8 w-8 p-0',
+                                                    currentPage === page 
+                                                        ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' 
+                                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                ]"
+                                            >
+                                                {{ page }}
+                                            </Button>
+                                        </div>
+                                        
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            @click="nextPage(selectedBimester)"
+                                            :disabled="currentPage === getTotalPages(selectedBimester)"
+                                            class="h-8 w-8 p-0"
+                                        >
+                                            <ChevronRight class="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -139,22 +276,66 @@
                 </Card>
 
                 <!-- Progress Chart -->
-                <Card class="border-green-200 dark:border-green-700">
+                <Card class="border-indigo-200 dark:border-indigo-700">
                     <CardHeader>
-                        <CardTitle class="flex items-center text-green-800 dark:text-green-300">
+                        <CardTitle class="flex items-center text-indigo-800 dark:text-indigo-300">
                             <TrendingUp class="mr-2 h-5 w-5" />
-                            Progreso por Bimestre
+                            Evolución por Bimestre
                         </CardTitle>
-                        <CardDescription> Tu evolución a lo largo del año académico </CardDescription>
+                        <CardDescription class="dark:text-gray-400">Tu progreso a lo largo del año académico</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div class="space-y-4">
-                            <div v-for="bimester in bimesters" :key="bimester.number" class="space-y-2">
-                                <div class="flex justify-between text-sm">
-                                    <span class="font-medium">{{ bimester.name }}</span>
-                                    <span class="text-muted-foreground"> {{ getBimesterPoints(bimester.number) }} puntos </span>
+                        <div class="space-y-6">
+                            <div v-for="bimester in bimesters" :key="bimester.number" class="space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <div 
+                                            class="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
+                                            :class="[
+                                                getBimesterPoints(bimester.number) > 0
+                                                    ? 'bg-gradient-to-br from-indigo-400 to-indigo-600 text-white'
+                                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                            ]"
+                                        >
+                                            {{ bimester.number }}
+                                        </div>
+                                        <span class="font-medium text-gray-900 dark:text-gray-100">{{ bimester.name }}</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                                            {{ getBimesterPoints(bimester.number) }}
+                                        </span>
+                                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-1">pts</span>
+                                    </div>
                                 </div>
-                                <Progress :value="getProgressPercentage(bimester.number)" class="h-2" />
+                                
+                                <!-- Custom Progress Bar -->
+                                <div class="relative h-4 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                    <div 
+                                        class="h-full rounded-full transition-all duration-700 ease-out"
+                                        :class="[
+                                            getBimesterPoints(bimester.number) > 0
+                                                ? 'bg-gradient-to-r from-indigo-500 to-purple-600'
+                                                : 'bg-gray-300 dark:bg-gray-600'
+                                        ]"
+                                        :style="`width: ${getProgressPercentage(bimester.number)}%`"
+                                    ></div>
+                                    <div v-if="getBimesterPoints(bimester.number) > 0" class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-xs font-medium text-white">{{ getProgressPercentage(bimester.number) }}%</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Additional Stats -->
+                                <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                    <span class="flex items-center">
+                                        <Trash2 class="mr-1 h-3 w-3" />
+                                        {{ getBimesterDeposits(bimester.number) }} depósitos
+                                    </span>
+                                    <span class="flex items-center">
+                                        <Weight class="mr-1 h-3 w-3" />
+                                        {{ getBimesterWeight(bimester.number) }}kg reciclados
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
@@ -298,8 +479,21 @@ import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StudentLayout from '@/layouts/StudentLayout.vue';
 import { router } from '@inertiajs/vue3';
-import { ArrowLeft, Award, Calendar, CheckCircle, MapPin, Trash2, X } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import {
+    ArrowLeft,
+    BarChart3,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    Clock,
+    Leaf,
+    TrendingUp,
+    Trash2,
+    Trophy,
+    Weight,
+    X,
+} from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 
 interface Props {
     student: {
@@ -357,6 +551,8 @@ const props = defineProps<Props>();
 
 const selectedBimester = ref(1);
 const selectedDeposit = ref<any>(null);
+const currentPage = ref(1);
+const itemsPerPage = 5; // Mostrar 5 depósitos por página
 
 const bimesters = [
     { number: 1, name: 'Primer Bimestre' },
@@ -364,6 +560,21 @@ const bimesters = [
     { number: 3, name: 'Tercer Bimestre' },
     { number: 4, name: 'Cuarto Bimestre' },
 ];
+
+// Computed properties for hero section
+const totalDeposits = computed(() => {
+    return props.deposits ? props.deposits.length : 0;
+});
+
+const averagePointsPerDeposit = computed(() => {
+    if (!props.deposits || props.deposits.length === 0) return 0;
+    return Math.round(props.totalPoints / props.deposits.length);
+});
+
+// Resetear página cuando cambie el bimestre
+watch(selectedBimester, () => {
+    currentPage.value = 1;
+});
 
 const achievements = ref([
     {
@@ -446,22 +657,61 @@ const getBimesterWeight = (bimester: number) => {
         .toFixed(1);
 };
 
+// Function for progress rings (based on 100 points goal per bimester)
+const getBimesterProgress = (bimester: number) => {
+    const bimesterPoints = getBimesterPoints(bimester);
+    const goalPoints = 100; // Meta de 100 puntos por bimestre
+    return Math.round(Math.min((bimesterPoints / goalPoints) * 100, 100));
+};
+
 const getBimesterName = (bimester: number) => {
     return bimesters.find((b) => b.number === bimester)?.name || '';
 };
 
 const getFilteredDeposits = (bimester: number) => {
     if (!props.deposits || props.deposits.length === 0) return [];
+    const filtered = props.deposits
+        .filter((d) => d.bimestre === bimester)
+        .sort((a, b) => new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime());
+    
+    // Aplicar paginación
+    const startIndex = (currentPage.value - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filtered.slice(startIndex, endIndex);
+};
+
+const getAllFilteredDeposits = (bimester: number) => {
+    if (!props.deposits || props.deposits.length === 0) return [];
     return props.deposits
         .filter((d) => d.bimestre === bimester)
         .sort((a, b) => new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime());
 };
 
+const getTotalPages = (bimester: number) => {
+    const totalDeposits = getAllFilteredDeposits(bimester).length;
+    return Math.ceil(totalDeposits / itemsPerPage);
+};
+
+const goToPage = (page: number) => {
+    currentPage.value = page;
+};
+
+const nextPage = (bimester: number) => {
+    if (currentPage.value < getTotalPages(bimester)) {
+        currentPage.value++;
+    }
+};
+
+const prevPage = () => {
+    if (currentPage.value > 1) {
+        currentPage.value--;
+    }
+};
+
 const getProgressPercentage = (bimester: number) => {
-    if (!props.deposits || props.deposits.length === 0) return 0;
-    const maxPoints = Math.max(...bimesters.map((b) => getBimesterPoints(b.number)));
     const bimesterPoints = getBimesterPoints(bimester);
-    return maxPoints > 0 ? (bimesterPoints / maxPoints) * 100 : 0;
+    const goalPoints = 100; // Meta de 100 puntos por bimestre
+    return Math.round(Math.min((bimesterPoints / goalPoints) * 100, 100));
 };
 
 const formatDate = (dateString: string) => {
@@ -490,3 +740,24 @@ const formatTime = (dateString: string) => {
     }
 };
 </script>
+
+<style scoped>
+/* Ocultar scrollbar del navegador */
+:deep(html) {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+:deep(html::-webkit-scrollbar) {
+    display: none; /* Chrome, Safari and Opera */
+}
+
+:deep(body) {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+:deep(body::-webkit-scrollbar) {
+    display: none; /* Chrome, Safari and Opera */
+}
+</style>

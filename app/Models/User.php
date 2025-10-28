@@ -89,8 +89,25 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\Puntaje::class, 'idUser', 'id');
     }
 
+    public function puntaje()
+    {
+        return $this->hasOne(\App\Models\Puntaje::class, 'idUser', 'id');
+    }
+
     public function depositos()
     {
         return $this->hasMany(Deposito::class, 'idUser', 'id');
+    }
+
+    public function asignacionesPuntaje()
+    {
+        return $this->hasManyThrough(
+            AsignacionPuntaje::class,
+            Puntaje::class,
+            'idUser', // Foreign key on puntaje table
+            'idPuntaje', // Foreign key on asignaciones_puntaje table
+            'id', // Local key on users table
+            'idPuntaje' // Local key on puntaje table
+        );
     }
 }

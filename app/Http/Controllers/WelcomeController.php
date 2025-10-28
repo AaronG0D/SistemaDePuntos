@@ -9,6 +9,7 @@ use App\Models\Deposito;
 use App\Models\TipoBasura;
 use App\Models\Basurero;
 use App\Models\User;
+use App\Models\Puntaje;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -18,58 +19,82 @@ class WelcomeController extends Controller
     public function index(Request $request)
     {
         try {
-            // Construir la consulta base con eager loading explícito
-            $query = Estudiante::with([
-                'user.puntaje',
-                'cursoParalelo.curso',
-                'cursoParalelo.paralelo'
-            ]);
+            // Obtener los top 6 estudiantes con más puntos usando consulta directa
+            $baseQuery = DB::table('estudiante as e')
+                ->join('usuario as u', 'e.idUser', '=', 'u.id')
+                ->leftJoin('curso_paralelo as cp', 'e.idCursoParalelo', '=', 'cp.idCursoParalelo')
+                ->leftJoin('curso as c', 'cp.idCurso', '=', 'c.idCurso')
+                ->leftJoin('paralelo as p', 'cp.idParalelo', '=', 'p.idParalelo')
+                ->leftJoin('puntaje as pt', 'u.id', '=', 'pt.idUser')
+                ->where('u.rol', 'estudiante')
+                ->whereNull('u.deleted_at')
+                ->whereNull('e.deleted_at')
+                ->select(
+                    'u.id as idUser',
+                    'u.nombres',
+                    'u.primerApellido',
+                    'u.segundoApellido',
+                    'u.email',
+                    'c.nombre as curso_nombre',
+                    'p.nombre as paralelo_nombre',
+                    'cp.idCursoParalelo',
+                    DB::raw('COALESCE(SUM(pt.puntos), 0) as total_puntos')
+                )
+                ->groupBy('u.id', 'u.nombres', 'u.primerApellido', 'u.segundoApellido', 'u.email', 'c.nombre', 'p.nombre', 'cp.idCursoParalelo')
+                ->orderBy('total_puntos', 'desc')
+                ->limit(6);
 
-            // Aplicar filtros si están presentes
-            if ($request->filled('curso') && $request->input('curso') !== 'all') {
-                $query->whereHas('cursoParalelo', function($q) use ($request) {
-                    $q->where('idCurso', $request->input('curso'));
+            // Aplicar filtros si existen
+            $filtered = (clone $baseQuery)
+                ->when($request->filled('curso') && $request->input('curso') !== 'all', function($query) use ($request) {
+                    return $query->where('c.idCurso', $request->input('curso'));
+                })
+                ->when($request->filled('paralelo') && $request->input('paralelo') !== 'all', function($query) use ($request) {
+                    return $query->where('p.idParalelo', $request->input('paralelo'));
+                })
+                ->get();
+
+            // Si con filtros no hay resultados, caer al top global (sin filtros)
+            $rows = $filtered->isEmpty() ? $baseQuery->get() : $filtered;
+
+            $topEstudiantes = $rows
+                ->map(function($estudiante) {
+                    return (object) [
+                        'idUser' => $estudiante->idUser,
+                        'user' => (object) [
+                            'nombres' => $estudiante->nombres,
+                            'primerApellido' => $estudiante->primerApellido,
+                            'segundoApellido' => $estudiante->segundoApellido,
+                            'email' => $estudiante->email,
+                            'puntaje' => (object) [
+                                'puntajeTotal' => $estudiante->total_puntos
+                            ]
+                        ],
+                        'cursoParalelo' => (object) [
+                            'idCursoParalelo' => $estudiante->idCursoParalelo,
+                            'curso' => (object) [
+                                'nombre' => $estudiante->curso_nombre ?: 'Sin curso'
+                            ],
+                            'paralelo' => (object) [
+                                'nombre' => $estudiante->paralelo_nombre ?: 'Sin paralelo'
+                            ]
+                        ]
+                    ];
                 });
-            }
-
-            if ($request->filled('paralelo') && $request->input('paralelo') !== 'all') {
-                $query->whereHas('cursoParalelo', function($q) use ($request) {
-                    $q->where('idParalelo', $request->input('paralelo'));
-                });
-            }
-
-            // Obtener los top 6 estudiantes con más puntos usando scopes del modelo
-            $query = $query->rolEstudiante()
-                           ->filterCurso($request->input('curso'))
-                           ->filterParalelo($request->input('paralelo'))
-                           ->orderByPuntaje('desc');
-
-            // Debug de la consulta
-            \Log::info('Query SQL:', ['sql' => $query->toSql(), 'bindings' => $query->getBindings()]);
-
-            $topEstudiantes = $query->take(6)->get();
 
             // Debug detallado de los resultados
-            foreach ($topEstudiantes as $estudiante) {
-                \Log::info('Datos del estudiante:', [
-                    'id' => $estudiante->idUser,
-                    'nombre' => $estudiante->user->nombres ?? 'Sin nombre',
-                    'apellido' => $estudiante->user->primerApellido ?? 'Sin apellido',
-                    'idCursoParalelo' => $estudiante->idCursoParalelo,
-                    'cursoParalelo' => [
-                        'id' => $estudiante->cursoParalelo->idCursoParalelo ?? 'No tiene',
-                        'curso' => [
-                            'id' => $estudiante->cursoParalelo->curso->idCurso ?? 'No tiene',
-                            'nombre' => $estudiante->cursoParalelo->curso->nombre ?? 'Sin curso'
-                        ],
-                        'paralelo' => [
-                            'id' => $estudiante->cursoParalelo->paralelo->idParalelo ?? 'No tiene',
-                            'nombre' => $estudiante->cursoParalelo->paralelo->nombre ?? 'Sin paralelo'
-                        ]
-                    ],
-                    'puntaje' => $estudiante->user->puntaje->puntajeTotal ?? 0
-                ]);
-            }
+            \Log::info('Top estudiantes obtenidos:', [
+                'count' => $topEstudiantes->count(),
+                'estudiantes' => $topEstudiantes->map(function($estudiante) {
+                    return [
+                        'nombre' => $estudiante->user->nombres ?? 'Sin nombre',
+                        'apellido' => $estudiante->user->primerApellido ?? 'Sin apellido',
+                        'curso' => $estudiante->cursoParalelo->curso->nombre ?? 'Sin curso',
+                        'paralelo' => $estudiante->cursoParalelo->paralelo->nombre ?? 'Sin paralelo',
+                        'puntos' => $estudiante->user->puntaje->puntajeTotal ?? 0
+                    ];
+                })->toArray()
+            ]);
 
             // Debug detallado
             \Log::info('Top estudiantes:', [
@@ -119,32 +144,19 @@ class WelcomeController extends Controller
         }
 
         // Obtener estadísticas generales del sistema
-        try {
-            $estadisticas = [
-                'totalEstudiantes' => User::where('rol', 'estudiante')->count(),
-                'totalDepositos' => Deposito::count(),
-                'totalPuntos' => DB::table('puntaje')->sum('puntos'),
-                'totalBasureros' => Basurero::where('estado', 'activo')->count(),
-                'tiposBasura' => TipoBasura::where('estado', 'activo')->count(),
-                'depositosHoy' => Deposito::whereDate('fechaDeposito', today())->count(),
-                'puntosHoy' => Deposito::whereDate('fechaDeposito', today())->sum('puntosAsignados'),
-                'cursoMasActivo' => $this->getCursoMasActivo(),
-                'tipoBasuraMasComun' => $this->getTipoBasuraMasComun()
-            ];
-        } catch (\Exception $e) {
-            \Log::error('Error obteniendo estadísticas: ' . $e->getMessage());
-            $estadisticas = [
-                'totalEstudiantes' => 0,
-                'totalDepositos' => 0,
-                'totalPuntos' => 0,
-                'totalBasureros' => 0,
-                'tiposBasura' => 0,
-                'depositosHoy' => 0,
-                'puntosHoy' => 0,
-                'cursoMasActivo' => null,
-                'tipoBasuraMasComun' => null
-            ];
-        }
+        $estadisticas = [
+            'totalEstudiantes' => User::where('rol', 'estudiante')->whereNull('deleted_at')->count(),
+            'totalDepositos' => Deposito::count(),
+            'totalPuntos' => Puntaje::sum('puntos') ?? 0,
+            'totalBasureros' => Basurero::where('estado', 'activo')->count(),
+            'tiposBasura' => TipoBasura::where('estado', 'activo')->count(),
+            'depositosHoy' => Deposito::whereDate('fechaHora', today())->count(),
+            'puntosHoy' => Puntaje::whereDate('fechaAsignacion', today())->sum('puntos') ?? 0,
+            'cursoMasActivo' => $this->getCursoMasActivo(),
+            'tipoBasuraMasComun' => $this->getTipoBasuraMasComun()
+        ];
+        
+        \Log::info('Estadísticas calculadas:', $estadisticas);
 
         // Verifica que los datos no sean null antes de enviarlos
         $data = [
@@ -172,8 +184,7 @@ class WelcomeController extends Controller
                 ->select(
                     'curso.nombre as curso_nombre',
                     'paralelo.nombre as paralelo_nombre',
-                    DB::raw('COUNT(deposito.idDeposito) as total_depositos'),
-                    DB::raw('SUM(deposito.puntosAsignados) as total_puntos')
+                    DB::raw('COUNT(deposito.idDeposito) as total_depositos')
                 )
                 ->groupBy('curso.idCurso', 'paralelo.idParalelo', 'curso.nombre', 'paralelo.nombre')
                 ->orderBy('total_depositos', 'desc')
@@ -192,8 +203,7 @@ class WelcomeController extends Controller
                 ->select(
                     'tipoBasura.nombre',
                     'tipoBasura.descripcion',
-                    DB::raw('COUNT(deposito.idDeposito) as total_depositos'),
-                    DB::raw('SUM(deposito.puntosAsignados) as total_puntos')
+                    DB::raw('COUNT(deposito.idDeposito) as total_depositos')
                 )
                 ->groupBy('tipoBasura.idTipoBasura', 'tipoBasura.nombre', 'tipoBasura.descripcion')
                 ->orderBy('total_depositos', 'desc')

@@ -1,5 +1,14 @@
 import type { NavGroup } from '@/types';
-import { Book, GraduationCap, LineChart } from 'lucide-vue-next';
+import { 
+    BarChart3, 
+    Book, 
+    FileText, 
+    GraduationCap, 
+    LineChart, 
+    PlusCircle, 
+    TrendingUp, 
+    Users 
+} from 'lucide-vue-next';
 
 export const docenteNavigation: NavGroup[] = [
     {
@@ -11,31 +20,37 @@ export const docenteNavigation: NavGroup[] = [
                 href: '/docente/dashboard',
                 icon: GraduationCap,
             },
+        ],
+    },
+    {
+        title: 'Gestión de Puntos',
+        icon: PlusCircle,
+        items: [
             {
-                title: 'Mis Cursos',
-                href: '/docente/cursos',
-                icon: Book,
+                title: 'Asignar Puntos',
+                href: '/docente/asignacion-puntos',
+                icon: PlusCircle,
             },
-            { 
-                title: 'Ranking de Cursos',
-                href: '/docente/ranking-cursos',
-                icon: LineChart,
+            {
+                title: 'Gestión de Estudiantes',
+                href: '/docente/gestion-estudiantes',
+                icon: Users,
             },
         ],
     },
     {
-        title: 'Reportes',
-        icon: LineChart,
+        title: 'Reportes y Análisis',
+        icon: BarChart3,
         items: [
             {
-                title: 'Puntos por Curso',
-                href: '/docente/reportes/curso',
-                icon: LineChart,
+                title: 'Reportes por Materia',
+                href: '/docente/reportes-materia',
+                icon: FileText,
             },
             {
-                title: 'Puntos por Materia',
-                href: '/docente/reportes/materia',
-                icon: LineChart,
+                title: 'Estadísticas Avanzadas',
+                href: '/docente/estadisticas-avanzadas',
+                icon: TrendingUp,
             },
         ],
     },

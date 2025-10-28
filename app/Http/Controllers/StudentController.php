@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AsignacionPuntaje;
 use App\Models\Deposito;
 use App\Models\Estudiante;
 use App\Models\PeriodoAcademico;
@@ -41,6 +42,9 @@ class StudentController extends Controller
         
         // Obtener información sobre materias y docentes
         $subjectsInfo = $this->getSubjectsWithTeachers($user);
+        
+        // Obtener notas académicas recientes
+        $academicGrades = $this->getAcademicGrades($user, $currentPeriod);
 
         return Inertia::render('Students/Dashboard', [
             'student' => $student,
@@ -55,6 +59,7 @@ class StudentController extends Controller
             'bimesterGoal' => $bimesterGoal,
             'courseTop3' => $courseTop3,
             'subjectsInfo' => $subjectsInfo,
+            'academicGrades' => $academicGrades,
         ]);
     }
 
@@ -591,5 +596,89 @@ class StudentController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Obtiene las notas académicas del estudiante
+     */
+    private function getAcademicGrades(User $user, ?PeriodoAcademico $currentPeriod = null): array
+    {
+        $query = AsignacionPuntaje::forStudent($user->id)
+            ->with([
+                'materia',
+                'docente.user',
+                'periodoAcademico',
+                'puntaje'
+            ])
+            ->orderBy('fecha_asignacion', 'desc');
+
+        // Si se especifica un período, filtrar por él, sino obtener todas
+        if ($currentPeriod) {
+            $query->forPeriod($currentPeriod->idPeriodo);
+        }
+
+        $asignaciones = $query->take(10)->get(); // Últimas 10 asignaciones
+
+        return $asignaciones->map(function ($asignacion) {
+            $docente = $asignacion->docente?->user;
+            $docenteNombre = $docente ? 
+                trim($docente->nombres . ' ' . $docente->primerApellido . ' ' . $docente->segundoApellido) : 
+                'Docente no disponible';
+
+            return [
+                'id' => $asignacion->idAsignacion,
+                'materia' => $asignacion->materia?->nombre ?? 'Materia no disponible',
+                'docente' => $docenteNombre,
+                'puntos' => $asignacion->puntos,
+                'comentario' => $asignacion->comentario,
+                'fecha' => $asignacion->fecha_asignacion->format('Y-m-d'),
+                'periodo' => $asignacion->periodoAcademico?->nombre ?? 'Sin período',
+                'porcentaje' => $asignacion->porcentaje,
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Obtiene las notas académicas por bimestre
+     */
+    public function getGradesByBimester(Request $request): Response
+    {
+        /** @var User $user */
+        $user = $request->user();
+        
+        $student = $this->getStudentData($user);
+        $currentPeriod = $this->getCurrentPeriod();
+        $year = $currentPeriod?->fecha_inicio?->year ?? Carbon::now()->year;
+        
+        // Obtener todos los períodos del año
+        $periods = $this->getPeriodsForYear($year);
+        
+        // Obtener notas agrupadas por período
+        $gradesByPeriod = [];
+        foreach ($periods as $period) {
+            $grades = $this->getAcademicGrades($user, $period);
+            if (!empty($grades)) {
+                $gradesByPeriod[] = [
+                    'periodo' => [
+                        'id' => $period->idPeriodo,
+                        'nombre' => $period->nombre,
+                        'bimestre' => $this->mapBimesterNumber($period->nombre)
+                    ],
+                    'notas' => $grades,
+                    'total_puntos' => array_sum(array_column($grades, 'puntos')),
+                    'promedio_puntos' => !empty($grades) ? round(array_sum(array_column($grades, 'puntos')) / count($grades), 2) : 0
+                ];
+            }
+        }
+        
+        return Inertia::render('Students/AcademicGrades', [
+            'student' => $student,
+            'currentPeriod' => $currentPeriod ? [
+                'id' => $currentPeriod->idPeriodo,
+                'nombre' => $currentPeriod->nombre,
+            ] : null,
+            'gradesByPeriod' => $gradesByPeriod,
+            'totalPoints' => $this->getTotalPointsFromPuntaje($user, $year),
+        ]);
     }
 }

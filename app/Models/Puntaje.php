@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Puntaje extends Model
 {
@@ -33,5 +34,10 @@ class Puntaje extends Model
     public function periodoAcademico(): BelongsTo
     {
         return $this->belongsTo(PeriodoAcademico::class, 'idPeriodo', 'idPeriodo');
+    }
+
+    public function asignacionesPuntaje(): HasMany
+    {
+        return $this->hasMany(AsignacionPuntaje::class, 'idPuntaje', 'idPuntaje');
     }
 }

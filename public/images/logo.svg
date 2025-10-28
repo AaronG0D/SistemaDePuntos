@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo circular -->
+  <circle cx="100" cy="100" r="95" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2"/>
+  
+  <!-- Círculo interno -->
+  <circle cx="100" cy="100" r="75" fill="#ffffff" opacity="0.1"/>
+  
+  <!-- Icono de QR -->
+  <g transform="translate(50, 50)">
+    <!-- Patrón QR simplificado -->
+    <rect x="0" y="0" width="20" height="20" fill="#ffffff"/>
+    <rect x="25" y="0" width="20" height="20" fill="#ffffff"/>
+    <rect x="50" y="0" width="20" height="20" fill="#ffffff"/>
+    <rect x="75" y="0" width="20" height="20" fill="#ffffff"/>
+    
+    <rect x="0" y="25" width="20" height="20" fill="#ffffff"/>
+    <rect x="50" y="25" width="20" height="20" fill="#ffffff"/>
+    <rect x="75" y="25" width="20" height="20" fill="#ffffff"/>
+    
+    <rect x="0" y="50" width="20" height="20" fill="#ffffff"/>
+    <rect x="25" y="50" width="20" height="20" fill="#ffffff"/>
+    <rect x="50" y="50" width="20" height="20" fill="#ffffff"/>
+    <rect x="75" y="50" width="20" height="20" fill="#ffffff"/>
+    
+    <rect x="0" y="75" width="20" height="20" fill="#ffffff"/>
+    <rect x="25" y="75" width="20" height="20" fill="#ffffff"/>
+    <rect x="50" y="75" width="20" height="20" fill="#ffffff"/>
+    <rect x="75" y="75" width="20" height="20" fill="#ffffff"/>
+    
+    <!-- Cuadrados más pequeños para simular QR -->
+    <rect x="5" y="5" width="10" height="10" fill="#3b82f6"/>
+    <rect x="30" y="5" width="10" height="10" fill="#3b82f6"/>
+    <rect x="55" y="5" width="10" height="10" fill="#3b82f6"/>
+    <rect x="80" y="5" width="10" height="10" fill="#3b82f6"/>
+    
+    <rect x="5" y="30" width="10" height="10" fill="#3b82f6"/>
+    <rect x="55" y="30" width="10" height="10" fill="#3b82f6"/>
+    <rect x="80" y="30" width="10" height="10" fill="#3b82f6"/>
+    
+    <rect x="5" y="55" width="10" height="10" fill="#3b82f6"/>
+    <rect x="30" y="55" width="10" height="10" fill="#3b82f6"/>
+    <rect x="55" y="55" width="10" height="10" fill="#3b82f6"/>
+    <rect x="80" y="55" width="10" height="10" fill="#3b82f6"/>
+    
+    <rect x="5" y="80" width="10" height="10" fill="#3b82f6"/>
+    <rect x="30" y="80" width="10" height="10" fill="#3b82f6"/>
+    <rect x="55" y="80" width="10" height="10" fill="#3b82f6"/>
+    <rect x="80" y="80" width="10" height="10" fill="#3b82f6"/>
+  </g>
+  
+  <!-- Texto -->
+  <text x="100" y="160" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="16" font-weight="bold">
+    SISTEMA DE PUNTOS
+  </text>
+</svg>

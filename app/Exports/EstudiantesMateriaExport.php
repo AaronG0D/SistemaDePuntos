@@ -256,7 +256,7 @@ class EstudiantesMateriaExport
     {
         $row = 10;
         foreach ($this->estudiantes as $index => $estudiante) {
-            $puntos = $estudiante->puntos_atribuidos ?? 0;
+            $puntos = (int)($estudiante->puntos_atribuidos ?? 0);
             $calificacion = $this->getCalificacionCualitativa($puntos);
             $estado = $this->getEstadoEmoji($puntos);
 
@@ -265,7 +265,7 @@ class EstudiantesMateriaExport
                 $estudiante->idUser,
                 trim(($estudiante->primerApellido ?? '') . ' ' . ($estudiante->segundoApellido ?? '')),
                 $estudiante->nombres,
-                $estudiante->registros ?? 0,
+                (int)($estudiante->registros ?? 0),
                 $puntos,
                 $calificacion,
                 $estado
@@ -362,7 +362,7 @@ class EstudiantesMateriaExport
         $data = ['Excelente' => 0, 'Bueno' => 0, 'Regular' => 0, 'Deficiente' => 0];
         
         foreach ($this->estudiantes as $estudiante) {
-            $puntos = $estudiante->puntos_atribuidos ?? 0;
+            $puntos = (int)($estudiante->puntos_atribuidos ?? 0);
             $calificacion = $this->getCalificacionCualitativa($puntos);
             $data[$calificacion]++;
         }
