@@ -128,7 +128,9 @@
                             <!-- Estadísticas del curso -->
                             <div class="mb-4 grid grid-cols-2 gap-4">
                                 <div class="text-center">
-                                    <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ info.estudiantes.length || 0 }}</div>
+                                    <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                                        {{ info.estudiantesTotal ?? info.estudiantes.length ?? 0 }}
+                                    </div>
                                     <div class="text-xs text-slate-600 dark:text-slate-400">Estudiantes</div>
                                 </div>
                                 <div class="text-center">
@@ -220,6 +222,7 @@ interface CursoInfo {
     };
     materias: MateriaInfo[];
     estudiantes: Estudiante[];
+    estudiantesTotal?: number;
 }
 
 const props = defineProps<{
@@ -233,7 +236,8 @@ const selectedTipo = ref('all');
 // Computed properties
 const totalEstudiantes = computed(() => {
     return props.cursosYMaterias.reduce((total, curso) => {
-        return total + curso.estudiantes.length;
+        const count = curso.estudiantesTotal ?? curso.estudiantes.length;
+        return total + (Number(count) || 0);
     }, 0);
 });
 

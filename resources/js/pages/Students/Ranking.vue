@@ -5,7 +5,12 @@
             <div class="mx-auto max-w-7xl">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">🏆 Ranking del Curso</h1>
+                        <div class="flex items-center gap-4">
+                            <div class="rounded-full bg-white/20 p-4 backdrop-blur-sm">
+                                <Trophy class="h-12 w-12 text-white" />
+                            </div>
+                            <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Ranking del Curso</h1>
+                        </div>
                         <p class="mt-4 text-xl text-purple-100">
                             {{ student.curso?.nombre }} "{{ student.paralelo?.nombre }}"
                         </p>

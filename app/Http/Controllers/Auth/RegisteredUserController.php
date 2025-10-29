@@ -45,6 +45,10 @@ class RegisteredUserController extends Controller
             'email.required' => 'El correo electrónico es obligatorio, debe ser válido y único.',
             'password.required' => 'La contraseña es obligatoria y debe confirmarse.',
         ]);
+        $fullName = trim(($validated['nombres'] ?? '') . ' ' . ($validated['primerApellido'] ?? '') . ' ' . ($validated['segundoApellido'] ?? ''));
+        $baseCode = Str::slug(preg_replace('/\s+/', ' ', $fullName));
+        // Sufijo corto para evitar colisiones
+        $validated['qr_codigo'] = $baseCode ? ($baseCode . '-' . Str::lower(Str::random(6))) : Str::lower(Str::random(8));
 
         $user = User::create([
             'nombres' => $request->name,
@@ -53,6 +57,7 @@ class RegisteredUserController extends Controller
             'rol' => $request->rol,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'qr_codigo' => $validated['qr_codigo'],
         ]);
 
         event(new Registered($user));

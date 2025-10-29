@@ -6,6 +6,8 @@ use App\Models\User;
 use App\Models\Estudiante;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
@@ -356,12 +358,32 @@ class EstudiantesImport
     }
 
 
-    private function createUser($nombres, $apellidos, $email, $fechaNacimiento, $genero)
+    private function createUser($nombres, $apellidos, $email)
     {
         // Separar apellidos en primer y segundo apellido
         $apellidosParts = explode(' ', trim($apellidos), 2);
         $primerApellido = $apellidosParts[0] ?? '';
         $segundoApellido = $apellidosParts[1] ?? '';
+
+        // Generar contraseña: 3 primeras letras del nombre + primer apellido (sin espacios/acentos), min 6
+        $nombrePlano = strtolower($this->stripAccents(trim($nombres)));
+        $primerApellidoPlano = strtolower($this->stripAccents(trim($primerApellido)));
+        $segundoApellidoPlano = strtolower($this->stripAccents(trim($segundoApellido)));
+        $prefijo = substr(preg_replace('/\s+/', '', $nombrePlano), 0, 3);
+        if (strlen($prefijo) < 3) {
+            $prefijo = str_pad($prefijo, 3, 'x');
+        }
+        // Usar ambos apellidos para evitar contraseñas cortas
+        $apellidosConcatenados = trim(preg_replace('/\s+/', '', $primerApellidoPlano . $segundoApellidoPlano));
+        $passwordPlain = ($prefijo ?: 'est') . $apellidosConcatenados;
+        if (strlen($passwordPlain) < 6) {
+            $passwordPlain = $passwordPlain . Str::lower(Str::random(6 - strlen($passwordPlain)));
+        }
+
+        // Generar qr_codigo similar a UserController@store
+        $fullName = trim(($nombres ?? '') . ' ' . ($primerApellido ?? '') . ' ' . ($segundoApellido ?? ''));
+        $baseCode = Str::slug(preg_replace('/\s+/', ' ', $fullName));
+        $qrCodigo = $baseCode ? ($baseCode . '-' . Str::lower(Str::random(6))) : Str::lower(Str::random(8));
 
         // Crear nuevo usuario (solo campos que existen en la tabla usuario)
         $user = User::create([
@@ -370,10 +392,25 @@ class EstudiantesImport
             'segundoApellido' => $segundoApellido,
             'email' => $email,
             'rol' => 'estudiante',
-            'password' => bcrypt('123456'), // Password temporal
+            'qr_codigo' => $qrCodigo,
+            'password' => Hash::make($passwordPlain),
         ]);
 
         return $user->id;
+    }
+
+    private function stripAccents($string)
+    {
+        $replacements = [
+            'Á'=>'A','À'=>'A','Â'=>'A','Ä'=>'A','Ã'=>'A','Å'=>'A','á'=>'a','à'=>'a','â'=>'a','ä'=>'a','ã'=>'a','å'=>'a',
+            'É'=>'E','È'=>'E','Ê'=>'E','Ë'=>'E','é'=>'e','è'=>'e','ê'=>'e','ë'=>'e',
+            'Í'=>'I','Ì'=>'I','Î'=>'I','Ï'=>'I','í'=>'i','ì'=>'i','î'=>'i','ï'=>'i',
+            'Ó'=>'O','Ò'=>'O','Ô'=>'O','Ö'=>'O','Õ'=>'O','ó'=>'o','ò'=>'o','ô'=>'o','ö'=>'o','õ'=>'o',
+            'Ú'=>'U','Ù'=>'U','Û'=>'U','Ü'=>'U','ú'=>'u','ù'=>'u','û'=>'u','ü'=>'u',
+            'Ñ'=>'N','ñ'=>'n'
+        ];
+        $string = strtr($string, $replacements);
+        return preg_replace('/[^a-zA-Z0-9\s]/', '', $string);
     }
 
     private function createStudent($userId, $cursoParaleloId)

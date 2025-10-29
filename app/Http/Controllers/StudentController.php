@@ -101,16 +101,18 @@ class StudentController extends Controller
         $deposits = $this->getStudentDeposits($user, $year);
         $totalPoints = $this->getTotalPointsFromPuntaje($user, $year);
         $ranking = $this->getStudentRanking($user, $year);
+        $academicGrades = $this->getAcademicGrades($user, $currentPeriod);
 
         return Inertia::render('Students/Profile', [
             'student' => $student,
             'deposits' => $this->formatDepositsForFrontend($deposits, true), // Con bimestre
             'currentPeriod' => $currentPeriod ? [
-                'id' => $currentPeriod->id,
+                'id' => $currentPeriod->idPeriodo,
                 'nombre' => $currentPeriod->nombre,
             ] : null,
             'totalPoints' => $totalPoints,
             'ranking' => $ranking,
+            'academicGrades' => $academicGrades,
         ]);
     }
 
@@ -589,6 +591,7 @@ class StudentController extends Controller
             $result[$puntaje->idPeriodo] = [
                 'periodo_id' => $puntaje->idPeriodo,
                 'periodo_nombre' => $puntaje->periodoAcademico->nombre ?? 'Sin período',
+                'bimestre' => $this->mapBimesterNumber($puntaje->periodoAcademico->nombre ?? null),
                 'puntos' => $puntaje->puntos,
                 'fecha_asignacion' => $puntaje->fechaAsignacion?->format('Y-m-d H:i:s'),
                 'comentario' => $puntaje->comentario,

@@ -5,7 +5,12 @@
             <div class="mx-auto max-w-7xl">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Notas Académicas</h1>
+                        <div class="flex items-center gap-4">
+                            <div class="rounded-full bg-white/20 p-4 backdrop-blur-sm">
+                                <GraduationCap class="h-12 w-12 text-white" />
+                            </div>
+                            <h1 class="text-4xl font-bold tracking-tight sm:text-5xl">Notas Académicas</h1>
+                        </div>
                         <p class="mt-4 text-xl text-yellow-100">
                             Revisa tus calificaciones y puntos asignados por bimestre
                         </p>

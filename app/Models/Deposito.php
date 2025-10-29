@@ -17,10 +17,7 @@ class Deposito extends Model
         'idBasurero',
         'idUser',
         'idTipoBasura',
-        'idPeriodo',
-        'puntajeTipoBasura',
-        'fechaHora',
-        'puntos'
+        'fechaHora'
     ];
 
     protected $casts = [

@@ -10,11 +10,16 @@
             <div class="relative mx-auto max-w-7xl">
                 <div class="flex items-center justify-between">
                     <div class="text-center lg:text-left">
-                        <h1 class="text-4xl font-bold text-white sm:text-5xl lg:text-6xl">
-                            💰 Mis Puntos
-                        </h1>
+                        <div class="flex items-center gap-4">
+                            <div class="rounded-full bg-white/20 p-4 backdrop-blur-sm">
+                                <Coins class="h-12 w-12 text-white" />
+                            </div>
+                            <h1 class="text-4xl font-bold text-white sm:text-5xl lg:text-6xl">
+                                Mis Puntos
+                            </h1>
+                        </div>
                         <p class="mt-4 text-xl text-blue-100">{{ student.nombres }} {{ student.apellidos }}</p>
-                        <div class="mt-8 grid gap-6 sm:grid-cols-3">
+                        <div class="mt-8 grid gap-4 sm:grid-cols-3">
                             <div class="rounded-lg bg-white/10 p-4 backdrop-blur-sm">
                                 <div class="text-3xl font-bold text-white">{{ totalPoints }}</div>
                                 <div class="text-sm text-blue-100">Puntos Totales</div>
@@ -63,7 +68,12 @@
                 <div v-else>
 
                 <!-- Points Summary by Bimester -->
-                <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <div class="grid gap-6 md:grid-cols-2" :class="[
+                    bimesters.length === 1 ? 'lg:grid-cols-1 max-w-md mx-auto' : '',
+                    bimesters.length === 2 ? 'lg:grid-cols-2' : '',
+                    bimesters.length === 3 ? 'lg:grid-cols-3' : '',
+                    bimesters.length >= 4 ? 'lg:grid-cols-4' : ''
+                ]">
                     <Card
                         v-for="bimester in bimesters"
                         :key="bimester.number"
@@ -131,10 +141,7 @@
                                             <Trash2 class="mr-1 h-3 w-3" />
                                             {{ getBimesterDeposits(bimester.number) }}
                                         </span>
-                                        <span class="flex items-center">
-                                            <Weight class="mr-1 h-3 w-3" />
-                                            {{ getBimesterWeight(bimester.number) }}kg
-                                        </span>
+                                        
                                     </div>
                                 </div>
                                 <!-- Selection Indicator -->
@@ -203,8 +210,9 @@
                                                 <p class="text-sm text-gray-500 dark:text-gray-400">
                                                     {{ formatDate(deposit.fecha_deposito) }}
                                                 </p>
-                                                <p v-if="deposit.basurero?.nombre" class="text-xs text-blue-600 dark:text-blue-400">
-                                                    📍 {{ deposit.basurero.nombre }}
+                                                <p v-if="deposit.basurero?.nombre" class="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                                    <MapPin class="h-3 w-3" />
+                                                    {{ deposit.basurero.nombre }}
                                                 </p>
                                             </div>
                                         </div>
@@ -391,7 +399,10 @@
                         <!-- Información Principal -->
                         <Card class="border-green-200 dark:border-green-700">
                             <CardHeader class="pb-3">
-                                <CardTitle class="text-green-800 dark:text-green-300 text-sm">📅 Información del Depósito</CardTitle>
+                                <div class="flex items-center gap-2">
+                                    <Calendar class="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    <CardTitle class="text-green-800 dark:text-green-300 text-sm">Información del Depósito</CardTitle>
+                                </div>
                             </CardHeader>
                             <CardContent class="space-y-2 text-sm">
                                 <div class="flex justify-between">
@@ -416,7 +427,10 @@
                         <!-- Tipo de Residuo -->
                         <Card class="border-green-200 dark:border-green-700">
                             <CardHeader class="pb-3">
-                                <CardTitle class="text-green-800 dark:text-green-300 text-sm">🗑️ Tipo de Residuo</CardTitle>
+                                <div class="flex items-center gap-2">
+                                    <Trash2 class="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    <CardTitle class="text-green-800 dark:text-green-300 text-sm">Tipo de Residuo</CardTitle>
+                                </div>
                             </CardHeader>
                             <CardContent class="space-y-2 text-sm">
                                 <div class="flex justify-between">
@@ -437,7 +451,10 @@
                         <!-- Información del Basurero -->
                         <Card class="border-green-200 dark:border-green-700">
                             <CardHeader class="pb-3">
-                                <CardTitle class="text-green-800 dark:text-green-300 text-sm">📍 Basurero</CardTitle>
+                                <div class="flex items-center gap-2">
+                                    <MapPin class="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    <CardTitle class="text-green-800 dark:text-green-300 text-sm">Basurero</CardTitle>
+                                </div>
                             </CardHeader>
                             <CardContent class="space-y-2 text-sm">
                                 <div class="flex justify-between">
@@ -454,7 +471,10 @@
                         <!-- Resumen de Puntos -->
                         <Card class="border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/30">
                             <CardHeader class="pb-3">
-                                <CardTitle class="text-green-800 dark:text-green-300 text-sm">🏆 Resumen</CardTitle>
+                                <div class="flex items-center gap-2">
+                                    <Trophy class="h-4 w-4 text-green-600 dark:text-green-400" />
+                                    <CardTitle class="text-green-800 dark:text-green-300 text-sm">Resumen</CardTitle>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 <div class="text-center">
@@ -486,7 +506,9 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock,
+    Coins,
     Leaf,
+    MapPin,
     TrendingUp,
     Trash2,
     Trophy,
@@ -541,6 +563,7 @@ interface Props {
     pointsByPeriod?: Record<number, {
         periodo_id: number;
         periodo_nombre: string;
+        bimestre?: number;
         puntos: number;
         fecha_asignacion?: string;
         comentario?: string;
@@ -554,12 +577,37 @@ const selectedDeposit = ref<any>(null);
 const currentPage = ref(1);
 const itemsPerPage = 5; // Mostrar 5 depósitos por página
 
-const bimesters = [
-    { number: 1, name: 'Primer Bimestre' },
-    { number: 2, name: 'Segundo Bimestre' },
-    { number: 3, name: 'Tercer Bimestre' },
-    { number: 4, name: 'Cuarto Bimestre' },
-];
+// Generar bimestres dinámicamente basados en los períodos disponibles
+const bimesters = computed(() => {
+    if (!props.pointsByPeriod || Object.keys(props.pointsByPeriod).length === 0) {
+        // Fallback: mostrar solo los bimestres que tienen depósitos
+        const bimestresConDepositos = new Set<number>();
+        if (props.deposits) {
+            props.deposits.forEach(d => {
+                if (d.bimestre) bimestresConDepositos.add(d.bimestre);
+            });
+        }
+        
+        const bimesterNames = ['Primer Bimestre', 'Segundo Bimestre', 'Tercer Bimestre', 'Cuarto Bimestre'];
+        return Array.from(bimestresConDepositos)
+            .sort((a, b) => a - b)
+            .map(num => ({ number: num, name: bimesterNames[num - 1] || `Bimestre ${num}` }));
+    }
+    
+    // Crear bimestres basados en los períodos que tienen puntos
+    const bimesterNames = ['Primer Bimestre', 'Segundo Bimestre', 'Tercer Bimestre', 'Cuarto Bimestre'];
+    const bimestresUnicos = new Set<number>();
+    
+    Object.values(props.pointsByPeriod).forEach(period => {
+        if (period.bimestre) {
+            bimestresUnicos.add(period.bimestre);
+        }
+    });
+    
+    return Array.from(bimestresUnicos)
+        .sort((a, b) => a - b)
+        .map(num => ({ number: num, name: bimesterNames[num - 1] || `Bimestre ${num}` }));
+});
 
 // Computed properties for hero section
 const totalDeposits = computed(() => {
@@ -610,32 +658,37 @@ const achievements = ref([
         name: 'Héroe del Planeta',
         description: 'Completaste todos los bimestres',
         icon: '🌍',
-        earned: computed(() => bimesters.every((b) => getBimesterPoints(b.number) > 0)),
+        earned: computed(() => bimesters.value.every((b) => getBimesterPoints(b.number) > 0)),
     },
     {
         id: 6,
         name: 'Reciclador Constante',
         description: 'Depósitos en todos los bimestres',
         icon: '♻️',
-        earned: computed(() => bimesters.every((b) => getBimesterDeposits(b.number) > 0)),
+        earned: computed(() => bimesters.value.every((b) => getBimesterDeposits(b.number) > 0)),
     },
 ]);
 
 const getBimesterPoints = (bimester: number) => {
     if (!props.pointsByPeriod) return 0;
-    
-    // Buscar el período que corresponde al bimestre
+
+    // 1) Preferir coincidencia directa por número de bimestre si viene desde backend
+    for (const periodData of Object.values(props.pointsByPeriod)) {
+        if (periodData.bimestre === bimester) {
+            return periodData.puntos;
+        }
+    }
+
+    // 2) Fallback a coincidencia por nombre si no existe el campo bimestre
     const bimesterNames = ['primer', 'segundo', 'tercer', 'cuarto'];
     const bimesterName = bimesterNames[bimester - 1];
-    
-    // Buscar en todos los períodos el que corresponde al bimestre
     for (const periodData of Object.values(props.pointsByPeriod)) {
-        const periodName = periodData.periodo_nombre.toLowerCase();
+        const periodName = (periodData.periodo_nombre || '').toLowerCase();
         if (periodName.includes(bimesterName)) {
             return periodData.puntos;
         }
     }
-    
+
     return 0;
 };
 
@@ -665,7 +718,7 @@ const getBimesterProgress = (bimester: number) => {
 };
 
 const getBimesterName = (bimester: number) => {
-    return bimesters.find((b) => b.number === bimester)?.name || '';
+    return bimesters.value.find((b) => b.number === bimester)?.name || '';
 };
 
 const getFilteredDeposits = (bimester: number) => {

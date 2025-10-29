@@ -150,8 +150,9 @@ class DocenteDashboardController extends Controller
             $v['bimestres'] = $bimestres;
             $v['materias'] = array_values($v['materias']);
             
-            // Ordenar estudiantes por puntaje descendente y tomar el top 10
+            // Ordenar estudiantes por puntaje descendente y tomar el top 10, guardando el total real
             $estudiantes = collect($v['estudiantes'])->sortByDesc('puntaje')->values()->all();
+            $v['estudiantesTotal'] = count($estudiantes);
             $v['estudiantes'] = array_slice($estudiantes, 0, 10);
 
             $v['idCursoParalelo'] = $k;

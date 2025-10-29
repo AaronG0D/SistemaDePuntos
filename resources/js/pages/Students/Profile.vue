@@ -25,7 +25,7 @@
         <div class="px-6 py-8 sm:px-8 lg:px-12">
             <div class="mx-auto max-w-7xl space-y-8">
                 <!-- Profile Card -->
-                <Card class="border-green-200">
+                <Card class="border-green-200 dark:border-green-700">
                     <CardContent class="p-8">
                         <div class="flex flex-col items-center text-center lg:flex-row lg:text-left">
                             <!-- Avatar -->
@@ -40,48 +40,48 @@
                             <!-- Student Info -->
                             <div class="flex-1 space-y-4">
                                 <div>
-                                    <h2 class="text-3xl font-bold text-gray-900">{{ student.nombres }} {{ student.apellidos }}</h2>
-                                    <p class="text-lg font-medium text-green-600">Estudiante Eco-Responsable</p>
+                                    <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100">{{ student.nombres }} {{ student.apellidos }}</h2>
+                                    <p class="text-lg font-medium text-green-600 dark:text-green-400">Estudiante Eco-Responsable</p>
                                 </div>
 
                                 <div class="grid gap-4 sm:grid-cols-2">
                                     <div class="flex items-center space-x-3">
-                                        <div class="rounded-full bg-blue-100 p-2">
-                                            <GraduationCap class="h-5 w-5 text-blue-600" />
+                                        <div class="rounded-full bg-blue-100 dark:bg-blue-900 p-2">
+                                            <GraduationCap class="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                         </div>
                                         <div>
-                                            <p class="text-sm font-medium text-gray-500">Curso</p>
-                                            <p class="font-semibold text-gray-900">{{ student.curso?.nombre }}</p>
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Curso</p>
+                                            <p class="font-semibold text-gray-900 dark:text-gray-100">{{ student.curso?.nombre }}</p>
                                         </div>
                                     </div>
 
                                     <div class="flex items-center space-x-3">
-                                        <div class="rounded-full bg-purple-100 p-2">
-                                            <Users class="h-5 w-5 text-purple-600" />
+                                        <div class="rounded-full bg-purple-100 dark:bg-purple-900 p-2">
+                                            <Users class="h-5 w-5 text-purple-600 dark:text-purple-400" />
                                         </div>
                                         <div>
-                                            <p class="text-sm font-medium text-gray-500">Paralelo</p>
-                                            <p class="font-semibold text-gray-900">{{ student.paralelo?.nombre }}</p>
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Paralelo</p>
+                                            <p class="font-semibold text-gray-900 dark:text-gray-100">{{ student.paralelo?.nombre }}</p>
                                         </div>
                                     </div>
 
                                     <div class="flex items-center space-x-3">
-                                        <div class="rounded-full bg-green-100 p-2">
-                                            <Calendar class="h-5 w-5 text-green-600" />
+                                        <div class="rounded-full bg-green-100 dark:bg-green-900 p-2">
+                                            <Calendar class="h-5 w-5 text-green-600 dark:text-green-400" />
                                         </div>
                                         <div>
-                                            <p class="text-sm font-medium text-gray-500">Período Académico</p>
-                                            <p class="font-semibold text-gray-900">{{ currentPeriod?.nombre }}</p>
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Período Académico</p>
+                                            <p class="font-semibold text-gray-900 dark:text-gray-100">{{ currentPeriod?.nombre }}</p>
                                         </div>
                                     </div>
 
                                     <div class="flex items-center space-x-3">
-                                        <div class="rounded-full bg-orange-100 p-2">
-                                            <IdCard class="h-5 w-5 text-orange-600" />
+                                        <div class="rounded-full bg-orange-100 dark:bg-orange-900 p-2">
+                                            <IdCard class="h-5 w-5 text-orange-600 dark:text-orange-400" />
                                         </div>
                                         <div>
-                                            <p class="text-sm font-medium text-gray-500">Código Estudiante</p>
-                                            <p class="font-semibold text-gray-900">{{ student.codigo_estudiante || 'No asignado' }}</p>
+                                            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Código Estudiante</p>
+                                            <p class="font-semibold text-gray-900 dark:text-gray-100">{{ student.codigo_estudiante || 'No asignado' }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -92,57 +92,57 @@
 
                 <!-- Stats Overview -->
                 <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card class="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+                    <Card class="border-green-200 dark:border-green-700 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/50 dark:to-emerald-900/50">
                         <CardContent class="p-6">
                             <div class="flex items-center">
-                                <div class="rounded-full bg-green-100 p-3">
-                                    <Trophy class="h-6 w-6 text-green-600" />
+                                <div class="rounded-full bg-green-100 dark:bg-green-800 p-3">
+                                    <Trophy class="h-6 w-6 text-green-600 dark:text-green-400" />
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-green-600">Puntos Totales</p>
-                                    <p class="text-2xl font-bold text-green-900">{{ totalPoints }}</p>
+                                    <p class="text-sm font-medium text-green-600 dark:text-green-400">Puntos Totales</p>
+                                    <p class="text-2xl font-bold text-green-900 dark:text-green-100">{{ totalPoints }}</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card class="border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50">
+                    <Card class="border-blue-200 dark:border-blue-700 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/50 dark:to-cyan-900/50">
                         <CardContent class="p-6">
                             <div class="flex items-center">
-                                <div class="rounded-full bg-blue-100 p-3">
-                                    <Recycle class="h-6 w-6 text-blue-600" />
+                                <div class="rounded-full bg-blue-100 dark:bg-blue-800 p-3">
+                                    <Recycle class="h-6 w-6 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-blue-600">Depósitos</p>
-                                    <p class="text-2xl font-bold text-blue-900">{{ totalDeposits }}</p>
+                                    <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Depósitos</p>
+                                    <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">{{ totalDeposits }}</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card class="border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
+                    <Card class="border-purple-200 dark:border-purple-700 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/50 dark:to-pink-900/50">
                         <CardContent class="p-6">
                             <div class="flex items-center">
-                                <div class="rounded-full bg-purple-100 p-3">
-                                    <Target class="h-6 w-6 text-purple-600" />
+                                <div class="rounded-full bg-purple-100 dark:bg-purple-800 p-3">
+                                    <Target class="h-6 w-6 text-purple-600 dark:text-purple-400" />
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-purple-600">Ranking</p>
-                                    <p class="text-2xl font-bold text-purple-900">#{{ ranking }}</p>
+                                    <p class="text-sm font-medium text-purple-600 dark:text-purple-400">Ranking</p>
+                                    <p class="text-2xl font-bold text-purple-900 dark:text-purple-100">#{{ ranking }}</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card class="border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50">
+                    <Card class="border-yellow-200 dark:border-yellow-700 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/50 dark:to-orange-900/50">
                         <CardContent class="p-6">
                             <div class="flex items-center">
-                                <div class="rounded-full bg-yellow-100 p-3">
-                                    <Award class="h-6 w-6 text-yellow-600" />
+                                <div class="rounded-full bg-yellow-100 dark:bg-yellow-800 p-3">
+                                    <Award class="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-yellow-600">Logros</p>
-                                    <p class="text-2xl font-bold text-yellow-900">{{ earnedAchievements }}</p>
+                                    <p class="text-sm font-medium text-yellow-600 dark:text-yellow-400">Logros</p>
+                                    <p class="text-2xl font-bold text-yellow-900 dark:text-yellow-100">{{ earnedAchievements }}</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -221,15 +221,27 @@
                         </CardHeader>
                         <CardContent>
                             <div class="space-y-3">
-                                <div class="text-center py-4">
-                                    <GraduationCap class="mx-auto mb-2 h-8 w-8 text-gray-400" />
-                                    <p class="text-sm text-gray-500">Próximamente</p>
-                                    <p class="text-xs text-gray-400">Sistema de notas académicas</p>
+                                <div v-if="recentGrades.length === 0" class="text-center py-4">
+                                    <GraduationCap class="mx-auto mb-2 h-8 w-8 text-gray-400 dark:text-gray-500" />
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Sin notas registradas</p>
+                                    <p class="text-xs text-gray-400 dark:text-gray-500">Aún no tienes calificaciones</p>
+                                </div>
+                                <div v-else class="space-y-2">
+                                    <div v-for="grade in recentGrades" :key="grade.id" class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ grade.materia }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ grade.periodo }}</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-lg font-bold text-yellow-600 dark:text-yellow-400">{{ grade.puntos }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">pts</p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <Button 
                                     variant="outline" 
                                     size="sm" 
-                                    class="w-full border-yellow-200 text-yellow-700 hover:bg-yellow-50"
+                                    class="w-full border-yellow-200 dark:border-yellow-600 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900"
                                     @click="router.visit(route('students.academic-grades'))"
                                 >
                                     Ver todas las notas
@@ -246,69 +258,99 @@
                             <QrCode class="mr-2 h-5 w-5" />
                             Mi Código QR
                         </CardTitle>
-                        <CardDescription> Usa este código para registrar tus depósitos de residuos </CardDescription>
+                        <CardDescription class="dark:text-gray-400"> Usa este código para registrar tus depósitos de residuos </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div class="flex flex-col items-center space-y-4 sm:flex-row sm:space-y-0 sm:space-x-8">
+                            <!-- QR Code con contorno bonito -->
                             <div class="rounded-lg border-2 border-green-200 dark:border-green-600 bg-white dark:bg-gray-800 p-4 shadow-lg">
-                                <div class="flex h-32 w-32 items-center justify-center rounded bg-gray-100 dark:bg-gray-700">
-                                    <!-- Aquí iría el QR code real -->
-                                    <QrCode class="h-16 w-16 text-gray-400" />
+                                <div v-if="qrLoading" class="h-48 w-48 flex items-center justify-center">
+                                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
                                 </div>
+                                <div v-else-if="qrError" class="h-48 w-48 flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
+                                    <QrCode class="h-16 w-16 text-gray-400 mb-2" />
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">QR no disponible</p>
+                                </div>
+                                <img 
+                                    v-else-if="qrUrl"
+                                    :src="qrUrl" 
+                                    :alt="'QR de ' + student.nombres + ' ' + student.apellidos"
+                                    class="h-48 w-48 rounded"
+                                />
                             </div>
+                            
+                            <!-- Información y botones -->
                             <div class="text-center sm:text-left">
                                 <h4 class="mb-2 font-semibold text-gray-900 dark:text-gray-100">Código: {{ student.codigo_estudiante || student.id }}</h4>
                                 <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
                                     Muestra este código QR al docente o encargado cuando realices un depósito de residuos.
                                 </p>
-                                <Button variant="outline" size="sm" class="border-green-200 dark:border-green-600 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900">
-                                    <Download class="mr-2 h-4 w-4" />
-                                    Descargar QR
-                                </Button>
+                                <div class="flex flex-col gap-2 sm:flex-row">
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        class="border-green-200 dark:border-green-600 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900"
+                                        @click="downloadQr"
+                                        :disabled="!qrUrl"
+                                    >
+                                        <Download class="mr-2 h-4 w-4" />
+                                        Descargar QR
+                                    </Button>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        class="border-blue-200 dark:border-blue-600 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900"
+                                        @click="printQr"
+                                        :disabled="!qrUrl"
+                                    >
+                                        <QrCode class="mr-2 h-4 w-4" />
+                                        Imprimir QR
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 <!-- Environmental Impact -->
-                <Card class="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+                <Card class="border-emerald-200 dark:border-emerald-700 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/50 dark:to-teal-900/50">
                     <CardHeader>
-                        <CardTitle class="flex items-center text-emerald-800">
+                        <CardTitle class="flex items-center text-emerald-800 dark:text-emerald-300">
                             <Leaf class="mr-2 h-5 w-5" />
                             Tu Impacto Ambiental
                         </CardTitle>
-                        <CardDescription> El impacto positivo que has generado en el medio ambiente </CardDescription>
+                        <CardDescription class="dark:text-gray-400"> El impacto positivo que has generado en el medio ambiente </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div class="grid gap-6 md:grid-cols-3">
                             <div class="text-center">
-                                <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                                    <TreePine class="h-6 w-6 text-green-600" />
+                                <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-800">
+                                    <TreePine class="h-6 w-6 text-green-600 dark:text-green-400" />
                                 </div>
-                                <div class="text-2xl font-bold text-green-900">{{ treesEquivalent }}</div>
-                                <div class="text-sm text-green-600">Árboles salvados</div>
+                                <div class="text-2xl font-bold text-green-900 dark:text-green-100">{{ treesEquivalent }}</div>
+                                <div class="text-sm text-green-600 dark:text-green-400">Árboles salvados</div>
                             </div>
 
                             <div class="text-center">
-                                <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-                                    <Droplets class="h-6 w-6 text-blue-600" />
+                                <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800">
+                                    <Droplets class="h-6 w-6 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <div class="text-2xl font-bold text-blue-900">{{ waterSaved }}L</div>
-                                <div class="text-sm text-blue-600">Agua ahorrada</div>
+                                <div class="text-2xl font-bold text-blue-900 dark:text-blue-100">{{ waterSaved }}L</div>
+                                <div class="text-sm text-blue-600 dark:text-blue-400">Agua ahorrada</div>
                             </div>
 
                             <div class="text-center">
-                                <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
-                                    <Zap class="h-6 w-6 text-purple-600" />
+                                <div class="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-800">
+                                    <Zap class="h-6 w-6 text-purple-600 dark:text-purple-400" />
                                 </div>
-                                <div class="text-2xl font-bold text-purple-900">{{ energySaved }}kWh</div>
-                                <div class="text-sm text-purple-600">Energía ahorrada</div>
+                                <div class="text-2xl font-bold text-purple-900 dark:text-purple-100">{{ energySaved }}kWh</div>
+                                <div class="text-sm text-purple-600 dark:text-purple-400">Energía ahorrada</div>
                             </div>
                         </div>
 
                         <div class="mt-6 text-center">
-                            <p class="font-medium text-emerald-700">
-                                ¡Felicitaciones! Tu compromiso con el reciclaje está haciendo la diferencia. 🌍💚
+                            <p class="font-medium text-emerald-700 dark:text-emerald-300">
+                                ¡Felicitaciones! Tu compromiso con el reciclaje está haciendo la diferencia.
                             </p>
                         </div>
                     </CardContent>
@@ -321,6 +363,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import UserQrCode from '@/components/UserQrCode.vue';
 import StudentLayout from '@/layouts/StudentLayout.vue';
 import { router } from '@inertiajs/vue3';
 import {
@@ -342,7 +385,7 @@ import {
     Users,
     Zap,
 } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 interface Props {
     student: {
@@ -372,11 +415,29 @@ interface Props {
     };
     totalPoints: number;
     ranking: number;
+    academicGrades?: Array<{
+        id: number;
+        materia: string;
+        puntos: number;
+        periodo: string;
+        fecha: string;
+    }>;
 }
 
 const props = defineProps<Props>();
 
+// Estados para el QR
+const qrUrl = ref('');
+const qrLoading = ref(true);
+const qrError = ref(false);
+
 const totalDeposits = computed(() => props.deposits.length);
+
+const recentGrades = computed(() => {
+    if (!props.academicGrades || props.academicGrades.length === 0) return [];
+    // Mostrar las 3 notas más recientes
+    return props.academicGrades.slice(0, 3);
+});
 
 const earnedAchievements = computed(() => {
     let count = 0;
@@ -429,4 +490,99 @@ const getInitials = (nombres: string, apellidos: string) => {
     const lastInitial = apellidos.charAt(0).toUpperCase();
     return `${firstInitial}${lastInitial}`;
 };
+
+// Cargar QR al montar el componente
+const loadQr = async () => {
+    qrLoading.value = true;
+    qrError.value = false;
+    
+    try {
+        const response = await fetch(route('qr.generate.user', props.student.id));
+        const data = await response.json();
+        
+        if (data.success && data.qr_url) {
+            qrUrl.value = data.qr_url;
+        } else {
+            qrError.value = true;
+        }
+    } catch (error) {
+        console.error('Error cargando QR:', error);
+        qrError.value = true;
+    } finally {
+        qrLoading.value = false;
+    }
+};
+
+// Descargar QR
+const downloadQr = () => {
+    if (!qrUrl.value) return;
+    const link = document.createElement('a');
+    link.href = qrUrl.value;
+    link.download = `qr_${props.student.nombres}_${props.student.apellidos}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+// Imprimir QR
+const printQr = () => {
+    if (!qrUrl.value) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>QR - ${props.student.nombres} ${props.student.apellidos}</title>
+                <style>
+                    body {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        font-family: Arial, sans-serif;
+                    }
+                    img {
+                        max-width: 400px;
+                        margin: 20px;
+                    }
+                    .info {
+                        text-align: center;
+                        margin: 20px;
+                    }
+                    h2 {
+                        margin: 10px 0;
+                    }
+                    @media print {
+                        body {
+                            padding: 20px;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="info">
+                    <h2>${props.student.nombres} ${props.student.apellidos}</h2>
+                    <p>Código: ${props.student.codigo_estudiante || props.student.id}</p>
+                    <p>${props.student.curso?.nombre || ''} "${props.student.paralelo?.nombre || ''}"</p>
+                </div>
+                <img src="${qrUrl.value}" alt="QR Code" />
+            </body>
+            </html>
+        `;
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        printWindow.onload = () => {
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        };
+    }
+};
+
+// Cargar QR al montar
+loadQr();
 </script>

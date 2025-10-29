@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button';
 import ConfirmDelete from '@/components/ConfirmDelete.vue';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,7 +10,7 @@ import UserQrCode from '@/components/UserQrCode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { AdminDocentesProps } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { BookOpen, Check, Edit, Eye, GraduationCap, Search, Trash2, UserCheck, XCircle } from 'lucide-vue-next';
+import { BookOpen, Edit, Eye, GraduationCap, Search, Trash2, UserCheck, XCircle } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
@@ -196,7 +196,7 @@ watch(
         <div class="container mx-auto py-6">
             <!-- ===== HEADER ===== -->
             <header class="mb-6">
-                <h1 class="text-3xl font-bold flex items-center gap-3">
+                <h1 class="flex items-center gap-3 text-3xl font-bold">
                     <UserCheck class="h-8 w-8 text-blue-600" />
                     Docentes
                 </h1>
