@@ -34,6 +34,8 @@ interface Estudiante {
     nombres: string;
     apellidos: string;
     puntaje: number;
+    puntos_depositos?: number;
+    puntos_extracurriculares?: number;
 }
 
 interface Props {
@@ -113,6 +115,8 @@ const estadisticasReporte = ref({
     total_estudiantes: 0,
     estudiantes_con_puntos: 0,
     puntos_asignados_total: 0,
+    puntos_disponibles_total: 0,
+    puntos_sin_asignar: 0,
     promedio_asignados: 0,
 });
 
@@ -123,6 +127,8 @@ async function obtenerEstadisticasReporte() {
             total_estudiantes: props.estudiantes.data.length,
             estudiantes_con_puntos: 0,
             puntos_asignados_total: 0,
+            puntos_disponibles_total: 0,
+            puntos_sin_asignar: 0,
             promedio_asignados: 0,
         };
         return;
@@ -134,7 +140,7 @@ async function obtenerEstadisticasReporte() {
             params.append('periodo_id', periodoId.value);
         }
 
-        const response = await fetch(`/docente/curso/${cursoData.value.curso.idCursoParalelo}/materia/${materiaId.value}/reporte?${params}`, {
+        const response = await fetch(`/docente/curso/${props.curso.idCursoParalelo}/materia/${materiaId.value}/reporte?${params}`, {
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 Accept: 'application/json',
@@ -582,10 +588,12 @@ async function exportarExcel() {
                                                     />
                                                 </div>
                                             </th>
-                                            <th class="w-12 px-3 py-3 text-center text-sm font-medium text-gray-500">#</th>
-                                            <th class="px-3 py-3 text-left text-sm font-medium text-gray-500">Estudiante</th>
-                                            <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500">Estado</th>
-                                            <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500">Puntos</th>
+                                            <th class="w-12 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">#</th>
+                                            <th class="px-3 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Estudiante</th>
+                                            <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Estado</th>
+                                            <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Depósitos</th>
+                                            <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Extracurricular</th>
+                                            <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y">
@@ -617,7 +625,7 @@ async function exportarExcel() {
                                             <td class="px-3 py-2 text-center">
                                                 <span
                                                     v-if="materiaId && atribuidosSet.has(e.id)"
-                                                    class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                                                    class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
                                                 >
                                                     Atribuido
                                                 </span>
@@ -629,8 +637,13 @@ async function exportarExcel() {
                                                 </span>
                                             </td>
                                             <td class="px-3 py-2 text-center">
+                                                <span class="text-sm font-medium text-blue-600 dark:text-blue-400">{{ e.puntos_depositos || 0 }}</span>
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
+                                                <span class="text-sm font-medium text-purple-600 dark:text-purple-400">{{ e.puntos_extracurriculares || 0 }}</span>
+                                            </td>
+                                            <td class="px-3 py-2 text-center">
                                                 <div class="flex flex-col items-center justify-center">
-                                                    <!-- Puntaje legible en modo oscuro -->
                                                     <span class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ e.puntaje }}</span>
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">puntos</span>
                                                 </div>
@@ -817,12 +830,16 @@ async function exportarExcel() {
                                                 <p class="text-amber-700">{{ estadisticasReporte.puntos_asignados_total }} puntos</p>
                                             </div>
                                             <div>
-                                                <span class="font-medium text-amber-800">Promedio de Puntos Asignados:</span>
-                                                <p class="text-amber-700">{{ estadisticasReporte.promedio_asignados }} puntos</p>
+                                                <span class="font-medium text-green-800">Puntos Disponibles Total:</span>
+                                                <p class="text-green-700">{{ estadisticasReporte.puntos_disponibles_total || 0 }} puntos</p>
                                             </div>
                                             <div>
-                                                <span class="font-medium text-amber-800">Materias Disponibles:</span>
-                                                <p class="text-amber-700">{{ cursoData.materias.length }} materias</p>
+                                                <span class="font-medium text-orange-800">Puntos Sin Asignar:</span>
+                                                <p class="text-orange-700 font-bold">{{ estadisticasReporte.puntos_sin_asignar || 0 }} puntos</p>
+                                            </div>
+                                            <div>
+                                                <span class="font-medium text-amber-800">Promedio de Puntos Asignados:</span>
+                                                <p class="text-amber-700">{{ estadisticasReporte.promedio_asignados }} puntos</p>
                                             </div>
                                             <div>
                                                 <span class="font-medium text-amber-800">Fecha de Consulta:</span>

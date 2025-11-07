@@ -80,7 +80,7 @@ const form = ref({
     materia_id: '',
     periodo_id: '',
     estudiante_id: '',
-    puntos: null as number | null,
+    puntos: 0 | 0,
     fecha_asignacion: new Date().toISOString().split('T')[0],
     comentario: '',
 });
@@ -93,7 +93,7 @@ const bulkForm = ref({
     curso_paralelo_id: '',
     materia_id: '',
     periodo_id: '',
-    puntos: null as number | null,
+    puntos: 0 | 0,
     estudiantes_ids: [] as number[],
 });
 
@@ -148,20 +148,30 @@ function openConfirmDialog() {
     }
     const student = availableStudents.value.find((s) => s.id === parseInt(form.value.estudiante_id));
     confirmData.value = { studentName: student ? `${student.apellidos}, ${student.nombres}` : 'el estudiante' };
-    showConfirmDialog.value = true;
+    showConfirmDialog.value = true; 
 }
 
 function submitAssignment() {
     showConfirmDialog.value = false;
     isSubmitting.value = true;
-    router.post(route('docente.asignaciones.store'), form.value, {
-        onSuccess: () => {
-            toast.success('¡Puntos asignados!', { description: `Se asignaron ${form.value.puntos} puntos correctamente` });
+    router.post(route('docente.curso.asignar-extracurriculares', { idCursoParalelo: selectedCourseParallel.value }), {
+        estudiantes: [parseInt(form.value.estudiante_id)],
+        idMateria: parseInt(form.value.materia_id),
+        idPeriodo: parseInt(form.value.periodo_id),
+        puntos: form.value.puntos,
+        comentario: form.value.comentario,
+    }, {
+        onSuccess: (response) => {
+            toast.success(' Puntos asignados correctamente', {
+                description: `Se asignaron ${form.value.puntos} puntos extracurriculares al estudiante`,
+            });
             resetForm();
         },
         onError: (errors) => {
-            const errorMessages = Object.values(errors).join(' ');
-            toast.error('Error al asignar puntos', { description: errorMessages || 'No se pudieron asignar los puntos. Intenta nuevamente.' });
+            const firstError = Object.values(errors)[0];
+            toast.error(' Error al asignar puntos', {
+                description: firstError || 'No se pudieron asignar los puntos. Intenta nuevamente.',
+            });
         },
         onFinish: () => {
             isSubmitting.value = false;
@@ -185,16 +195,25 @@ function openBulkConfirmDialog() {
 function submitBulkAssignment() {
     showBulkConfirmDialog.value = false;
     isBulkSubmitting.value = true;
-    router.post(route('docente.asignaciones.store.bulk'), bulkForm.value, {
-        onSuccess: () => {
-            toast.success('¡Asignación masiva completada!', {
-                description: `Se asignaron ${bulkForm.value.puntos} puntos a ${bulkConfirmData.value.numStudents} estudiante(s)`,
+    router.post(route('docente.curso.asignar-extracurriculares', { idCursoParalelo: bulkForm.value.curso_paralelo_id }), {
+        estudiantes: bulkForm.value.estudiantes_ids,
+        idMateria: parseInt(bulkForm.value.materia_id),
+        idPeriodo: parseInt(bulkForm.value.periodo_id),
+        puntos: bulkForm.value.puntos,
+        comentario: 'Asignación masiva',
+    }, {
+        onSuccess: (response) => {
+            const numEstudiantes = bulkConfirmData.value.numStudents || bulkForm.value.estudiantes_ids.length;
+            toast.success('Asignación masiva completada', {
+                description: `Se asignaron ${bulkForm.value.puntos} puntos extracurriculares a ${numEstudiantes} estudiante(s)`,
             });
             resetBulkForm();
         },
         onError: (errors) => {
-            const errorMessages = Object.values(errors).join(' ');
-            toast.error('Error en asignación masiva', { description: errorMessages || 'No se pudieron asignar los puntos. Intenta nuevamente.' });
+            const firstError = Object.values(errors)[0];
+            toast.error(' Error en asignación masiva', {
+                description: firstError || 'No se pudieron asignar los puntos. Intenta nuevamente.',
+            });
         },
         onFinish: () => {
             isBulkSubmitting.value = false;
@@ -207,7 +226,7 @@ function resetForm() {
         materia_id: '',
         periodo_id: '',
         estudiante_id: '',
-        puntos: null,
+        puntos: 0 | 0,
         fecha_asignacion: new Date().toISOString().split('T')[0],
         comentario: '',
     };
@@ -219,7 +238,7 @@ function resetBulkForm() {
         curso_paralelo_id: '',
         materia_id: '',
         periodo_id: '',
-        puntos: null,
+        puntos: 0 | 0,
         estudiantes_ids: [],
     };
 }

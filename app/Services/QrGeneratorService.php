@@ -2,195 +2,103 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Storage;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\RoundBlockSizeMode;
+use Endroid\QrCode\Logo\Logo;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+
 
 class QrGeneratorService
 {
     private $logoPath;
-    private $logoSizeRatio = 0.2;
-    private $qrSize = 200; // Tamaño base del QR en píxeles
+    private $logoSizeRatio = 0.20; // 20% del tamaño del QR (logo más pequeño)
+    private $qrSize = 300; // Tamaño del QR en píxeles (más compacto)
 
     public function __construct()
     {
-        $this->logoPath = base_path('public/img/LogoDario.png');
+        $this->logoPath = public_path('img/LogoDario.png');
     }
 
-    /**
-     * Generar código QR con logo para un usuario
-     */
-    public function generateQrWithLogo($userData, $filename = null)
-    {
-        try {
-            if (!$filename) {
-                $filename = 'qr_' . Str::slug($userData['nombres'] . '_' . $userData['primerApellido']) . '_' . time() . '.png';
-            }
+  public function generateQrWithLogo($userData, $filename = null)
+{
+    try {
+        $qrData = $userData['qr_codigo'] ?? $userData['id'];
 
-            $filePath = storage_path('app/public/qr_codes/' . $filename);
-            
-            // Crear directorio si no existe
-            if (!file_exists(dirname($filePath))) {
-                mkdir(dirname($filePath), 0755, true);
-            }
-
-            // Crear string simple para el QR
-            $qrString = $userData['id'] . '|' . $userData['nombres'] . '|' . $userData['primerApellido'] . '|' . $userData['email'];
-            
-            // Generar QR usando la API de QR Server
-            $qrUrl = $this->buildQrUrl($qrString);
-            
-            // Descargar y procesar la imagen
-            $qrImage = $this->downloadAndProcessQr($qrUrl);
-            
-            if ($qrImage) {
-                // Agregar logo si existe
-                if (file_exists($this->logoPath)) {
-                    $qrImage = $this->addLogoToQr($qrImage);
-                }
-                
-                // Guardar imagen final
-                imagepng($qrImage, $filePath);
-                imagedestroy($qrImage);
-                
-                return [
-                    'success' => true,
-                    'file_path' => $filePath,
-                    'public_url' => Storage::url('qr_codes/' . $filename),
-                    'filename' => $filename
-                ];
-            }
-
-            return [
-                'success' => false,
-                'error' => 'No se pudo generar el código QR'
-            ];
-        } catch (\Exception $e) {
-            \Log::error('Error generando QR: ' . $e->getMessage());
-            return [
-                'success' => false,
-                'error' => 'Error: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Construir URL para generar QR
-     */
-    private function buildQrUrl($qrString)
-    {
-        $encodedData = urlencode($qrString);
-        
-        return 'https://api.qrserver.com/v1/create-qr-code/?' . http_build_query([
-            'size' => $this->qrSize . 'x' . $this->qrSize,
-            'data' => $encodedData,
-            'format' => 'png',
-            'charset' => 'utf-8',
-            'margin' => 2,
-            'color' => '000000',
-            'bgcolor' => 'FFFFFF',
-            'ecc' => 'H'
-        ]);
-    }
-
-    /**
-     * Descargar y procesar imagen QR
-     */
-    private function downloadAndProcessQr($url)
-    {
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 10,
-                'user_agent' => 'Mozilla/5.0 (compatible; QR Generator)'
-            ]
-        ]);
-
-        $imageData = @file_get_contents($url, false, $context);
-        
-        if ($imageData === false) {
-            return null;
-        }
-
-        $image = imagecreatefromstring($imageData);
-        
-        if ($image === false) {
-            return null;
-        }
-
-        return $image;
-    }
-
-    /**
-     * Agregar logo al QR
-     */
-    private function addLogoToQr($qrImage)
-    {
-        if (!file_exists($this->logoPath)) {
-            return $qrImage;
-        }
-
-        $logo = imagecreatefrompng($this->logoPath);
-        
-        if ($logo === false) {
-            return $qrImage;
-        }
-
-        // Calcular tamaño del logo (más pequeño para mejor detección)
-        $logoSize = intval($this->qrSize * 0.15); // Reducido de 0.2 a 0.15
-        
-        // Redimensionar logo manteniendo proporción cuadrada
-        $resizedLogo = imagecreatetruecolor($logoSize, $logoSize);
-        imagealphablending($resizedLogo, false);
-        imagesavealpha($resizedLogo, true);
-        
-        // Crear fondo blanco para el logo
-        $white = imagecolorallocate($resizedLogo, 255, 255, 255);
-        imagefill($resizedLogo, 0, 0, $white);
-        
-        imagecopyresampled(
-            $resizedLogo, $logo,
-            0, 0, 0, 0,
-            $logoSize, $logoSize,
-            imagesx($logo), imagesy($logo)
+        $qrCode = new QrCode(
+            data: $qrData,
+            encoding: new Encoding('UTF-8'),
+            errorCorrectionLevel: ErrorCorrectionLevel::High,
+            size: $this->qrSize,
+            margin: 10,
+            roundBlockSizeMode: RoundBlockSizeMode::Margin
         );
 
-        // Posicionar logo en el centro del QR
-        $logoX = ($this->qrSize - $logoSize) / 2;
-        $logoY = ($this->qrSize - $logoSize) / 2;
+        $writer = new PngWriter();
 
-        // Crear un marco blanco alrededor del logo para mejor contraste
-        $margin = 2;
-        $frameSize = $logoSize + ($margin * 2);
-        $frameX = $logoX - $margin;
-        $frameY = $logoY - $margin;
-        
-        // Dibujar marco blanco
-        imagefilledrectangle($qrImage, $frameX, $frameY, $frameX + $frameSize, $frameY + $frameSize, $white);
+        // ✅ Logo actualizado a la sintaxis de v6
+        $logo = null;
+        if (file_exists($this->logoPath)) {
+            $logoSize = (int)($this->qrSize * $this->logoSizeRatio);
+            $logo = new Logo(
+                path: $this->logoPath,
+                resizeToWidth: $logoSize
+            );
+        }
 
-        // Pegar logo en el QR
-        imagecopy($qrImage, $resizedLogo, $logoX, $logoY, 0, 0, $logoSize, $logoSize);
+        $result = $writer->write($qrCode, $logo);
 
-        // Limpiar memoria
-        imagedestroy($logo);
-        imagedestroy($resizedLogo);
+        $qrString = $result->getString();
+        $qrBase64 = base64_encode($qrString);
+        $qrDataUrl = 'data:image/png;base64,' . $qrBase64;
 
-        return $qrImage;
+        if (!$filename) {
+            $nombreLimpio = $this->normalizarNombre(
+                $userData['nombres'] . ' ' . ($userData['primerApellido'] ?? '') . ' ' . ($userData['segundoApellido'] ?? '')
+            );
+            $filename = 'qr_' . $nombreLimpio . '.png';
+        }
+
+        return [
+            'success' => true,
+            'qr_url' => $qrDataUrl,
+            'qr_string' => $qrString,
+            'filename' => $filename,
+            'qr_data' => $qrData
+        ];
+    } catch (\Exception $e) {
+        Log::error('Error generando QR: ' . $e->getMessage());
+        return [
+            'success' => false,
+            'error' => 'Error: ' . $e->getMessage()
+        ];
+    }
+}
+
+    private function normalizarNombre($nombre)
+    {
+        $nombre = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nombre);
+        $nombre = strtolower(trim($nombre));
+        $nombre = preg_replace('/\s+/', '_', $nombre);
+        $nombre = preg_replace('/[^a-z0-9_]/', '', $nombre);
+        return $nombre;
     }
 
-    /**
-     * Generar QR para múltiples usuarios (batch)
-     */
     public function generateBatchQr($users)
     {
         $results = [];
-        
         foreach ($users as $user) {
             $result = $this->generateQrWithLogo($user);
             $results[] = array_merge($result, ['user_id' => $user['id']]);
         }
-
         return $results;
     }
+
+
+
+
 
     /**
      * Limpiar archivos QR antiguos

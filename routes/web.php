@@ -219,12 +219,16 @@ Route::middleware(['auth', RoleMiddleware::class.':docente'])->group(function ()
         ->name('docente.curso.ranking');
 
     Route::post('/docente/curso/{idCursoParalelo}/asignar-puntos', [DocenteDashboardController::class, 'asignarPuntos'])->name('docente.curso.asignar');
+    Route::post('/docente/curso/{idCursoParalelo}/asignar-puntos-extracurriculares', [DocenteDashboardController::class, 'asignarPuntosExtracurriculares'])->name('docente.curso.asignar-extracurriculares');
+    Route::get('/docente/curso/{idCursoParalelo}/materia/{idMateria}/puntajes-por-tipo', [DocenteDashboardController::class, 'obtenerPuntajesPorTipo'])->name('docente.curso.puntajes-por-tipo');
     Route::get('/docente/estudiantes/{idCursoParalelo}', [DocenteDashboardController::class, 'estudiantesPorCurso'])
         ->name('docente.estudiantes');
     Route::get('/docente/reportes/curso/{idCursoParalelo}', [DocenteDashboardController::class, 'reportePuntosPorCurso'])
         ->name('docente.reportes.curso');
     Route::get('/docente/reportes/materia/{idCursoParalelo}/{idMateria}', [DocenteDashboardController::class, 'reportePuntosPorMateria'])
         ->name('docente.reportes.materia');
+    Route::get('/docente/curso/{idCursoParalelo}/materia/{idMateria}/reporte', [DocenteDashboardController::class, 'reportePuntosPorMateria'])
+        ->name('docente.curso.materia.reporte');
     Route::get('/docente/exportar/materia/{idCursoParalelo}/{idMateria}', [DocenteDashboardController::class, 'exportarMateriaExcel'])
         ->name('docente.curso.exportar-materia-excel');
     // Ruta para descargar plantilla de estudiantes
@@ -241,10 +245,6 @@ Route::middleware(['auth', RoleMiddleware::class.':docente'])->group(function ()
     // Asignación de Puntos
     Route::get('/docente/asignacion-puntos', [DocenteDashboardController::class, 'asignacionPuntos'])
         ->name('docente.asignacion-puntos');
-    Route::post('/docente/asignaciones', [DocenteDashboardController::class, 'storeAsignacion'])
-        ->name('docente.asignaciones.store');
-    Route::post('/docente/asignaciones/masiva', [DocenteDashboardController::class, 'storeBulkAsignacion'])
-        ->name('docente.asignaciones.bulk');
     
     // Estadísticas Avanzadas
     Route::get('/docente/estadisticas-avanzadas', [DocenteDashboardController::class, 'estadisticasAvanzadas'])
@@ -294,6 +294,22 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/qr/cleanup', [QrController::class, 'cleanupQrFiles'])
         ->name('qr.cleanup');
     
+    // Obtener estudiantes para gestión QR
+    Route::get('/qr/students', [QrController::class, 'getStudentsForQr'])
+        ->name('qr.students');
+    
+    // Obtener cursos para gestión QR
+    Route::get('/qr/courses', [QrController::class, 'getCoursesForQr'])
+        ->name('qr.courses');
+    
+    // Activar QR (generar nuevo código)
+    Route::post('/qr/activate/{userId}', [QrController::class, 'activateQr'])
+        ->name('qr.activate');
+    
+    // Desactivar QR (establecer como vacío)
+    Route::post('/qr/deactivate/{userId}', [QrController::class, 'deactivateQr'])
+        ->name('qr.deactivate');
+    
     // Estadísticas de QR
     Route::get('/qr/stats', [QrController::class, 'getQrStats'])
         ->name('qr.stats');
@@ -312,6 +328,7 @@ Route::middleware(['auth', RoleMiddleware::class.':estudiante'])->group(function
     Route::get('/estudiante/perfil', [StudentController::class, 'profile'])->name('students.profile');
     Route::get('/estudiante/ranking', [StudentController::class, 'ranking'])->name('students.ranking');
     Route::get('/estudiante/notas', [StudentController::class, 'getGradesByBimester'])->name('students.academic-grades');
+    Route::get('/estudiante/puntajes-por-tipo', [StudentController::class, 'obtenerPuntajesPorTipo'])->name('students.puntajes-por-tipo');
 });
 
 require __DIR__.'/auth.php';

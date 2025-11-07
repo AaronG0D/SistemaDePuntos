@@ -1,6 +1,8 @@
 <template>
+    
     <StudentLayout :student="student">
         <!-- Hero Section -->
+
         <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-6 py-12 sm:px-8 lg:px-12">
             <div class="mx-auto max-w-7xl text-center">
                 <div class="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/20 text-3xl font-bold text-white shadow-lg backdrop-blur-sm">
@@ -200,10 +202,6 @@
                                     <span class="font-medium dark:text-gray-200">{{ bestBimester }}</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600 dark:text-gray-400">Peso total reciclado:</span>
-                                    <span class="font-medium dark:text-gray-200">{{ totalWeight }}kg</span>
-                                </div>
-                                <div class="flex justify-between">
                                     <span class="text-gray-600 dark:text-gray-400">Depósitos totales:</span>
                                     <span class="font-medium dark:text-gray-200">{{ deposits.length }}</span>
                                 </div>
@@ -230,10 +228,10 @@
                                     <div v-for="grade in recentGrades" :key="grade.id" class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-700 last:border-0">
                                         <div class="flex-1">
                                             <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ grade.materia }}</p>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ grade.periodo }}</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ currentPeriod?.nombre }}</p>
                                         </div>
                                         <div class="text-right">
-                                            <p class="text-lg font-bold text-yellow-600 dark:text-yellow-400">{{ grade.puntos }}</p>
+                                            <p class="text-lg font-bold text-yellow-600 dark:text-yellow-400">{{ grade.total }}</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">pts</p>
                                         </div>
                                     </div>
@@ -251,8 +249,39 @@
                     </Card>
                 </div>
 
+                <!-- Alerta QR Desactivado -->
+                <div v-if="!student.qr_codigo || student.qr_codigo === ''" class="rounded-lg border-2 border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/20 p-6">
+                    <div class="flex items-start gap-4">
+                        <div class="rounded-full bg-red-100 dark:bg-red-900 p-3">
+                            <AlertCircle class="h-6 w-6 text-red-600 dark:text-red-400" />
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-red-900 dark:text-red-100 mb-2">
+                                ⚠️ Código QR Desactivado
+                            </h3>
+                            <p class="text-red-800 dark:text-red-200 mb-3">
+                                Tu código QR está actualmente <strong>desactivado</strong>. No podrás acumular puntos ni registrar depósitos hasta que sea reactivado.
+                            </p>
+                            <div class="rounded-md bg-red-100 dark:bg-red-900/40 p-4 mb-3">
+                                <p class="text-sm text-red-900 dark:text-red-100 font-medium mb-2">
+                                    📞 Para reactivar tu código QR:
+                                </p>
+                                <ul class="text-sm text-red-800 dark:text-red-200 space-y-1 ml-4">
+                                    <li>• Comunícate con la <strong>Dirección del colegio</strong></li>
+                                    <li>• Solicita información sobre la reactivación</li>
+                                    <li>• Proporciona tu código de estudiante: <strong>{{ student.id }}</strong></li>
+                                </ul>
+                            </div>
+                           
+                            <p class="text-xs text-red-700 dark:text-red-300">
+                                Una vez reactivado, podrás volver a acumular puntos y participar en el programa de reciclaje.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- QR Code -->
-                <Card class="border-green-200 dark:border-green-700">
+                <Card v-else class="border-green-200 dark:border-green-700">
                     <CardHeader>
                         <CardTitle class="flex items-center text-green-800 dark:text-green-300">
                             <QrCode class="mr-2 h-5 w-5" />
@@ -348,6 +377,28 @@
                             </div>
                         </div>
 
+                        <!-- Descripción de cálculos -->
+                        <div class="mt-6 rounded-lg bg-gray-50 p-4 dark:bg-gray-800/50">
+                            <h4 class="mb-3 font-semibold text-gray-800 dark:text-gray-200">¿Cómo calculamos tu impacto?</h4>
+                            <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                                <div class="flex items-center gap-2">
+                                    <TreePine class="h-4 w-4 text-green-600" />
+                                    <p><strong>Árboles salvados:</strong> 1 árbol por cada 100 puntos de reciclaje (basado en estudios de conservación forestal)</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <Droplets class="h-4 w-4 text-blue-600" />
+                                    <p><strong>Agua ahorrada:</strong> 3 litros por punto (promedio del ahorro de agua en procesos de reciclaje vs. producción nueva)</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <Zap class="h-4 w-4 text-yellow-600" />
+                                    <p><strong>Energía ahorrada:</strong> 0.4 kWh por punto (reducción de energía al reciclar materiales vs. crear nuevos)</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-xs text-gray-500 dark:text-gray-500">
+                                *Estimaciones basadas en estudios ambientales de la EPA y organizaciones de reciclaje internacionales
+                            </div>
+                        </div>
+
                         <div class="mt-6 text-center">
                             <p class="font-medium text-emerald-700 dark:text-emerald-300">
                                 ¡Felicitaciones! Tu compromiso con el reciclaje está haciendo la diferencia.
@@ -363,10 +414,10 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import UserQrCode from '@/components/UserQrCode.vue';
 import StudentLayout from '@/layouts/StudentLayout.vue';
 import { router } from '@inertiajs/vue3';
 import {
+    AlertCircle,
     ArrowLeft,
     Award,
     BookOpen,
@@ -393,6 +444,7 @@ interface Props {
         nombres: string;
         apellidos: string;
         codigo_estudiante?: string;
+        qr_codigo?: string | null;
         curso?: {
             id?: number;
             nombre: string;
@@ -418,9 +470,9 @@ interface Props {
     academicGrades?: Array<{
         id: number;
         materia: string;
-        puntos: number;
+        total: number;
         periodo: string;
-        fecha: string;
+        ultima_fecha: string;
     }>;
 }
 
@@ -441,10 +493,20 @@ const recentGrades = computed(() => {
 
 const earnedAchievements = computed(() => {
     let count = 0;
-    if (props.deposits.length > 0) count++; // Primer depósito
-    if (props.totalPoints >= 100) count++; // 100 puntos
-    if (props.deposits.length >= 10) count++; // 10 depósitos
-    if (props.totalPoints >= 500) count++; // 500 puntos
+    if (props.deposits.length > 0) count++; // Eco-Iniciado: Primer depósito
+    if (props.totalPoints >= 100) count++; // Reciclador Activo: 100 puntos
+    if (props.deposits.length >= 10) count++; // Guardián Verde: 10 depósitos
+    if (props.totalPoints >= 300) count++; // Campeón Ecológico: 300 puntos
+    if (!props.deposits || props.deposits.length === 0) return 0;
+                                                                  //Deposito en todos los bimestres
+    const bimesterPoints = [1, 2, 3].map((b) => ({
+        bimester: b,
+        points: props.deposits.filter((d) => d.bimestre === b).reduce((sum, d) => sum + d.puntaje_obtenido, 0),
+    }));
+    const allBimestersHaveDeposits = bimesterPoints.every((b) => b.points > 0);
+    if (allBimestersHaveDeposits) count++; // Eco-Responsable: Primer depósito en todos los bimestres
+    
+    
     return count;
 });
 
@@ -454,35 +516,41 @@ const averagePointsPerDeposit = computed(() => {
 });
 
 const bestBimester = computed(() => {
-    const bimesterPoints = [1, 2, 3, 4].map((b) => ({
+    const bimesterPoints = [1, 2, 3].map((b) => ({
         bimester: b,
         points: props.deposits.filter((d) => d.bimestre === b).reduce((sum, d) => sum + d.puntaje_obtenido, 0),
     }));
 
     const best = bimesterPoints.reduce((max, current) => (current.points > max.points ? current : max));
 
-    const bimesterNames = ['Primer', 'Segundo', 'Tercer', 'Cuarto'];
-    return best.points > 0 ? `${bimesterNames[best.bimester - 1]} Bimestre` : 'Ninguno';
+    const bimesterNames = ['Primer', 'Segundo', 'Tercer'];
+    return best.points > 0 ? `${bimesterNames[best.bimester - 1]} Trimestre` : 'Ninguno';
 });
 
-const totalWeight = computed(() => {
-    return props.deposits.reduce((sum, d) => sum + d.cantidad, 0).toFixed(1);
-});
-
-// Cálculos de impacto ambiental (estimaciones)
+// Cálculos de impacto ambiental basados en puntos de reciclaje (igual que Dashboard)
 const treesEquivalent = computed(() => {
-    // Aproximadamente 1 árbol por cada 17kg de papel reciclado
-    return Math.round(parseFloat(totalWeight.value) / 17);
+    const totalPoints = props.totalPoints;
+    if (totalPoints === 0) return 0;
+    
+    // 1 árbol por cada 100 puntos de reciclaje
+    const treesSaved = totalPoints * 0.01;
+    return Math.max(Math.round(treesSaved), 0);
 });
 
 const waterSaved = computed(() => {
-    // Aproximadamente 50L de agua ahorrada por kg de material reciclado
-    return Math.round(parseFloat(totalWeight.value) * 50);
+    const totalPoints = props.totalPoints;
+    if (totalPoints === 0) return 0;
+    
+    // 3 litros por punto
+    return Math.max(Math.round(totalPoints * 3), 0);
 });
 
 const energySaved = computed(() => {
-    // Aproximadamente 3kWh de energía ahorrada por kg de material reciclado
-    return Math.round(parseFloat(totalWeight.value) * 3);
+    const totalPoints = props.totalPoints;
+    if (totalPoints === 0) return 0;
+    
+    // 0.4 kWh por punto
+    return Math.max(Math.round(totalPoints * 0.4), 0);
 });
 
 const getInitials = (nombres: string, apellidos: string) => {

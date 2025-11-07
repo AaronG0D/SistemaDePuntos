@@ -26,6 +26,10 @@ class Deposito extends Model
         'puntajeTipoBasura' => 'integer'
     ];
 
+    protected $appends = [
+        'puntos_generados'
+    ];
+
     public function basurero(): BelongsTo
     {
         return $this->belongsTo(Basurero::class, 'idBasurero', 'idBasurero');
@@ -44,5 +48,33 @@ class Deposito extends Model
     public function periodo(): BelongsTo
     {
         return $this->belongsTo(PeriodoAcademico::class, 'idPeriodo', 'idPeriodo');
+    }
+
+    // ===== SCOPES =====
+    
+    /**
+     * Scope para filtrar por fecha específica
+     */
+    public function scopePorFecha($query, $fecha)
+    {
+        return $query->whereDate('fechaHora', $fecha);
+    }
+
+    /**
+     * Scope para filtrar depósitos recientes (últimos N días)
+     */
+    public function scopeRecientes($query, $dias = 7)
+    {
+        return $query->where('fechaHora', '>=', now()->subDays($dias));
+    }
+
+    // ===== ACCESSORS =====
+    
+    /**
+     * Accessor para obtener los puntos generados por este depósito
+     */
+    public function getPuntosGeneradosAttribute()
+    {
+        return $this->tipoBasura ? $this->tipoBasura->puntos : 0;
     }
 }

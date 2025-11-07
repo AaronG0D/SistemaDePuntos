@@ -56,7 +56,7 @@ class EstudianteController extends Controller
             });
         }
 
-        $estudiantes = $query->paginate(10);
+        $estudiantes = $query->paginate(12);
 
         // Trae solo cursos y paralelos activos para los selectores
         $cursos = \App\Models\Curso::where('estado', true)->orderBy('nombre')->get(['idCurso', 'nombre']);

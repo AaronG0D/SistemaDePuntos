@@ -108,13 +108,34 @@
                                         <Badge variant="outline">{{ student.curso?.nombre }} "{{ student.paralelo?.nombre }}"</Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <span class="font-medium text-blue-600 dark:text-blue-400">{{ student.total_puntos_asignados || 0 }}</span>
+                                        <div class="flex items-center gap-2">
+                                            <div class="rounded-full bg-blue-100 p-1 dark:bg-blue-900">
+                                                <GraduationCap class="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <Badge variant="secondary" class="bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                                                {{ student.total_puntos_asignados || 0 }} pts
+                                            </Badge>
+                                        </div>
                                     </TableCell>
                                     <TableCell>
-                                        <span class="font-medium text-green-600 dark:text-green-400">{{ student.total_puntos_depositos || 0 }}</span>
+                                        <div class="flex items-center gap-2">
+                                            <div class="rounded-full bg-green-100 p-1 dark:bg-green-900">
+                                                <Recycle class="h-3 w-3 text-green-600 dark:text-green-400" />
+                                            </div>
+                                            <Badge variant="secondary" class="bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                                                {{ student.total_puntos_depositos || 0 }} pts
+                                            </Badge>
+                                        </div>
                                     </TableCell>
                                     <TableCell>
-                                        <span class="font-bold text-slate-900 dark:text-slate-100">{{ student.total_puntos || 0 }}</span>
+                                        <div class="flex items-center gap-2">
+                                            <div class="rounded-full bg-purple-100 p-1 dark:bg-purple-900">
+                                                <Trophy class="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                                            </div>
+                                            <Badge class="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 font-bold">
+                                                {{ student.total_puntos || 0 }} pts
+                                            </Badge>
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary">{{ student.total_asignaciones || 0 }}</Badge>
@@ -181,7 +202,7 @@
 
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { ChevronLeft, ChevronRight, Users } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, GraduationCap, Recycle, Trophy, Users } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
 import { Badge } from '@/components/ui/badge';
@@ -331,15 +352,15 @@ const getInitials = (nombres: string, apellidos: string) => {
 
 const getPerformanceBadge = (promedio: number) => {
     if (promedio >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    if (promedio >= 60) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    if (promedio >= 40) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+    if (promedio >= 50) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    if (promedio >= 30) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
     return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
 };
 
 const getPerformanceLabel = (promedio: number) => {
     if (promedio >= 80) return 'Excelente';
-    if (promedio >= 60) return 'Bueno';
-    if (promedio >= 40) return 'Regular';
+    if (promedio >= 50) return 'Normal';
+    if (promedio >= 30) return 'Regular';
     return 'Necesita mejora';
 };
 

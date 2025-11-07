@@ -246,7 +246,7 @@ class DocenteDashboardController extends Controller
             $atribuidosPorMateria[$a->materia->idMateria] = $ids;
         }
 
-        // Estudiantes con total de puntos por periodo seleccionado
+        // Estudiantes con total de puntos por periodo seleccionado (desglosados por tipo)
         $estudiantesQuery = DB::table('estudiante')
             ->join('usuario', 'estudiante.idUser', '=', 'usuario.id')
             ->leftJoin('puntaje', function($join) use ($periodoId) {
@@ -256,12 +256,16 @@ class DocenteDashboardController extends Controller
                 }
             })
             ->where('estudiante.idCursoParalelo', $idCursoParalelo)
-           
+            ->groupBy('estudiante.idUser', 'usuario.nombres', 'usuario.primerApellido', 'usuario.segundoApellido')
             ->select(
                 'estudiante.idUser as id',
                 'usuario.nombres',
+                'usuario.primerApellido',
+                'usuario.segundoApellido',
                 DB::raw("CONCAT(IFNULL(usuario.primerApellido,''),' ',IFNULL(usuario.segundoApellido,'')) as apellidos"),
-                DB::raw('COALESCE(puntaje.puntos,0) as puntaje')
+                DB::raw("COALESCE(SUM(CASE WHEN puntaje.tipo_puntaje = 'depositos' THEN puntaje.puntos ELSE 0 END), 0) as puntos_depositos"),
+                DB::raw("COALESCE(SUM(CASE WHEN puntaje.tipo_puntaje = 'extracurricular' THEN puntaje.puntos ELSE 0 END), 0) as puntos_extracurriculares"),
+                DB::raw('COALESCE(SUM(puntaje.puntos), 0) as puntaje')
             );
 
         if ($request->has('search') && $request->input('search')) {
@@ -547,42 +551,284 @@ class DocenteDashboardController extends Controller
 
         // Atribuir puntajes existentes del período a la materia (una fila por puntaje)
         $now = now();
-        $inserted = 0; $skipped = 0; $estudiantesAfectados = 0;
-        foreach ($ids as $idUser) {
-            $puntajes = DB::table('puntaje')
-                ->where('idUser', $idUser)
-                ->where('idPeriodo', $periodoId)
-                ->get(['idPuntaje','puntos']);
-            $tuvoInsercion = false;
-            foreach ($puntajes as $p) {
-                try {
+        $inserted = 0; $updated = 0; $skipped = 0; $estudiantesAfectados = 0;
+        
+        DB::beginTransaction();
+        try {
+            foreach ($ids as $idUser) {
+                $puntajes = DB::table('puntaje')
+                    ->where('idUser', $idUser)
+                    ->where('idPeriodo', $periodoId)
+                    ->get(['idPuntaje','puntos']);
+                
+                $tuvoInsercion = false;
+                foreach ($puntajes as $p) {
+                    // Verificar si ya existe la asignación
+                    $asignacionExistente = DB::table('asignaciones_puntaje')
+                        ->where('idPuntaje', $p->idPuntaje)
+                        ->where('idDocente', $docente->idDocente)
+                        ->where('idMateria', (int) $data['idMateria'])
+                        ->first();
+                    
+                    if ($asignacionExistente) {
+                        // Si existe, actualizar puntos sumando
+                        DB::table('asignaciones_puntaje')
+                            ->where('idAsignacion', $asignacionExistente->idAsignacion)
+                            ->update([
+                                'puntos' => DB::raw('puntos + ' . (int) $p->puntos),
+                                'comentario' => $data['comentario'] ?? $asignacionExistente->comentario,
+                                'updated_at' => $now,
+                            ]);
+                        $updated++;
+                        $tuvoInsercion = true;
+                    } else {
+                        // Si no existe, crear nueva asignación
+                        DB::table('asignaciones_puntaje')->insert([
+                            'idPuntaje' => $p->idPuntaje,
+                            'idPeriodo' => $periodoId,
+                            'idDocente' => $docente->idDocente,
+                            'idMateria' => (int) $data['idMateria'],
+                            'fecha_asignacion' => $now,
+                            'porcentaje' => 100,
+                            'puntos' => (int) $p->puntos,
+                            'comentario' => $data['comentario'] ?? null,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                        $inserted++;
+                        $tuvoInsercion = true;
+                    }
+                }
+                if ($tuvoInsercion) { $estudiantesAfectados++; }
+            }
+            
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al asignar puntos: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al asignar puntos: ' . $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'message' => 'Atribución realizada exitosamente',
+            'insertados' => $inserted,
+            'actualizados' => $updated,
+            'estudiantes_afectados' => $estudiantesAfectados,
+        ], 201);
+    }
+
+    /**
+     * Asignar puntos extracurriculares manuales (campañas, actividades, concursos, eventos)
+     */
+    public function asignarPuntosExtracurriculares(Request $request, $idCursoParalelo)
+    {
+        $docente = Docente::where('idUser', Auth::id())->firstOrFail();
+        
+        // Seguridad: verificar acceso del docente al curso-paralelo
+        if (!$docente->docenteMateriaCursos()->where('idCursoParalelo', $idCursoParalelo)->exists()) {
+            abort(403, 'No tienes acceso a este curso');
+        }
+
+        $data = $request->validate([
+            'estudiantes' => 'sometimes|array',
+            'estudiantes.*' => 'integer|exists:estudiante,idUser',
+            'idMateria' => 'required|integer|exists:materia,idMateria',
+            'idPeriodo' => 'nullable|integer|exists:periodos_academicos,idPeriodo',
+            'puntos' => 'required|integer|min:1',
+            'comentario' => 'nullable|string|max:500',
+            'select_all' => 'sometimes|boolean',
+            'search' => 'sometimes|string|nullable',
+        ]);
+
+        // Validar que la materia pertenece al docente en este curso
+        $tieneMateria = $docente->docenteMateriaCursos()
+            ->where('idCursoParalelo', $idCursoParalelo)
+            ->where('idMateria', $data['idMateria'])
+            ->exists();
+        
+        if (!$tieneMateria) {
+            return response()->json(['error' => 'No puedes asignar puntos a esta materia en este curso'], 403);
+        }
+
+        // Usar el período seleccionado o el período activo
+        if (!empty($data['idPeriodo'])) {
+            $periodoId = (int) $data['idPeriodo'];
+        } else {
+            $periodoActivo = \App\Models\PeriodoAcademico::where('activo', true)->first();
+            if (!$periodoActivo) {
+                return response()->json(['error' => 'No hay un período académico activo para asignar.'], 422);
+            }
+            $periodoId = $periodoActivo->idPeriodo;
+        }
+        
+        $puntosNuevos = (int) $data['puntos'];
+
+        // Resolver estudiantes destino
+        $ids = $data['estudiantes'] ?? [];
+        if (($data['select_all'] ?? false) === true && empty($ids)) {
+            $q = DB::table('estudiante')
+                ->join('usuario', 'estudiante.idUser', '=', 'usuario.id')
+                ->where('estudiante.idCursoParalelo', $idCursoParalelo)
+                ->select('estudiante.idUser');
+            
+            if (!empty($data['search'])) {
+                $s = $data['search'];
+                $q->where(function($qq) use ($s) {
+                    $qq->where('usuario.nombres', 'like', "%{$s}%")
+                       ->orWhere('usuario.primerApellido', 'like', "%{$s}%")
+                       ->orWhere('usuario.segundoApellido', 'like', "%{$s}%");
+                });
+            }
+            $ids = $q->pluck('estudiante.idUser')->unique()->values()->all();
+        }
+
+        if (empty($ids)) {
+            return response()->json(['error' => 'Debes seleccionar al menos un estudiante.'], 422);
+        }
+
+        // Asignar puntos extracurriculares
+        $estudiantesAfectados = 0;
+        $now = now();
+
+        DB::beginTransaction();
+        try {
+            foreach ($ids as $idUser) {
+                // Paso 1: Buscar si existe un puntaje extracurricular para este estudiante en este periodo
+                $puntajeExtracurricular = DB::table('puntaje')
+                    ->where('idUser', $idUser)
+                    ->where('idPeriodo', $periodoId)
+                    ->where('tipo_puntaje', 'extracurricular')
+                    ->first();
+
+                if ($puntajeExtracurricular) {
+                    // Ya existe un puntaje extracurricular, usar ese
+                    $idPuntaje = $puntajeExtracurricular->idPuntaje;
+                    
+                    // Sumar puntos en la tabla puntaje
+                    DB::table('puntaje')
+                        ->where('idPuntaje', $idPuntaje)
+                        ->update([
+                            'puntos' => DB::raw('puntos + ' . $puntosNuevos),
+                            'comentario' => $data['comentario'] ?? DB::raw('comentario'),
+                            'updated_at' => $now,
+                        ]);
+                    
+                    // Paso 2: Verificar si ya existe asignación para esta materia y docente
+                    $asignacionExistente = DB::table('asignaciones_puntaje')
+                        ->where('idPuntaje', $idPuntaje)
+                        ->where('idMateria', $data['idMateria'])
+                        ->where('idDocente', $docente->idDocente)
+                        ->first();
+                    
+                    if ($asignacionExistente) {
+                        // Ya existe la asignación, solo sumar puntos
+                        DB::table('asignaciones_puntaje')
+                            ->where('idAsignacion', $asignacionExistente->idAsignacion)
+                            ->update([
+                                'puntos' => DB::raw('puntos + ' . $puntosNuevos),
+                                'comentario' => $data['comentario'] ?? DB::raw('comentario'),
+                                'updated_at' => $now,
+                            ]);
+                    } else {
+                        // No existe asignación para esta materia/docente, crear nueva
+                        DB::table('asignaciones_puntaje')->insert([
+                            'idPuntaje' => $idPuntaje,
+                            'idPeriodo' => $periodoId,
+                            'idDocente' => $docente->idDocente,
+                            'idMateria' => (int) $data['idMateria'],
+                            'fecha_asignacion' => $now,
+                            'puntos' => $puntosNuevos,
+                            'comentario' => $data['comentario'] ?? null,
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                    }
+                } else {
+                    // No existe puntaje extracurricular, crear nuevo
+                    $puntaje = Puntaje::create([
+                        'idUser' => $idUser,
+                        'idPeriodo' => $periodoId,
+                        'puntos' => $puntosNuevos,
+                        'tipo_puntaje' => 'extracurricular',
+                        'comentario' => $data['comentario'] ?? null,
+                        'fechaAsignacion' => $now,
+                        'estado' => 'activo',
+                    ]);
+
+                    // Crear registro en asignaciones_puntaje
                     DB::table('asignaciones_puntaje')->insert([
-                        'idPuntaje' => $p->idPuntaje,
+                        'idPuntaje' => $puntaje->idPuntaje,
                         'idPeriodo' => $periodoId,
                         'idDocente' => $docente->idDocente,
                         'idMateria' => (int) $data['idMateria'],
                         'fecha_asignacion' => $now,
-                        'porcentaje' => 100,
-                        'puntos' => (int) $p->puntos,
+                        'puntos' => $puntosNuevos,
                         'comentario' => $data['comentario'] ?? null,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ]);
-                    $inserted++;
-                    $tuvoInsercion = true;
-                } catch (\Throwable $e) {
-                    $skipped++;
                 }
+
+                $estudiantesAfectados++;
             }
-            if ($tuvoInsercion) { $estudiantesAfectados++; }
+
+            DB::commit();
+
+           return back()->with('success', 'Puntos asignados correctamente a ' . $estudiantesAfectados . ' estudiantes');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error al asignar puntos extracurriculares: ' . $e->getMessage());
+            return back()->with('error', 'Error al asignar puntos: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtener puntajes desglosados por tipo (depósitos y extracurricular) para una materia
+     */
+    public function obtenerPuntajesPorTipo(Request $request, $idCursoParalelo, $idMateria)
+    {
+        $docente = Docente::where('idUser', Auth::id())->firstOrFail();
+        
+        // Verificar acceso
+        if (!$docente->docenteMateriaCursos()
+            ->where('idCursoParalelo', $idCursoParalelo)
+            ->where('idMateria', $idMateria)
+            ->exists()) {
+            abort(403, 'No tienes acceso a esta materia en este curso');
         }
 
+        $periodoId = $request->get('periodo_id');
+        if (!$periodoId) {
+            $periodoActivo = \App\Models\PeriodoAcademico::where('activo', true)->first();
+            $periodoId = $periodoActivo?->idPeriodo;
+        }
+
+        // Consulta desde asignaciones_puntaje para obtener puntos desglosados por tipo
+        $puntajes = DB::table('asignaciones_puntaje as ap')
+            ->join('puntaje as p', 'p.idPuntaje', '=', 'ap.idPuntaje')
+            ->join('usuario as u', 'u.id', '=', 'p.idUser')
+            ->join('estudiante as e', 'e.idUser', '=', 'u.id')
+            ->where('e.idCursoParalelo', $idCursoParalelo)
+            ->where('ap.idMateria', $idMateria)
+            ->where('p.idPeriodo', $periodoId)
+            ->select(
+                'u.id as estudiante_id',
+                'u.nombres',
+                'u.primerApellido',
+                'u.segundoApellido',
+                DB::raw("SUM(CASE WHEN p.tipo_puntaje = 'depositos' THEN ap.puntos ELSE 0 END) as puntos_depositos"),
+                DB::raw("SUM(CASE WHEN p.tipo_puntaje = 'extracurricular' THEN ap.puntos ELSE 0 END) as puntos_extracurriculares"),
+                DB::raw("SUM(ap.puntos) as total")
+            )
+            ->groupBy('u.id', 'u.nombres', 'u.primerApellido', 'u.segundoApellido')
+            ->orderBy('total', 'desc')
+            ->get();
+
         return response()->json([
-            'message' => 'Atribución realizada',
-            'insertados' => $inserted,
-            'omitidos' => $skipped,
-            'estudiantes_afectados' => $estudiantesAfectados,
-        ], 201);
+            'puntajes' => $puntajes,
+            'periodo_id' => $periodoId,
+        ]);
     }
 
     public function reportePuntosPorMateria(Request $request, $idCursoParalelo, $idMateria)
@@ -598,15 +844,29 @@ class DocenteDashboardController extends Controller
 
         $periodoId = $request->get('periodo_id');
 
-        // Obtener puntos específicamente asignados por el docente para esta materia y período
+        // Obtener puntos desglosados por tipo para esta materia y período
+        // Subquery para puntos totales
+        $subqueryPuntosTotales = DB::table('puntaje')
+            ->select('idUser', DB::raw('COALESCE(SUM(puntos), 0) as puntos_totales'))
+            ->when($periodoId, function($query) use ($periodoId) {
+                return $query->where('idPeriodo', $periodoId);
+            })
+            ->groupBy('idUser');
+
         $estudiantesConPuntos = DB::table('estudiante')
             ->join('usuario', 'estudiante.idUser', '=', 'usuario.id')
-            ->leftJoin('asignaciones_puntaje', function($join) use ($idMateria, $periodoId) {
-                $join->on('usuario.id', '=', 'asignaciones_puntaje.idUser')
-                     ->where('asignaciones_puntaje.idMateria', $idMateria);
+            // Puntos asignados a esta materia
+            ->leftJoin('asignaciones_puntaje as ap', function($join) use ($idMateria, $periodoId) {
+                $join->on('usuario.id', '=', 'ap.idUser')
+                     ->where('ap.idMateria', $idMateria);
                 if ($periodoId) {
-                    $join->where('asignaciones_puntaje.idPeriodo', $periodoId);
+                    $join->where('ap.idPeriodo', $periodoId);
                 }
+            })
+            ->leftJoin('puntaje as p', 'p.idPuntaje', '=', 'ap.idPuntaje')
+            // Puntos totales del estudiante (disponibles)
+            ->leftJoinSub($subqueryPuntosTotales, 'pt', function($join) {
+                $join->on('usuario.id', '=', 'pt.idUser');
             })
             ->where('estudiante.idCursoParalelo', $idCursoParalelo)
             ->select(
@@ -614,7 +874,10 @@ class DocenteDashboardController extends Controller
                 'usuario.nombres',
                 'usuario.primerApellido',
                 'usuario.segundoApellido',
-                DB::raw('COALESCE(SUM(asignaciones_puntaje.puntos), 0) as puntos_asignados')
+                DB::raw("COALESCE(SUM(CASE WHEN p.tipo_puntaje = 'depositos' THEN ap.puntos ELSE 0 END), 0) as puntos_depositos"),
+                DB::raw("COALESCE(SUM(CASE WHEN p.tipo_puntaje = 'extracurricular' THEN ap.puntos ELSE 0 END), 0) as puntos_extracurriculares"),
+                DB::raw('COALESCE(SUM(ap.puntos), 0) as puntos_asignados'),
+                DB::raw('COALESCE(MAX(pt.puntos_totales), 0) as puntos_disponibles')
             )
             ->groupBy('usuario.id', 'usuario.nombres', 'usuario.primerApellido', 'usuario.segundoApellido')
             ->get();
@@ -623,12 +886,20 @@ class DocenteDashboardController extends Controller
         $totalEstudiantes = $estudiantesConPuntos->count();
         $estudiantesConPuntosAsignados = $estudiantesConPuntos->where('puntos_asignados', '>', 0)->count();
         $puntosAsignadosTotal = $estudiantesConPuntos->sum('puntos_asignados');
+        $puntosDepositosTotal = $estudiantesConPuntos->sum('puntos_depositos');
+        $puntosExtracurricularesTotal = $estudiantesConPuntos->sum('puntos_extracurriculares');
+        $puntosDisponiblesTotal = $estudiantesConPuntos->sum('puntos_disponibles');
+        $puntosSinAsignar = $puntosDisponiblesTotal - $puntosAsignadosTotal;
         $promedioAsignados = $totalEstudiantes > 0 ? $puntosAsignadosTotal / $totalEstudiantes : 0;
 
         $estadisticas = [
             'total_estudiantes' => $totalEstudiantes,
             'estudiantes_con_puntos' => $estudiantesConPuntosAsignados,
             'puntos_asignados_total' => $puntosAsignadosTotal,
+            'puntos_depositos_total' => $puntosDepositosTotal,
+            'puntos_extracurriculares_total' => $puntosExtracurricularesTotal,
+            'puntos_disponibles_total' => $puntosDisponiblesTotal,
+            'puntos_sin_asignar' => $puntosSinAsignar,
             'promedio_asignados' => round($promedioAsignados, 2),
             'estudiantes' => $estudiantesConPuntos
         ];
@@ -636,102 +907,8 @@ class DocenteDashboardController extends Controller
         return response()->json($estadisticas);
     }
 
-    /**
-     * Descargar plantilla Excel para importar estudiantes
-     */
-    public function descargarPlantillaEstudiantes(Request $request)
-    {
-        $export = new \App\Exports\PlantillaEstudiantesExport();
-        return $export->download('Plantilla_Estudiantes_' . now()->format('Y-m-d') . '.xlsx');
-    }
 
-    /**
-     * Importar estudiantes desde Excel
-     */
-    public function importarEstudiantes(Request $request)
-    {
-        $request->validate([
-            'archivo' => 'required|file|mimes:xlsx,xls|max:10240' // 10MB máximo
-        ]);
-
-        try {
-            $file = $request->file('archivo');
-            
-            // Verificar que el archivo se subió correctamente
-            if (!$file || !$file->isValid()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error: Archivo no válido o no se pudo subir'
-                ], 422);
-            }
-
-            // Crear directorio temp si no existe
-            $tempDir = storage_path('app/temp');
-            if (!is_dir($tempDir)) {
-                mkdir($tempDir, 0755, true);
-            }
-
-            // Guardar archivo con nombre único
-            $fileName = 'import_' . time() . '_' . $file->getClientOriginalName();
-            $fullPath = $tempDir . '/' . $fileName;
-            
-            if (!$file->move($tempDir, $fileName)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error: No se pudo guardar el archivo temporalmente'
-                ], 422);
-            }
-
-            try {
-                // Importar estudiantes usando la clase personalizada
-                $import = new EstudiantesImport($fullPath);
-                $results = $import->import();
-                
-                // Limpiar archivo temporal
-                if (file_exists($fullPath)) {
-                    unlink($fullPath);
-                }
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Importación completada exitosamente',
-                    'data' => $results
-                ]);
-                
-            } catch (\Exception $e) {
-                // Limpiar archivo temporal en caso de error
-                if (isset($fullPath) && file_exists($fullPath)) {
-                    unlink($fullPath);
-                }
-                
-                \Log::error('Error en importación de estudiantes: ' . $e->getMessage());
-                \Log::error('Stack trace: ' . $e->getTraceAsString());
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error al importar estudiantes: ' . $e->getMessage()
-                ], 500);
-            }    
-            
-        } catch (\Exception $e) {
-            // Limpiar archivo temporal si existe
-            if (isset($fullPath) && file_exists($fullPath)) {
-                unlink($fullPath);
-            }
-            
-            \Log::error('Error en importación de estudiantes:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Error durante la importación: ' . $e->getMessage()
-            ], 500);
-        }
-    }
+    
      public function rankingCursos(Request $request)
     {
         $docente = Docente::where('idUser', Auth::id())->firstOrFail();
@@ -922,8 +1099,13 @@ class DocenteDashboardController extends Controller
 			)
 			->get();
 
-		// Obtener períodos académicos
-		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+		// Obtener períodos académicos del año actual
+		$anioActual = now()->year;
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')
+			->whereYear('fecha_inicio', $anioActual)
+			->orWhereYear('fecha_fin', $anioActual)
+			->orderBy('fecha_inicio', 'desc')
+			->get();
 
 		// Obtener las materias y cursos-paralelos que el docente enseña
 		$docenteMateriaCurso = DB::table('docente_materia_curso as dmc')
@@ -1076,8 +1258,13 @@ class DocenteDashboardController extends Controller
 			)
 			->get();
 
-		// Obtener períodos académicos
-		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+		$anioActual = now()->year;
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')
+			->whereYear('fecha_inicio', $anioActual)
+			->orWhereYear('fecha_fin', $anioActual)
+			->orderBy('fecha_inicio', 'desc')
+			->get();
+
 
 		// Obtener TODOS los estudiantes del docente con su curso_paralelo_id
 		$students = DB::table('estudiante as e')
@@ -1237,8 +1424,13 @@ class DocenteDashboardController extends Controller
 			->distinct()
 			->get();
 
-		// Obtener períodos académicos
-		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+		// Obtener períodos académicos del año actual
+		$anioActual = now()->year;
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')
+			->whereYear('fecha_inicio', $anioActual)
+			->orWhereYear('fecha_fin', $anioActual)
+			->orderBy('fecha_inicio', 'desc')
+			->get();
 
 		// Obtener TODAS las materias y cursos-paralelos que el docente enseña
 		$docenteMateriaCurso = DB::table('docente_materia_curso as dmc')
@@ -1410,8 +1602,13 @@ class DocenteDashboardController extends Controller
 			->distinct()
 			->get();
 
-		// Obtener períodos académicos
-		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')->get();
+		// Obtener períodos académicos del año actual
+		$anioActual = now()->year;
+		$periods = \App\Models\PeriodoAcademico::select('idPeriodo as id', 'nombre')
+			->whereYear('fecha_inicio', $anioActual)
+			->orWhereYear('fecha_fin', $anioActual)
+			->orderBy('fecha_inicio', 'desc')
+			->get();
 
 		// Obtener IDs de cursos-paralelos del docente usando consulta directa
 		$cursoParaleloIds = DB::table('docente_materia_curso')
@@ -1519,105 +1716,8 @@ class DocenteDashboardController extends Controller
 		]);
 	}
 
-	/**
-	 * Almacenar nueva asignación de puntos
-	 */
-	public function storeAsignacion(Request $request)
-	{
-		$request->validate([
-			'materia_id' => 'required|integer|exists:materia,idMateria',
-			'periodo_id' => 'required|integer|exists:periodos_academicos,idPeriodo',
-			'estudiante_id' => 'required|integer|exists:usuario,id',
-			'puntos' => 'required|integer|min:1|max:100',
-			'fecha_asignacion' => 'required|date',
-			'comentario' => 'nullable|string|max:500'
-		]);
-
-		$docente = Docente::where('idUser', Auth::id())->first();
-		
-		if (!$docente) {
-			return back()->withErrors(['error' => 'No se encontró el docente']);
-		}
-
-		// Primero crear el registro en puntaje
-		$puntajeId = DB::table('puntaje')->insertGetId([
-			'idUser' => $request->estudiante_id,
-			'idPeriodo' => $request->periodo_id,
-			'puntos' => $request->puntos,
-			'fechaAsignacion' => $request->fecha_asignacion,
-			'created_at' => now(),
-			'updated_at' => now()
-		]);
-
-		// Luego crear la asignación
-		DB::table('asignaciones_puntaje')->insert([
-			'idPuntaje' => $puntajeId,
-			'idDocente' => $docente->idDocente,
-			'idMateria' => $request->materia_id,
-			'idPeriodo' => $request->periodo_id,
-			'puntos' => $request->puntos,
-			'fecha_asignacion' => $request->fecha_asignacion,
-			'comentario' => $request->comentario,
-			'created_at' => now(),
-			'updated_at' => now()
-		]);
-
-		return back()->with('success', 'Puntos asignados correctamente');
-	}
-
-	/**
-	 * Almacenar asignación masiva de puntos
-	 */
-	public function storeBulkAsignacion(Request $request)
-	{
-		$request->validate([
-			'materia_id' => 'required|integer|exists:materia,idMateria',
-			'curso_paralelo_id' => 'required|integer|exists:curso_paralelo,idCursoParalelo',
-			'periodo_id' => 'required|integer|exists:periodos_academicos,idPeriodo',
-			'puntos' => 'required|integer|min:1|max:100',
-			'estudiantes_ids' => 'required|array|min:1',
-			'estudiantes_ids.*' => 'integer|exists:usuario,id'
-		]);
-
-		$docente = Docente::where('idUser', Auth::id())->first();
-		
-		if (!$docente) {
-			return back()->withErrors(['error' => 'No se encontró el docente']);
-		}
-
-		// Usar el período seleccionado
-		$periodoId = $request->periodo_id;
-
-		$asignaciones = [];
-		foreach ($request->estudiantes_ids as $estudianteId) {
-			// Crear registro en puntaje
-			$puntajeId = DB::table('puntaje')->insertGetId([
-				'idUser' => $estudianteId,
-				'idPeriodo' => $periodoId,
-				'puntos' => $request->puntos,
-				'fechaAsignacion' => now()->toDateString(),
-				'created_at' => now(),
-				'updated_at' => now()
-			]);
-
-			// Crear asignación
-			$asignaciones[] = [
-				'idPuntaje' => $puntajeId,
-				'idDocente' => $docente->idDocente,
-				'idMateria' => $request->materia_id,
-				'idPeriodo' => $periodoId,
-				'puntos' => $request->puntos,
-				'fecha_asignacion' => now()->toDateString(),
-				'comentario' => 'Asignación masiva',
-				'created_at' => now(),
-				'updated_at' => now()
-			];
-		}
-
-		DB::table('asignaciones_puntaje')->insert($asignaciones);
-
-		return back()->with('success', 'Puntos asignados a ' . count($request->estudiantes_ids) . ' estudiantes');
-	}
+	// ❌ MÉTODOS ELIMINADOS: storeAsignacion y storeBulkAsignacion
+	// ✅ USAR: asignarPuntosExtracurriculares() para asignación manual individual/masiva
 
 	/**
 	 * Descargar reporte PDF

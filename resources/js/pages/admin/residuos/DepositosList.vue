@@ -10,7 +10,7 @@ import { useResiduos } from '@/composables/useResiduos';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { Basurero, Deposito, FiltrosDepositos, PaginacionDepositos, TipoBasura } from '@/types/residuos';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ArrowLeft, Award, BoxIcon, Calendar, Edit, Eye, FileText, Filter, Plus, Search, Table2, Trash2 } from 'lucide-vue-next';
+import { ArrowLeft, Award, BoxIcon, Calendar, Edit, Eye, FileText, Filter, Plus, Search, Table2, Trash2, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 // ===== PROPS =====
@@ -25,44 +25,15 @@ const props = defineProps<{
 const { eliminarDeposito, ROUTES, formatearFecha, formatearPuntos } = useResiduos();
 
 // ===== REACTIVE =====
-const searchTerm = ref(props.filters?.usuario || '');
+const searchTerm = ref(props.filters?.search || props.filters?.usuario || '');
 const selectedBasurero = ref(props.filters?.basurero?.toString() || '0');
 const selectedTipoBasura = ref(props.filters?.tipo_basura?.toString() || '0');
 const selectedFecha = ref(props.filters?.fecha || '');
 
 // ===== COMPUTED =====
+// Ahora usamos directamente los datos del servidor ya filtrados
 const depositosFiltrados = computed(() => {
-    let filtered = props.depositos.data;
-
-    // Debug para verificar los datos
-    console.log(
-        'Datos de depósitos:',
-        filtered.map((d) => ({
-            id: d.idDeposito,
-            tipoBasura: d.tipo_basura?.created_at ?? d.tipoBasura?.created_at,
-            puntos: d.puntos_generados ?? d.tipoBasura?.puntos ?? 0,
-        })),
-    );
-
-    if (searchTerm.value) {
-        filtered = filtered.filter((deposito) =>
-            `${deposito.user?.nombres} ${deposito.user?.primerApellido}`.toLowerCase().includes(searchTerm.value.toLowerCase()),
-        );
-    }
-
-    if (selectedBasurero.value && selectedBasurero.value !== '0') {
-        filtered = filtered.filter((deposito) => deposito.idBasurero.toString() === selectedBasurero.value);
-    }
-
-    if (selectedTipoBasura.value && selectedTipoBasura.value !== '0') {
-        filtered = filtered.filter((deposito) => deposito.idTipoBasura.toString() === selectedTipoBasura.value);
-    }
-
-    if (selectedFecha.value) {
-        filtered = filtered.filter((deposito) => new Date(deposito.fechaHora).toISOString().split('T')[0] === selectedFecha.value);
-    }
-
-    return filtered;
+    return props.depositos.data;
 });
 
 // ===== MÉTODOS =====
@@ -73,14 +44,15 @@ function handleEliminar(deposito: Deposito) {
 function handleFiltrar() {
     const filters: FiltrosDepositos = {};
 
-    if (searchTerm.value) filters.usuario = searchTerm.value;
+    if (searchTerm.value) filters.search = searchTerm.value;
     if (selectedBasurero.value && selectedBasurero.value !== '0') filters.basurero = parseInt(selectedBasurero.value);
     if (selectedTipoBasura.value && selectedTipoBasura.value !== '0') filters.tipo_basura = parseInt(selectedTipoBasura.value);
     if (selectedFecha.value) filters.fecha = selectedFecha.value;
 
     router.get(ROUTES.depositos.index, filters, {
-        preserveState: true,
-        preserveScroll: true,
+        preserveState: true, // Mantener estado para conservar paginación
+        preserveScroll: true, // Mantener scroll
+        only: ['depositos'], // Solo actualizar los depósitos
     });
 }
 
@@ -96,9 +68,13 @@ function limpiarFiltros() {
         {
             preserveState: true,
             preserveScroll: true,
+            only: ['depositos'], // Solo actualizar los depósitos
         },
     );
 }
+
+// ===== WATCHERS =====
+// Eliminado: búsqueda automática para mejor control manual
 </script>
 
 <template>
@@ -147,10 +123,16 @@ function limpiarFiltros() {
                 <CardContent>
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
                         <div>
-                            <Label for="search">Buscar usuario</Label>
+                            <Label for="search">Búsqueda General</Label>
                             <div class="relative">
                                 <Search class="text-muted-foreground absolute top-3 left-3 h-4 w-4" />
-                                <Input id="search" v-model="searchTerm" placeholder="Nombre del usuario..." class="pl-10" />
+                                <Input 
+                                    id="search" 
+                                    v-model="searchTerm" 
+                                    placeholder="Usuario, basurero, tipo de basura..." 
+                                    class="pl-10"
+                                    @keyup.enter="handleFiltrar"
+                                />
                             </div>
                         </div>
                         <div>
@@ -187,15 +169,24 @@ function limpiarFiltros() {
                         </div>
                         <div>
                             <Label for="fecha">Fecha</Label>
-                            <Input id="fecha" v-model="selectedFecha" type="date" placeholder="Seleccionar fecha" />
+                            <Input 
+                                id="fecha" 
+                                v-model="selectedFecha" 
+                                type="date" 
+                                placeholder="Seleccionar fecha"
+                                @keyup.enter="handleFiltrar"
+                            />
                         </div>
                     </div>
                     <div class="mt-4 flex items-center gap-2">
-                        <Button @click="handleFiltrar" variant="outline">
-                            <Filter class="mr-2 h-4 w-4" />
-                            Aplicar Filtros
+                        <Button @click="handleFiltrar" variant="default" class="bg-blue-600 hover:bg-blue-700">
+                            <Search class="mr-2 h-4 w-4" />
+                            Buscar
                         </Button>
-                        <Button @click="limpiarFiltros" variant="ghost"> Limpiar Filtros </Button>
+                        <Button @click="limpiarFiltros" variant="outline">
+                            <X class="mr-2 h-4 w-4" />
+                            Limpiar
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

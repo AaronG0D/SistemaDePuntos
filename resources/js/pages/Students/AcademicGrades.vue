@@ -37,6 +37,35 @@
         <!-- Main Content -->
         <div class="px-6 py-12 sm:px-8 lg:px-12">
             <div class="mx-auto max-w-7xl space-y-8">
+                <!-- Avisos Informativos (solo una vez) -->
+                <div class="space-y-4">
+                    <!-- Aviso sobre puntos asignados -->
+                    <div class="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4 dark:bg-blue-900/20">
+                        <div class="flex items-start gap-3">
+                            <svg class="h-5 w-5 flex-shrink-0 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                            </svg>
+                            <div>
+                                <p class="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                    Los puntos mostrados son los <strong>ya asignados</strong> por tus docentes. Nuevos depósitos no aumentarán estas notas automáticamente.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Aviso sobre logros -->
+                    <div class="rounded-lg border-l-4 border-green-500 bg-green-50 p-4 dark:bg-green-900/20">
+                        <div class="flex items-start gap-3">
+                            <svg class="h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                            <div>
+                                <p class="text-sm font-medium text-green-900 dark:text-green-100">
+                                    Los logros y metas se calculan <strong>solo con puntos de depósitos</strong> (reciclaje), no con puntos extracurriculares.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Summary Cards -->
                 <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     <Card class="border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50 dark:border-yellow-700 dark:from-yellow-900/50 dark:to-orange-900/50">
@@ -122,31 +151,70 @@
                         </div>
 
                         <!-- Grades Grid -->
-                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                             <div
                                 v-for="grade in periodData.notas"
-                                :key="grade.id"
-                                class="rounded-lg border border-yellow-200 bg-yellow-50/50 p-4 transition-colors hover:bg-yellow-100/50 dark:border-yellow-700 dark:bg-yellow-900/20 dark:hover:bg-yellow-900/30"
+                                :key="grade.idMateria"
+                                class="group relative overflow-hidden rounded-xl border-2 border-gray-200 bg-white shadow-sm transition-all duration-300 hover:border-yellow-400 hover:shadow-xl dark:border-gray-700 dark:bg-gray-800 dark:hover:border-yellow-500"
                             >
-                                <div class="flex items-start justify-between">
-                                    <div class="flex-1">
-                                        <h3 class="font-semibold text-yellow-900 dark:text-yellow-100">{{ grade.materia }}</h3>
-                                        <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">{{ grade.docente }}</p>
-                                        <p v-if="grade.comentario" class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                                            "{{ grade.comentario }}"
-                                        </p>
-                                        <div class="mt-2 flex items-center gap-2">
-                                            <Clock class="h-3 w-3 text-gray-500" />
-                                            <span class="text-xs text-gray-500">{{ formatDate(grade.fecha) }}</span>
+                                <!-- Decorative gradient -->
+                                <div class="absolute right-0 top-0 h-32 w-32 -translate-y-8 translate-x-8 rounded-full bg-gradient-to-br from-yellow-400/20 to-orange-400/20 blur-2xl transition-transform duration-300 group-hover:scale-150"></div>
+                                
+                                <div class="relative p-6">
+                                    <!-- Header -->
+                                    <div class="mb-4">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <div class="flex-1">
+                                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                                                    {{ grade.materia }}
+                                                </h3>
+                                                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                                    {{ grade.docentes }}
+                                                </p>
+                                            </div>
+                                            <div class="rounded-lg bg-yellow-100 p-2 dark:bg-yellow-900/30">
+                                                <BookOpen class="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                                            </div>
+                                        </div>
+                                        <div v-if="grade.ultima_fecha" class="mt-3 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                            <Clock class="h-4 w-4" />
+                                            <span>Última actualización: {{ formatDate(grade.ultima_fecha) }}</span>
                                         </div>
                                     </div>
-                                    <div class="text-right">
-                                        <Badge class="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                            +{{ grade.puntos }} pts
-                                        </Badge>
-                                        <p v-if="grade.porcentaje !== 100" class="mt-1 text-xs text-gray-500">
-                                            {{ grade.porcentaje }}%
-                                        </p>
+
+                                    <!-- Scores -->
+                                    <div class="space-y-3">
+                                        <!-- Depósitos -->
+                                        <div class="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 dark:bg-blue-900/20">
+                                            <div class="flex items-center gap-2">
+                                                <div class="rounded-full bg-blue-500 p-1">
+                                                    <svg class="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
+                                                        <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
+                                                        <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
+                                                    </svg>
+                                                </div>
+                                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Reciclaje</span>
+                                            </div>
+                                            <span class="font-bold text-blue-600 dark:text-blue-400">{{ grade.puntos_depositos }} pts</span>
+                                        </div>
+
+                                        <!-- Extracurricular -->
+                                        <div class="flex items-center justify-between rounded-lg bg-purple-50 px-3 py-2 dark:bg-purple-900/20">
+                                            <div class="flex items-center gap-2">
+                                                <div class="rounded-full bg-purple-500 p-1">
+                                                    <Trophy class="h-3 w-3 text-white" />
+                                                </div>
+                                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Extra</span>
+                                            </div>
+                                            <span class="font-bold text-purple-600 dark:text-purple-400">{{ grade.puntos_extracurriculares }} pts</span>
+                                        </div>
+
+                                        <!-- Total -->
+                                        <div class="flex items-center justify-between rounded-lg bg-gradient-to-r from-green-500 to-emerald-500 px-4 py-3 shadow-md">
+                                            <span class="text-sm font-semibold text-white">TOTAL</span>
+                                            <span class="text-2xl font-bold text-white">{{ grade.total }}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -212,16 +280,17 @@ interface Props {
             bimestre: number;
         };
         notas: Array<{
-            id: number;
+            idMateria: number;
             materia: string;
-            docente: string;
-            puntos: number;
-            comentario?: string;
-            fecha: string;
-            periodo: string;
-            porcentaje: number;
+            puntos_depositos: number;
+            puntos_extracurriculares: number;
+            total: number;
+            docentes: string;
+            ultima_fecha?: string;
         }>;
         total_puntos: number;
+        total_depositos: number;
+        total_extracurriculares: number;
         promedio_puntos: number;
     }>;
     totalPoints: number;

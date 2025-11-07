@@ -20,7 +20,33 @@ class DepositoController extends Controller
         if ($request->filled('usuario')) {
             $query->whereHas('user', function ($q) use ($request) {
                 $q->where('nombres', 'like', '%' . $request->usuario . '%')
-                  ->orWhere('primerApellido', 'like', '%' . $request->usuario . '%');
+                  ->orWhere('primerApellido', 'like', '%' . $request->usuario . '%')
+                  ->orWhere('segundoApellido', 'like', '%' . $request->usuario . '%')
+                  ->orWhere('email', 'like', '%' . $request->usuario . '%');
+            });
+        }
+
+        // Búsqueda general (nuevo)
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                // Buscar en usuario
+                $q->whereHas('user', function ($userQuery) use ($searchTerm) {
+                    $userQuery->where('nombres', 'like', '%' . $searchTerm . '%')
+                             ->orWhere('primerApellido', 'like', '%' . $searchTerm . '%')
+                             ->orWhere('segundoApellido', 'like', '%' . $searchTerm . '%')
+                             ->orWhere('email', 'like', '%' . $searchTerm . '%');
+                })
+                // Buscar en basurero
+                ->orWhereHas('basurero', function ($basureroQuery) use ($searchTerm) {
+                    $basureroQuery->where('descripcion', 'like', '%' . $searchTerm . '%')
+                                 ->orWhere('ubicacion', 'like', '%' . $searchTerm . '%');
+                })
+                // Buscar en tipo de basura
+                ->orWhereHas('tipoBasura', function ($tipoQuery) use ($searchTerm) {
+                    $tipoQuery->where('nombre', 'like', '%' . $searchTerm . '%')
+                             ->orWhere('descripcion', 'like', '%' . $searchTerm . '%');
+                });
             });
         }
 
@@ -47,7 +73,7 @@ class DepositoController extends Controller
             'depositos' => $depositos,
             'basureros' => $basureros,
             'tiposBasura' => $tiposBasura,
-            'filters' => $request->only(['usuario', 'basurero', 'tipo_basura', 'fecha']),
+            'filters' => $request->only(['usuario', 'basurero', 'tipo_basura', 'fecha', 'search']),
         ]);
     }
 

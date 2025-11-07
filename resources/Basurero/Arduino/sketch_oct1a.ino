@@ -43,7 +43,7 @@ void cicloServo(Servo &servo, int ledPin, int angulo = 90, int duracion = 5000) 
 }
 
 void cerrarServos() {
-  servoCamara.write(0);
+  servoCamara.write(100);
   servoMetal.write(0);
   servoPapel.write(0);
   servoPlastico.write(0);
@@ -121,7 +121,7 @@ void loop() {
     // Biodegradable
     Serial.println("🍃 BIODEGRADABLE detectado");
     Serial.println("{\"tipo\":\"biodegradable\"}");
-    cicloServo(servoCamara, ledBio, anguloAbierto, 3000);
+    cicloServo(servoCamara, ledBio, 0, 3000);
     habilitado = false; // desactivar hasta próximo QR
     Serial.println("{\"status\":\"completado\",\"tipo\":\"biodegradable\"}");
   } 

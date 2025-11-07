@@ -365,7 +365,13 @@
                                 class="flex items-center space-x-3 rounded-lg border border-yellow-200 dark:border-yellow-600 bg-white dark:bg-gray-800 p-4"
                                 :class="achievement.earned ? 'opacity-100' : 'opacity-50'"
                             >
-                                <div class="text-2xl">{{ achievement.icon }}</div>
+                                <div class="rounded-full p-2" :class="achievement.earned ? 'bg-yellow-100 dark:bg-yellow-800' : 'bg-gray-100 dark:bg-gray-700'">
+                                    <component 
+                                        :is="achievement.icon" 
+                                        class="h-6 w-6" 
+                                        :class="achievement.earned ? 'text-yellow-600 dark:text-yellow-300' : 'text-gray-400 dark:text-gray-500'"
+                                    />
+                                </div>
                                 <div>
                                     <p class="font-medium" :class="achievement.earned ? 'text-yellow-800 dark:text-yellow-300' : 'text-gray-500 dark:text-gray-400'">
                                         {{ achievement.name }}
@@ -503,17 +509,23 @@ import {
     ArrowLeft,
     BarChart3,
     Calendar,
+    CheckCircle,
     ChevronLeft,
     ChevronRight,
     Clock,
     Coins,
+    Filter,
     Leaf,
     MapPin,
+    Recycle,
+    Shield,
+    Star,
+    Trophy,
     TrendingUp,
     Trash2,
-    Trophy,
     Weight,
     X,
+    Zap,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
@@ -629,43 +641,59 @@ const achievements = ref([
         id: 1,
         name: 'Primer Reciclador',
         description: 'Realizaste tu primer depósito',
-        icon: '🌱',
+        icon: Leaf,
         earned: computed(() => props.deposits && props.deposits.length > 0),
     },
     {
         id: 2,
         name: 'Eco Guerrero',
         description: 'Alcanzaste 100 puntos',
-        icon: '⚡',
+        icon: Zap,
         earned: computed(() => props.totalPoints >= 100),
     },
     {
         id: 3,
         name: 'Guardián Verde',
         description: 'Realizaste 10 depósitos',
-        icon: '🛡️',
+        icon: Shield,
         earned: computed(() => props.deposits && props.deposits.length >= 10),
     },
     {
         id: 4,
         name: 'Campeón Ecológico',
-        description: 'Alcanzaste 500 puntos',
-        icon: '🏆',
-        earned: computed(() => props.totalPoints >= 500),
+        description: 'Alcanzaste 300 puntos',
+        icon: Trophy,
+        earned: computed(() => props.totalPoints >= 300),
     },
     {
         id: 5,
-        name: 'Héroe del Planeta',
-        description: 'Completaste todos los bimestres',
-        icon: '🌍',
-        earned: computed(() => bimesters.value.every((b) => getBimesterPoints(b.number) > 0)),
-    },
-    {
-        id: 6,
-        name: 'Reciclador Constante',
-        description: 'Depósitos en todos los bimestres',
-        icon: '♻️',
-        earned: computed(() => bimesters.value.every((b) => getBimesterDeposits(b.number) > 0)),
+        name: 'Constancia Verde',
+        description: 'Realizaste depósitos en todos los bimestres',
+        icon: Calendar,
+        earned: computed(() => {
+            if (!props.deposits || props.deposits.length === 0) return false;
+            
+            // Verificar que tenga depósitos en los 4 bimestres
+            const bimestresConDepositos = new Set();
+            
+            // Revisar cada depósito y usar su campo bimestre
+            for (const deposit of props.deposits) {
+                if (deposit.bimestre && deposit.bimestre >= 1 && deposit.bimestre <= 3) {
+                    bimestresConDepositos.add(deposit.bimestre);
+                }
+            }
+            
+            // Debug: mostrar información en consola
+            console.log('Constancia Verde Debug:', {
+                totalDeposits: props.deposits.length,
+                bimestresEncontrados: Array.from(bimestresConDepositos).sort(),
+                depositsPerBimester: props.deposits.map(d => ({ bimestre: d.bimestre, fecha: d.fecha_deposito })),
+                logrado: bimestresConDepositos.size >= 3
+            });
+            
+            // Debe tener depósitos en los 4 bimestres
+            return bimestresConDepositos.size >= 3;
+        }),
     },
 ]);
 
@@ -680,7 +708,7 @@ const getBimesterPoints = (bimester: number) => {
     }
 
     // 2) Fallback a coincidencia por nombre si no existe el campo bimestre
-    const bimesterNames = ['primer', 'segundo', 'tercer', 'cuarto'];
+    const bimesterNames = ['primer', 'segundo', 'tercer'];
     const bimesterName = bimesterNames[bimester - 1];
     for (const periodData of Object.values(props.pointsByPeriod)) {
         const periodName = (periodData.periodo_nombre || '').toLowerCase();

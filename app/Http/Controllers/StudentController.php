@@ -49,6 +49,7 @@ class StudentController extends Controller
         return Inertia::render('Students/Dashboard', [
             'student' => $student,
             'deposits' => $this->formatDepositsForFrontend($deposits->take(10)), // Solo los últimos 10 para el dashboard
+            'totalDepositsCount' => $deposits->count(), // Total real de depósitos
             'currentPeriod' => $currentPeriod ? [
                 'id' => $currentPeriod->id,
                 'nombre' => $currentPeriod->nombre,
@@ -164,6 +165,7 @@ class StudentController extends Controller
             'nombres' => $user->nombres,
             'apellidos' => $apellidos,
             'codigo_estudiante' => $user->qr_codigo,
+            'qr_codigo' => $user->qr_codigo, // Campo para verificar si el QR está activo
             'curso' => $estudiante?->cursoParalelo?->curso ? [
                 'id' => $estudiante->cursoParalelo->curso->idCurso,
                 'nombre' => $estudiante->cursoParalelo->curso->nombre,
@@ -602,43 +604,88 @@ class StudentController extends Controller
     }
 
     /**
-     * Obtiene las notas académicas del estudiante
+     * Obtiene las notas académicas del estudiante agrupadas por materia con puntos desglosados
      */
     private function getAcademicGrades(User $user, ?PeriodoAcademico $currentPeriod = null): array
     {
-        $query = AsignacionPuntaje::forStudent($user->id)
-            ->with([
-                'materia',
-                'docente.user',
-                'periodoAcademico',
-                'puntaje'
-            ])
-            ->orderBy('fecha_asignacion', 'desc');
-
-        // Si se especifica un período, filtrar por él, sino obtener todas
-        if ($currentPeriod) {
-            $query->forPeriod($currentPeriod->idPeriodo);
+        $periodoId = $currentPeriod?->idPeriodo;
+        
+        // Consulta desde asignaciones_puntaje que es donde está la materia
+        $query = DB::table('asignaciones_puntaje as ap')
+            ->join('puntaje as p', 'p.idPuntaje', '=', 'ap.idPuntaje')
+            ->join('materia as m', 'm.idMateria', '=', 'ap.idMateria')
+            ->leftJoin('docente as d', 'd.idDocente', '=', 'ap.idDocente')
+            ->leftJoin('usuario as u', 'u.id', '=', 'd.idUser')
+            ->where('p.idUser', $user->id);
+        
+        if ($periodoId) {
+            $query->where('p.idPeriodo', $periodoId);
         }
-
-        $asignaciones = $query->take(10)->get(); // Últimas 10 asignaciones
-
-        return $asignaciones->map(function ($asignacion) {
-            $docente = $asignacion->docente?->user;
-            $docenteNombre = $docente ? 
-                trim($docente->nombres . ' ' . $docente->primerApellido . ' ' . $docente->segundoApellido) : 
-                'Docente no disponible';
-
+        
+        $puntajes = $query->select(
+                'ap.idMateria',
+                'm.nombre as materia',
+                'p.idPeriodo',
+                DB::raw("COALESCE(SUM(CASE WHEN p.tipo_puntaje = 'depositos' THEN ap.puntos ELSE 0 END), 0) as puntos_depositos"),
+                DB::raw("COALESCE(SUM(CASE WHEN p.tipo_puntaje = 'extracurricular' THEN ap.puntos ELSE 0 END), 0) as puntos_extracurriculares"),
+                DB::raw('COALESCE(SUM(ap.puntos), 0) as total'),
+                DB::raw("GROUP_CONCAT(DISTINCT CONCAT(IFNULL(u.nombres, ''), ' ', IFNULL(u.primerApellido, ''), ' ', IFNULL(u.segundoApellido, '')) SEPARATOR ', ') as docentes"),
+                DB::raw("MAX(ap.fecha_asignacion) as ultima_asignacion")
+            )
+            ->groupBy('ap.idMateria', 'm.nombre', 'p.idPeriodo')
+            ->orderBy('m.nombre')
+            ->get();
+        
+        return $puntajes->map(function ($puntaje) {
             return [
-                'id' => $asignacion->idAsignacion,
-                'materia' => $asignacion->materia?->nombre ?? 'Materia no disponible',
-                'docente' => $docenteNombre,
-                'puntos' => $asignacion->puntos,
-                'comentario' => $asignacion->comentario,
-                'fecha' => $asignacion->fecha_asignacion->format('Y-m-d'),
-                'periodo' => $asignacion->periodoAcademico?->nombre ?? 'Sin período',
-                'porcentaje' => $asignacion->porcentaje,
+                'idMateria' => $puntaje->idMateria,
+                'materia' => $puntaje->materia,
+                'puntos_depositos' => (int) $puntaje->puntos_depositos,
+                'puntos_extracurriculares' => (int) $puntaje->puntos_extracurriculares,
+                'total' => (int) $puntaje->total,
+                'docentes' => $puntaje->docentes ?? 'Sin asignación',
+                'ultima_fecha' => $puntaje->ultima_asignacion ? 
+                    Carbon::parse($puntaje->ultima_asignacion)->format('Y-m-d') : 
+                    null,
             ];
         })->toArray();
+    }
+
+    /**
+     * Obtiene los puntajes desglosados por tipo (depósitos y extracurricular) y materia
+     */
+    public function obtenerPuntajesPorTipo(Request $request)
+    {
+        /** @var User $user */
+        $user = $request->user();
+        
+        $periodoId = $request->get('periodo_id');
+        if (!$periodoId) {
+            $periodoActivo = PeriodoAcademico::where('activo', true)->first();
+            $periodoId = $periodoActivo?->idPeriodo;
+        }
+
+        // Consulta desde asignaciones_puntaje para obtener puntos desglosados por tipo y materia
+        $puntajes = DB::table('asignaciones_puntaje as ap')
+            ->join('puntaje as p', 'p.idPuntaje', '=', 'ap.idPuntaje')
+            ->join('materia as m', 'm.idMateria', '=', 'ap.idMateria')
+            ->where('p.idUser', $user->id)
+            ->where('p.idPeriodo', $periodoId)
+            ->select(
+                'ap.idMateria',
+                'm.nombre as materia',
+                DB::raw("SUM(CASE WHEN p.tipo_puntaje = 'depositos' THEN ap.puntos ELSE 0 END) as puntos_depositos"),
+                DB::raw("SUM(CASE WHEN p.tipo_puntaje = 'extracurricular' THEN ap.puntos ELSE 0 END) as puntos_extracurriculares"),
+                DB::raw("SUM(ap.puntos) as total")
+            )
+            ->groupBy('ap.idMateria', 'm.nombre')
+            ->orderBy('m.nombre')
+            ->get();
+
+        return response()->json([
+            'puntajes' => $puntajes,
+            'periodo_id' => $periodoId,
+        ]);
     }
 
     /**
@@ -668,8 +715,10 @@ class StudentController extends Controller
                         'bimestre' => $this->mapBimesterNumber($period->nombre)
                     ],
                     'notas' => $grades,
-                    'total_puntos' => array_sum(array_column($grades, 'puntos')),
-                    'promedio_puntos' => !empty($grades) ? round(array_sum(array_column($grades, 'puntos')) / count($grades), 2) : 0
+                    'total_puntos' => array_sum(array_column($grades, 'total')),
+                    'total_depositos' => array_sum(array_column($grades, 'puntos_depositos')),
+                    'total_extracurriculares' => array_sum(array_column($grades, 'puntos_extracurriculares')),
+                    'promedio_puntos' => !empty($grades) ? round(array_sum(array_column($grades, 'total')) / count($grades), 2) : 0
                 ];
             }
         }

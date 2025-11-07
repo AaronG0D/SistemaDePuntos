@@ -21,29 +21,50 @@ class QrController extends Controller
     }
 
     /**
-     * Generar QR individual para un usuario
+     * Generar QR individual para un usuario (en memoria, sin guardar)
      */
     public function generateUserQr(Request $request, $userId)
     {
-        $user = DB::table('usuario')
-            ->where('id', $userId)
-            ->first();
+        try {
+            $user = DB::table('usuario')
+                ->where('id', $userId)
+                ->first();
 
-        if (!$user) {
-            return response()->json(['error' => 'Usuario no encontrado'], 404);
-        }
+            if (!$user) {
+                return response()->json(['error' => 'Usuario no encontrado'], 404);
+            }
 
-        $result = $this->qrService->generateQrWithLogo((array) $user);
+            // Convertir stdClass a array
+            $userData = [
+                'id' => $user->id,
+                'nombres' => $user->nombres ?? '',
+                'primerApellido' => $user->primerApellido ?? '',
+                'segundoApellido' => $user->segundoApellido ?? '',
+                'email' => $user->email ?? '',
+                'qr_codigo' => $user->qr_codigo ?? null
+            ];
 
-        if ($result['success']) {
+            $result = $this->qrService->generateQrWithLogo($userData);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'qr_url' => $result['qr_url'],  // Data URL base64
+                    'filename' => $result['filename'],
+                    'qr_data' => $result['qr_data']
+                ]);
+            }
+
+            return response()->json(['error' => $result['error']], 500);
+        } catch (\Exception $e) {
+            \Log::error('Error en generateUserQr: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
             return response()->json([
-                'success' => true,
-                'qr_url' => $result['public_url'],
-                'filename' => $result['filename']
-            ]);
+                'success' => false,
+                'error' => 'Error generando QR: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json(['error' => $result['error']], 500);
     }
 
     /**
@@ -179,25 +200,47 @@ class QrController extends Controller
     }
 
     /**
-     * Descargar QR individual
+     * Descargar QR individual (genera en memoria y descarga directamente)
      */
     public function downloadQr(Request $request, $userId)
     {
-        $user = DB::table('usuario')
-            ->where('id', $userId)
-            ->first();
+        try {
+            $user = DB::table('usuario')
+                ->where('id', $userId)
+                ->first();
 
-        if (!$user) {
-            return response()->json(['error' => 'Usuario no encontrado'], 404);
+            if (!$user) {
+                return response()->json(['error' => 'Usuario no encontrado'], 404);
+            }
+
+            // Convertir stdClass a array
+            $userData = [
+                'id' => $user->id,
+                'nombres' => $user->nombres ?? '',
+                'primerApellido' => $user->primerApellido ?? '',
+                'segundoApellido' => $user->segundoApellido ?? '',
+                'email' => $user->email ?? '',
+                'qr_codigo' => $user->qr_codigo ?? null
+            ];
+
+            $result = $this->qrService->generateQrWithLogo($userData);
+
+            if ($result['success']) {
+                // Retornar el QR directamente desde memoria (sin guardar archivo)
+                return response($result['qr_string'])
+                    ->header('Content-Type', 'image/png')
+                    ->header('Content-Disposition', 'attachment; filename="' . $result['filename'] . '"');
+            }
+
+            return response()->json(['error' => $result['error']], 500);
+        } catch (\Exception $e) {
+            \Log::error('Error en downloadQr: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'error' => 'Error descargando QR: ' . $e->getMessage()
+            ], 500);
         }
-
-        $result = $this->qrService->generateQrWithLogo((array) $user);
-
-        if ($result['success']) {
-            return response()->download($result['file_path'], $result['filename']);
-        }
-
-        return response()->json(['error' => $result['error']], 500);
     }
 
     /**
@@ -286,5 +329,84 @@ class QrController extends Controller
             ->get();
 
         return response()->json($courses);
+    }
+
+    /**
+     * Activar QR de un estudiante (generar nuevo código)
+     */
+    public function activateQr($userId)
+    {
+        try {
+            $user = DB::table('usuario')->where('id', $userId)->first();
+            
+            if (!$user) {
+                return response()->json(['success' => false, 'error' => 'Usuario no encontrado'], 404);
+            }
+
+            // Generar código QR basado en nombre y apellidos (igual que UserController)
+            $fullName = trim(($user->nombres ?? '') . ' ' . ($user->primerApellido ?? '') . ' ' . ($user->segundoApellido ?? ''));
+            $baseCode = Str::slug(preg_replace('/\s+/', ' ', $fullName));
+            // Sufijo corto para evitar colisiones
+            $newQrCode = $baseCode ? ($baseCode . '-' . Str::lower(Str::random(6))) : Str::lower(Str::random(8));
+            
+            // Actualizar el qr_codigo del usuario
+            DB::table('usuario')
+                ->where('id', $userId)
+                ->update([
+                    'qr_codigo' => $newQrCode,
+                    'updated_at' => now()
+                ]);
+
+            \Log::info("QR activado para usuario ID: {$userId} con código: {$newQrCode}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'QR activado correctamente',
+                'qr_codigo' => $newQrCode
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Error activando QR para usuario {$userId}: " . $e->getMessage());
+            \Log::error("Stack trace: " . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al activar QR: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Desactivar QR de un estudiante (establecer como vacío)
+     */
+    public function deactivateQr($userId)
+    {
+        try {
+            $user = DB::table('usuario')->where('id', $userId)->first();
+            
+            if (!$user) {
+                return response()->json(['success' => false, 'error' => 'Usuario no encontrado'], 404);
+            }
+
+            // Establecer qr_codigo como null (más seguro que string vacío)
+            DB::table('usuario')
+                ->where('id', $userId)
+                ->update([
+                    'qr_codigo' => null,
+                    'updated_at' => now()
+                ]);
+
+            \Log::info("QR desactivado para usuario ID: {$userId}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'QR desactivado correctamente'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Error desactivando QR para usuario {$userId}: " . $e->getMessage());
+            \Log::error("Stack trace: " . $e->getTraceAsString());
+            return response()->json([
+                'success' => false,
+                'error' => 'Error al desactivar QR: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

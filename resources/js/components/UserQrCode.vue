@@ -33,7 +33,10 @@
                             <Loader2 class="h-6 w-6 animate-spin" />
                             <span class="mt-2 text-xs">Cargando QR...</span>
                         </div>
-                        <div v-if="isError" class="px-2 text-center text-xs text-red-600">No se pudo cargar el QR.</div>
+                        <div v-if="isError" class="px-2 text-center text-xs text-red-600">
+                            <p>No se pudo cargar el QR.</p>
+                            <p class="mt-1 text-xs text-gray-500">Revisa la consola para más detalles.</p>
+                        </div>
                     </div>
                     <!-- Información del QR -->
                     <div class="text-center">
@@ -72,9 +75,13 @@ const fullName = computed(() => {
 
 const qrUrl = ref('');
 
-// Generar QR cuando se abre el diálogo
+// Generar QR cuando se abre el diálogo (usando la misma lógica que Profile.vue)
 const generateQr = async () => {
-    if (!props.user.qr_codigo) return;
+    if (!props.user.id) {
+        console.error('No hay ID de usuario para generar QR');
+        isError.value = true;
+        return;
+    }
 
     isLoading.value = true;
     isError.value = false;
@@ -82,10 +89,11 @@ const generateQr = async () => {
     try {
         const response = await fetch(route('qr.generate.user', props.user.id));
         const data = await response.json();
-
-        if (data.success) {
+        
+        if (data.success && data.qr_url) {
             qrUrl.value = data.qr_url;
         } else {
+            console.error('Error generando QR:', data.error || 'Respuesta sin éxito');
             isError.value = true;
         }
     } catch (error) {

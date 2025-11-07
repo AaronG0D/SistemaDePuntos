@@ -13,12 +13,15 @@ class PeriodoAcademicoController extends Controller
      */
     public function index(Request $request)
     {
+        // Si no se especifica un año, usar el año actual por defecto
+        $defaultYear = $request->year ?: now()->year;
+        
         $periodos = PeriodoAcademico::query()
             ->when($request->search, function($query, $search) {
                 $query->where('nombre', 'like', "%{$search}%")
                     ->orWhere('codigo', 'like', "%{$search}%");
             })
-            ->when($request->year, function($query, $year) {
+            ->when($defaultYear, function($query, $year) {
                 $query->whereYear('fecha_inicio', $year);
             })
             ->when($request->estado, function($query, $estado) {
@@ -34,7 +37,9 @@ class PeriodoAcademicoController extends Controller
 
         return Inertia::render('admin/PeriodosAcademicos/Index', [
             'periodos' => $periodos,
-            'filters' => $request->only(['search', 'year', 'estado']),
+            'filters' => array_merge($request->only(['search', 'year', 'estado']), [
+                'year' => $defaultYear // Asegurar que el año actual se pase como filtro activo
+            ]),
             'years' => $years
         ]);
     }

@@ -591,26 +591,32 @@ watch(editParalelo, (val) => {
             </div>
 
             <!-- ===== PAGINACIÓN ===== -->
-            <Pagination
-                v-if="estudiantes.last_page > 1"
-                class="bg-rgb(214, 219, 216)"
-                :total="estudiantes.total"
-                :items-per-page="estudiantes.per_page"
-                :default-page="estudiantes.current_page"
-                v-slot="{ page }"
-            >
-                <PaginationContent>
-                    <PaginationPrevious v-if="estudiantes.current_page > 1" @click="goToPage(estudiantes.current_page - 1)" />
+            <div v-if="estudiantes.last_page > 1" class="mt-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Mostrando {{ ((estudiantes.current_page - 1) * estudiantes.per_page) + 1 }} a 
+                    {{ Math.min(estudiantes.current_page * estudiantes.per_page, estudiantes.total) }} 
+                    de {{ estudiantes.total }} estudiantes
+                </p>
+                <Pagination
+                    class="bg-rgb(214, 219, 216)"
+                    :total="estudiantes.total"
+                    :items-per-page="estudiantes.per_page"
+                    :default-page="estudiantes.current_page"
+                    v-slot="{ page }"
+                >
+                    <PaginationContent>
+                        <PaginationPrevious v-if="estudiantes.current_page > 1" @click="goToPage(estudiantes.current_page - 1)" />
 
-                    <template v-for="p in estudiantes.last_page" :key="p">
-                        <PaginationItem :value="p" :is-active="p === estudiantes.current_page" @click="goToPage(p)">
-                            {{ p }}
-                        </PaginationItem>
-                    </template>
+                        <template v-for="p in estudiantes.last_page" :key="p">
+                            <PaginationItem :value="p" :is-active="p === estudiantes.current_page" @click="goToPage(p)">
+                                {{ p }}
+                            </PaginationItem>
+                        </template>
 
-                    <PaginationNext v-if="estudiantes.current_page < estudiantes.last_page" @click="goToPage(estudiantes.current_page + 1)" />
-                </PaginationContent>
-            </Pagination>
+                        <PaginationNext v-if="estudiantes.current_page < estudiantes.last_page" @click="goToPage(estudiantes.current_page + 1)" />
+                    </PaginationContent>
+                </Pagination>
+            </div>
 
             <!-- ===== DIÁLOGO DE EDICIÓN ===== -->
             <Dialog v-model:open="dialogOpen">

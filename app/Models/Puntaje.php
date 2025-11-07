@@ -15,6 +15,7 @@ class Puntaje extends Model
         'idUser',
         'idPeriodo',
         'puntos',
+        'tipo_puntaje',
         'fechaAsignacion',
         'comentario',
         'estado',

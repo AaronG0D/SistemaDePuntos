@@ -93,6 +93,7 @@ export interface FormDeposito {
 // Tipos para filtros
 export interface FiltrosDepositos {
     usuario?: string;
+    search?: string; // Nueva búsqueda general
     basurero?: number;
     tipo_basura?: number;
     fecha?: string;
