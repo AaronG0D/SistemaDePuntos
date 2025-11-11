@@ -70,7 +70,7 @@ class WelcomeController extends Controller
                                 'puntajeTotal' => $estudiante->total_puntos
                             ]
                         ],
-                        'cursoParalelo' => (object) [
+                        'curso_paralelo' => (object) [
                             'idCursoParalelo' => $estudiante->idCursoParalelo,
                             'curso' => (object) [
                                 'nombre' => $estudiante->curso_nombre ?: 'Sin curso'

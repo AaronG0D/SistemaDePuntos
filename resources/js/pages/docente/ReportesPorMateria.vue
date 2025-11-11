@@ -130,15 +130,16 @@
                         </Card>
                         <Card class="border border-slate-200 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700">
                             <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle class="text-sm font-medium text-slate-600 dark:text-slate-400">Estudiantes Evaluados</CardTitle>
+                                <CardTitle class="text-sm font-medium text-slate-600 dark:text-slate-400">Total Asignaciones</CardTitle>
                                 <div class="rounded-md bg-slate-100 p-2 dark:bg-slate-700">
-                                    <Users class="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                                    <Award class="h-4 w-4 text-slate-600 dark:text-slate-400" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ totalStudents }}</div>
+                                <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ filteredAssignments.length }}</div>
                             </CardContent>
                         </Card>
+                        
                         <Card class="border border-slate-200 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700">
                             <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                                 <CardTitle class="text-sm font-medium text-slate-600 dark:text-slate-400">Materias Evaluadas</CardTitle>
@@ -456,7 +457,11 @@ const totalPoints = computed(() => {
 });
 
 const totalStudents = computed(() => {
-    return new Set(filteredAssignments.value.map((a) => a.estudiante.id)).size;
+    // Contar estudiantes únicos en las asignaciones FILTRADAS
+    if (!filteredAssignments.value || filteredAssignments.value.length === 0) return 0;
+
+    const filteredStudents = new Set(filteredAssignments.value.map((a) => a.estudiante.id));
+    return filteredStudents.size;
 });
 
 const totalSubjects = computed(() => {

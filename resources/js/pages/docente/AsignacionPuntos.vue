@@ -148,35 +148,39 @@ function openConfirmDialog() {
     }
     const student = availableStudents.value.find((s) => s.id === parseInt(form.value.estudiante_id));
     confirmData.value = { studentName: student ? `${student.apellidos}, ${student.nombres}` : 'el estudiante' };
-    showConfirmDialog.value = true; 
+    showConfirmDialog.value = true;
 }
 
 function submitAssignment() {
     showConfirmDialog.value = false;
     isSubmitting.value = true;
-    router.post(route('docente.curso.asignar-extracurriculares', { idCursoParalelo: selectedCourseParallel.value }), {
-        estudiantes: [parseInt(form.value.estudiante_id)],
-        idMateria: parseInt(form.value.materia_id),
-        idPeriodo: parseInt(form.value.periodo_id),
-        puntos: form.value.puntos,
-        comentario: form.value.comentario,
-    }, {
-        onSuccess: (response) => {
-            toast.success(' Puntos asignados correctamente', {
-                description: `Se asignaron ${form.value.puntos} puntos extracurriculares al estudiante`,
-            });
-            resetForm();
+    router.post(
+        route('docente.curso.asignar-extracurriculares', { idCursoParalelo: selectedCourseParallel.value }),
+        {
+            estudiantes: [parseInt(form.value.estudiante_id)],
+            idMateria: parseInt(form.value.materia_id),
+            idPeriodo: parseInt(form.value.periodo_id),
+            puntos: form.value.puntos,
+            comentario: form.value.comentario,
         },
-        onError: (errors) => {
-            const firstError = Object.values(errors)[0];
-            toast.error(' Error al asignar puntos', {
-                description: firstError || 'No se pudieron asignar los puntos. Intenta nuevamente.',
-            });
+        {
+            onSuccess: (response) => {
+                toast.success(' Puntos asignados correctamente', {
+                    description: `Se asignaron ${form.value.puntos} puntos extracurriculares al estudiante`,
+                });
+                resetForm();
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                toast.error(' Error al asignar puntos', {
+                    description: firstError || 'No se pudieron asignar los puntos. Intenta nuevamente.',
+                });
+            },
+            onFinish: () => {
+                isSubmitting.value = false;
+            },
         },
-        onFinish: () => {
-            isSubmitting.value = false;
-        },
-    });
+    );
 }
 
 function openBulkConfirmDialog() {
@@ -195,30 +199,34 @@ function openBulkConfirmDialog() {
 function submitBulkAssignment() {
     showBulkConfirmDialog.value = false;
     isBulkSubmitting.value = true;
-    router.post(route('docente.curso.asignar-extracurriculares', { idCursoParalelo: bulkForm.value.curso_paralelo_id }), {
-        estudiantes: bulkForm.value.estudiantes_ids,
-        idMateria: parseInt(bulkForm.value.materia_id),
-        idPeriodo: parseInt(bulkForm.value.periodo_id),
-        puntos: bulkForm.value.puntos,
-        comentario: 'Asignación masiva',
-    }, {
-        onSuccess: (response) => {
-            const numEstudiantes = bulkConfirmData.value.numStudents || bulkForm.value.estudiantes_ids.length;
-            toast.success('Asignación masiva completada', {
-                description: `Se asignaron ${bulkForm.value.puntos} puntos extracurriculares a ${numEstudiantes} estudiante(s)`,
-            });
-            resetBulkForm();
+    router.post(
+        route('docente.curso.asignar-extracurriculares', { idCursoParalelo: bulkForm.value.curso_paralelo_id }),
+        {
+            estudiantes: bulkForm.value.estudiantes_ids,
+            idMateria: parseInt(bulkForm.value.materia_id),
+            idPeriodo: parseInt(bulkForm.value.periodo_id),
+            puntos: bulkForm.value.puntos,
+            comentario: 'Asignación masiva',
         },
-        onError: (errors) => {
-            const firstError = Object.values(errors)[0];
-            toast.error(' Error en asignación masiva', {
-                description: firstError || 'No se pudieron asignar los puntos. Intenta nuevamente.',
-            });
+        {
+            onSuccess: (response) => {
+                const numEstudiantes = bulkConfirmData.value.numStudents || bulkForm.value.estudiantes_ids.length;
+                toast.success('Asignación masiva completada', {
+                    description: `Se asignaron ${bulkForm.value.puntos} puntos extracurriculares a ${numEstudiantes} estudiante(s)`,
+                });
+                resetBulkForm();
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                toast.error(' Error en asignación masiva', {
+                    description: firstError || 'No se pudieron asignar los puntos. Intenta nuevamente.',
+                });
+            },
+            onFinish: () => {
+                isBulkSubmitting.value = false;
+            },
         },
-        onFinish: () => {
-            isBulkSubmitting.value = false;
-        },
-    });
+    );
 }
 
 function resetForm() {
@@ -257,6 +265,22 @@ const formatDate = (dateString: string) => {
         return 'Fecha inválida';
     }
 };
+
+// Dark mode toggle
+const isDarkMode = ref(false);
+
+function toggleDarkMode() {
+    isDarkMode.value = !isDarkMode.value;
+    const theme = isDarkMode.value ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark', isDarkMode.value);
+    localStorage.setItem('theme', theme);
+}
+
+// Load theme from localStorage on init
+if (localStorage.getItem('theme') === 'dark') {
+    isDarkMode.value = true;
+    document.documentElement.classList.add('dark');
+}
 </script>
 
 <template>

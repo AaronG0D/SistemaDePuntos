@@ -98,6 +98,20 @@ class DashboardController extends Controller
                 'puntos' => $cp->puntos ?? 0
             ]);
 
+        // Depósitos por tipo de basura (para gráfico doughnut)
+        $depositosPorTipo = Deposito::whereBetween('deposito.created_at', [$inicioMes, Carbon::now()])
+            ->join('tipoBasura', 'deposito.idTipoBasura', '=', 'tipoBasura.idTipoBasura')
+            ->groupBy('tipoBasura.idTipoBasura', 'tipoBasura.nombre')
+            ->select(
+                'tipoBasura.nombre as tipo',
+                DB::raw('COUNT(deposito.idDeposito) as cantidad')
+            )
+            ->get()
+            ->map(fn($item) => [
+                'tipo' => $item->tipo,
+                'cantidad' => (int) $item->cantidad
+            ]);
+
         return Inertia::render('admin/Dashboard', [
             'estadisticas' => [
                 'depositos_hoy' => $depositosHoy,
@@ -110,6 +124,7 @@ class DashboardController extends Controller
                 'top_estudiantes' => $topEstudiantes,
                 'ranking_curso' => $rankingCurso,
                 'ranking_paralelo' => $rankingParalelo,
+                'depositos_por_tipo' => $depositosPorTipo,
             ]
         ]);
     }

@@ -2,11 +2,13 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import {
     Activity,
+    AlertCircle,
     ArrowRight,
     Award,
     BarChart3,
     Calendar,
     ChartBar,
+    CheckCircle,
     Globe,
     GraduationCap,
     Heart,
@@ -82,6 +84,38 @@ const paraleloSeleccionado = ref('all');
 // Estado para navegación
 const activeSection = ref('inicio');
 
+// Formulario de contacto
+const nombre = ref('');
+const email = ref('');
+const asunto = ref('');
+const mensaje = ref('');
+const loading = ref(false);
+const notificacion = ref<{ tipo: 'success' | 'error'; mensaje: string } | null>(null);
+
+function mostrarNotificacion(tipo: 'success' | 'error', mensaje: string) {
+    notificacion.value = { tipo, mensaje };
+    setTimeout(() => {
+        notificacion.value = null;
+    }, 4000);
+}
+
+function enviarContacto(e: Event) {
+    e.preventDefault();
+    if (!nombre.value || !email.value || !asunto.value || !mensaje.value) {
+        mostrarNotificacion('error', 'Por favor, completa todos los campos.');
+        return;
+    }
+    loading.value = true;
+    setTimeout(() => {
+        loading.value = false;
+        nombre.value = '';
+        email.value = '';
+        asunto.value = '';
+        mensaje.value = '';
+        mostrarNotificacion('success', '¡Recibimos tu mensaje! Pronto te contactaremos.');
+    }, 1200);
+}
+
 // Función para aplicar filtros
 function aplicarFiltros() {
     router.get(
@@ -130,6 +164,21 @@ function getDashboardRoute() {
 const formatNumber = (num: number) => {
     return new Intl.NumberFormat('es-ES').format(num);
 };
+
+const isDarkMode = ref(false);
+
+function toggleDarkMode() {
+    isDarkMode.value = !isDarkMode.value;
+    const theme = isDarkMode.value ? 'dark' : 'light';
+    document.documentElement.classList.toggle('dark', isDarkMode.value);
+    localStorage.setItem('theme', theme);
+}
+
+// Cargar el tema desde localStorage al iniciar
+if (localStorage.getItem('theme') === 'dark') {
+    isDarkMode.value = true;
+    document.documentElement.classList.add('dark');
+}
 </script>
 
 <template>
@@ -138,6 +187,28 @@ const formatNumber = (num: number) => {
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     </Head>
     <div class="min-h-screen bg-gradient-to-b from-green-50 to-white dark:from-green-950 dark:to-gray-900">
+        <!-- Notificaciones -->
+        <transition name="fade">
+            <div
+                v-if="notificacion"
+                class="fixed top-20 right-4 left-4 z-50 mx-auto flex max-w-md items-center gap-3 rounded-lg p-4 shadow-lg"
+                :class="{
+                    'border border-green-300 bg-green-100 dark:border-green-700 dark:bg-green-900/30': notificacion.tipo === 'success',
+                    'border border-red-300 bg-red-100 dark:border-red-700 dark:bg-red-900/30': notificacion.tipo === 'error',
+                }"
+            >
+                <CheckCircle v-if="notificacion.tipo === 'success'" class="h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" />
+                <AlertCircle v-else class="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
+                <span
+                    :class="{
+                        'text-green-800 dark:text-green-100': notificacion.tipo === 'success',
+                        'text-red-800 dark:text-red-100': notificacion.tipo === 'error',
+                    }"
+                >
+                    {{ notificacion.mensaje }}
+                </span>
+            </div>
+        </transition>
         <!-- Navegación -->
         <header class="fixed top-0 z-50 w-full border-b border-green-100 bg-white/95 backdrop-blur-sm dark:border-green-900 dark:bg-gray-900/95">
             <nav class="container mx-auto flex items-center justify-between p-4">
@@ -195,6 +266,26 @@ const formatNumber = (num: number) => {
                 </div>
 
                 <div class="flex items-center gap-4">
+                    <button
+                        @click="toggleDarkMode"
+                        class="rounded-full p-2 transition hover:bg-green-100 dark:hover:bg-green-900"
+                        title="Cambiar tema"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="h-6 w-6"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M12 3v1.5M12 19.5V21m8.485-8.485H21M3 12h1.5m15.364-6.364-.707.707M5.343 18.657l-.707.707m0-13.414.707.707m13.414 13.414.707.707M16.5 12a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"
+                            />
+                        </svg>
+                    </button>
                     <Link
                         v-if="page.props.auth.user"
                         :href="getDashboardRoute()"
@@ -327,11 +418,10 @@ const formatNumber = (num: number) => {
                             <div class="flex-1">
                                 <h3 class="text-lg font-semibold text-indigo-900 dark:text-indigo-100">Curso Más Activo</h3>
                                 <p class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                                    {{ estadisticas.cursoMasActivo.curso_nombre }} {{ estadisticas.cursoMasActivo.paralelo_nombre }}
+                                    {{ estadisticas.cursoMasActivo.curso_nombre }}
                                 </p>
                                 <div class="mt-2 flex gap-4 text-sm text-indigo-600/70 dark:text-indigo-400/70">
                                     <span>{{ formatNumber(estadisticas.cursoMasActivo.total_depositos) }} depósitos</span>
-                                    <span>{{ formatNumber(estadisticas.cursoMasActivo.total_puntos) }} puntos</span>
                                 </div>
                             </div>
                         </div>
@@ -353,7 +443,6 @@ const formatNumber = (num: number) => {
                                 </p>
                                 <div class="mt-2 flex gap-4 text-sm text-emerald-600/70 dark:text-emerald-400/70">
                                     <span>{{ formatNumber(estadisticas.tipoBasuraMasComun.total_depositos) }} depósitos</span>
-                                    <span>{{ formatNumber(estadisticas.tipoBasuraMasComun.total_puntos) }} puntos</span>
                                 </div>
                             </div>
                         </div>
@@ -512,7 +601,6 @@ const formatNumber = (num: number) => {
                                 {{ curso.nombre }}
                             </option>
                         </select>
-
                         <select
                             v-model="paraleloSeleccionado"
                             @change="aplicarFiltros"
@@ -780,22 +868,26 @@ const formatNumber = (num: number) => {
                     <div class="rounded-2xl bg-gradient-to-br from-gray-50 to-gray-100 p-8 dark:from-gray-800/50 dark:to-gray-700/50">
                         <h3 class="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Envíanos un Mensaje</h3>
 
-                        <form class="space-y-6">
+                        <form class="space-y-6" @submit="enviarContacto">
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div>
                                     <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"> Nombre </label>
                                     <input
+                                        v-model="nombre"
                                         type="text"
                                         class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                         placeholder="Tu nombre"
+                                        required
                                     />
                                 </div>
                                 <div>
                                     <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"> Email </label>
                                     <input
+                                        v-model="email"
                                         type="email"
                                         class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                         placeholder="tu@email.com"
+                                        required
                                     />
                                 </div>
                             </div>
@@ -803,26 +895,31 @@ const formatNumber = (num: number) => {
                             <div>
                                 <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"> Asunto </label>
                                 <input
+                                    v-model="asunto"
                                     type="text"
                                     class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                     placeholder="¿En qué podemos ayudarte?"
+                                    required
                                 />
                             </div>
 
                             <div>
                                 <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300"> Mensaje </label>
                                 <textarea
+                                    v-model="mensaje"
                                     rows="4"
                                     class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                     placeholder="Escribe tu mensaje aquí..."
+                                    required
                                 ></textarea>
                             </div>
 
                             <button
                                 type="submit"
-                                class="w-full rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-6 py-3 font-medium text-white transition-all hover:from-green-700 hover:to-green-800 focus:ring-2 focus:ring-green-500/20 focus:outline-none"
+                                :disabled="loading"
+                                class="w-full rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-6 py-3 font-medium text-white transition-all hover:from-green-700 hover:to-green-800 focus:ring-2 focus:ring-green-500/20 focus:outline-none disabled:opacity-60"
                             >
-                                Enviar Mensaje
+                                {{ loading ? 'Enviando...' : 'Enviar Mensaje' }}
                             </button>
                         </form>
                     </div>
@@ -844,3 +941,20 @@ const formatNumber = (num: number) => {
         </footer>
     </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.fade-enter-to,
+.fade-leave-from {
+    opacity: 1;
+}
+</style>

@@ -589,7 +589,6 @@ class DocenteDashboardController extends Controller
                             'idDocente' => $docente->idDocente,
                             'idMateria' => (int) $data['idMateria'],
                             'fecha_asignacion' => $now,
-                            'porcentaje' => 100,
                             'puntos' => (int) $p->puntos,
                             'comentario' => $data['comentario'] ?? null,
                             'created_at' => $now,
@@ -844,64 +843,39 @@ class DocenteDashboardController extends Controller
 
         $periodoId = $request->get('periodo_id');
 
-        // Obtener puntos desglosados por tipo para esta materia y período
-        // Subquery para puntos totales
-        $subqueryPuntosTotales = DB::table('puntaje')
-            ->select('idUser', DB::raw('COALESCE(SUM(puntos), 0) as puntos_totales'))
+        // Obtener el total REAL de estudiantes en el curso
+        $totalEstudiantesReales = Estudiante::where('idCursoParalelo', $idCursoParalelo)->count();
+
+        // Obtener estadísticas de puntos ASIGNADOS para esta materia específica
+        $estadisticasMateria = DB::table('asignaciones_puntaje as ap')
+            ->join('puntaje as p', 'ap.idPuntaje', '=', 'p.idPuntaje')
+            ->where('ap.idMateria', $idMateria)
             ->when($periodoId, function($query) use ($periodoId) {
-                return $query->where('idPeriodo', $periodoId);
+                return $query->where('ap.idPeriodo', $periodoId);
             })
-            ->groupBy('idUser');
-
-        $estudiantesConPuntos = DB::table('estudiante')
-            ->join('usuario', 'estudiante.idUser', '=', 'usuario.id')
-            // Puntos asignados a esta materia
-            ->leftJoin('asignaciones_puntaje as ap', function($join) use ($idMateria, $periodoId) {
-                $join->on('usuario.id', '=', 'ap.idUser')
-                     ->where('ap.idMateria', $idMateria);
-                if ($periodoId) {
-                    $join->where('ap.idPeriodo', $periodoId);
-                }
-            })
-            ->leftJoin('puntaje as p', 'p.idPuntaje', '=', 'ap.idPuntaje')
-            // Puntos totales del estudiante (disponibles)
-            ->leftJoinSub($subqueryPuntosTotales, 'pt', function($join) {
-                $join->on('usuario.id', '=', 'pt.idUser');
-            })
-            ->where('estudiante.idCursoParalelo', $idCursoParalelo)
             ->select(
-                'usuario.id',
-                'usuario.nombres',
-                'usuario.primerApellido',
-                'usuario.segundoApellido',
-                DB::raw("COALESCE(SUM(CASE WHEN p.tipo_puntaje = 'depositos' THEN ap.puntos ELSE 0 END), 0) as puntos_depositos"),
-                DB::raw("COALESCE(SUM(CASE WHEN p.tipo_puntaje = 'extracurricular' THEN ap.puntos ELSE 0 END), 0) as puntos_extracurriculares"),
-                DB::raw('COALESCE(SUM(ap.puntos), 0) as puntos_asignados'),
-                DB::raw('COALESCE(MAX(pt.puntos_totales), 0) as puntos_disponibles')
+                DB::raw('COUNT(DISTINCT ap.idUser) as estudiantes_con_puntos'),
+                DB::raw("COALESCE(SUM(CASE WHEN p.tipo_puntaje = 'depositos' THEN ap.puntos ELSE 0 END), 0) as puntos_depositos_total"),
+                DB::raw("COALESCE(SUM(CASE WHEN p.tipo_puntaje = 'extracurricular' THEN ap.puntos ELSE 0 END), 0) as puntos_extracurriculares_total"),
+                DB::raw('COALESCE(SUM(ap.puntos), 0) as puntos_asignados_total')
             )
-            ->groupBy('usuario.id', 'usuario.nombres', 'usuario.primerApellido', 'usuario.segundoApellido')
-            ->get();
+            ->first();
 
-        // Calcular estadísticas basadas en puntos asignados
-        $totalEstudiantes = $estudiantesConPuntos->count();
-        $estudiantesConPuntosAsignados = $estudiantesConPuntos->where('puntos_asignados', '>', 0)->count();
-        $puntosAsignadosTotal = $estudiantesConPuntos->sum('puntos_asignados');
-        $puntosDepositosTotal = $estudiantesConPuntos->sum('puntos_depositos');
-        $puntosExtracurricularesTotal = $estudiantesConPuntos->sum('puntos_extracurriculares');
-        $puntosDisponiblesTotal = $estudiantesConPuntos->sum('puntos_disponibles');
-        $puntosSinAsignar = $puntosDisponiblesTotal - $puntosAsignadosTotal;
-        $promedioAsignados = $totalEstudiantes > 0 ? $puntosAsignadosTotal / $totalEstudiantes : 0;
+        $estudiantesConPuntos = $estadisticasMateria->estudiantes_con_puntos ?? 0;
+        $puntosAsignadosTotal = $estadisticasMateria->puntos_asignados_total ?? 0;
+        $puntosDepositosTotal = $estadisticasMateria->puntos_depositos_total ?? 0;
+        $puntosExtracurricularesTotal = $estadisticasMateria->puntos_extracurriculares_total ?? 0;
+        $promedioAsignados = $totalEstudiantesReales > 0 ? $puntosAsignadosTotal / $totalEstudiantesReales : 0;
 
         $estadisticas = [
-            'total_estudiantes' => $totalEstudiantes,
-            'estudiantes_con_puntos' => $estudiantesConPuntosAsignados,
+            'total_estudiantes' => $totalEstudiantesReales,
+            'estudiantes_con_puntos' => $estudiantesConPuntos,
             'puntos_asignados_total' => $puntosAsignadosTotal,
             'puntos_depositos_total' => $puntosDepositosTotal,
             'puntos_extracurriculares_total' => $puntosExtracurricularesTotal,
-            'puntos_disponibles_total' => $puntosDisponiblesTotal,
-            'puntos_sin_asignar' => $puntosSinAsignar,
+            'puntos_disponibles_total' => 0,
+            'puntos_sin_asignar' => 0,
             'promedio_asignados' => round($promedioAsignados, 2),
-            'estudiantes' => $estudiantesConPuntos
         ];
 
         return response()->json($estadisticas);

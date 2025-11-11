@@ -602,42 +602,25 @@ const printQr = () => {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>QR - ${props.student.nombres} ${props.student.apellidos}</title>
+                <title>Credencial - ${props.student.nombres} ${props.student.apellidos}</title>
                 <style>
-                    body {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        min-height: 100vh;
-                        margin: 0;
-                        font-family: Arial, sans-serif;
-                    }
-                    img {
-                        max-width: 400px;
-                        margin: 20px;
-                    }
-                    .info {
-                        text-align: center;
-                        margin: 20px;
-                    }
-                    h2 {
-                        margin: 10px 0;
-                    }
-                    @media print {
-                        body {
-                            padding: 20px;
-                        }
-                    }
+                    @page { size: 85.6mm 54mm; margin: 0; }
+                    body { width: 85.6mm; height: 54mm; margin: 0; display: flex; align-items: center; justify-content: center; font-family: Arial, sans-serif; }
+                    .card { width: 85.6mm; height: 54mm; box-sizing: border-box; padding: 4mm; display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; border: 1px solid #e5e7eb; border-radius: 3mm; }
+                    .info { font-size: 3.2mm; line-height: 1.2; }
+                    .name { font-weight: bold; font-size: 4mm; margin-bottom: 1mm; }
+                    .qr { width: 40mm; height: 40mm; object-fit: contain; }
                 </style>
             </head>
             <body>
-                <div class="info">
-                    <h2>${props.student.nombres} ${props.student.apellidos}</h2>
-                    <p>Código: ${props.student.codigo_estudiante || props.student.id}</p>
-                    <p>${props.student.curso?.nombre || ''} "${props.student.paralelo?.nombre || ''}"</p>
+                <div class="card">
+                    <div class="info">
+                        <div class="name">${props.student.nombres} ${props.student.apellidos}</div>
+                        <div>Código: ${props.student.codigo_estudiante || props.student.id}</div>
+                        <div>${props.student.curso?.nombre || ''} "${props.student.paralelo?.nombre || ''}"</div>
+                    </div>
+                    <img class="qr" src="${qrUrl.value}" alt="QR Code" />
                 </div>
-                <img src="${qrUrl.value}" alt="QR Code" />
             </body>
             </html>
         `;

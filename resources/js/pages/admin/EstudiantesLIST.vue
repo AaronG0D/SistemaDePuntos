@@ -12,7 +12,7 @@ import UserQrCode from '@/components/UserQrCode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Estudiante } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Check, Eye, Search, SquarePen, Trash2, Upload, XCircle } from 'lucide-vue-next';
+import { Check, Eye, Search, SquarePen, Trash2, Upload, XCircle, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
@@ -597,25 +597,29 @@ watch(editParalelo, (val) => {
                     {{ Math.min(estudiantes.current_page * estudiantes.per_page, estudiantes.total) }} 
                     de {{ estudiantes.total }} estudiantes
                 </p>
-                <Pagination
-                    class="bg-rgb(214, 219, 216)"
-                    :total="estudiantes.total"
-                    :items-per-page="estudiantes.per_page"
-                    :default-page="estudiantes.current_page"
-                    v-slot="{ page }"
-                >
-                    <PaginationContent>
-                        <PaginationPrevious v-if="estudiantes.current_page > 1" @click="goToPage(estudiantes.current_page - 1)" />
-
-                        <template v-for="p in estudiantes.last_page" :key="p">
-                            <PaginationItem :value="p" :is-active="p === estudiantes.current_page" @click="goToPage(p)">
-                                {{ p }}
-                            </PaginationItem>
-                        </template>
-
-                        <PaginationNext v-if="estudiantes.current_page < estudiantes.last_page" @click="goToPage(estudiantes.current_page + 1)" />
-                    </PaginationContent>
-                </Pagination>
+                <div class="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="estudiantes.current_page === 1"
+                        @click="goToPage(estudiantes.current_page - 1)"
+                    >
+                        <ChevronLeft class="h-4 w-4" />
+                        <span class="ml-1">Anterior</span>
+                    </Button>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">
+                        Página {{ estudiantes.current_page }} de {{ estudiantes.last_page }}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="estudiantes.current_page >= estudiantes.last_page"
+                        @click="goToPage(estudiantes.current_page + 1)"
+                    >
+                        <span class="mr-1">Siguiente</span>
+                        <ChevronRight class="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
 
             <!-- ===== DIÁLOGO DE EDICIÓN ===== -->

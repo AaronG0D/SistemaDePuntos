@@ -123,13 +123,24 @@ const estadisticasReporte = ref({
 // Función para obtener estadísticas de reporte por materia
 async function obtenerEstadisticasReporte() {
     if (!materiaId.value) {
+        // Cuando no hay materia seleccionada, obtener el total completo de todos los estudiantes
+        const totalEstudiantes = props.estudiantes.total;
+
+        // Para calcular estudiantes con puntos, usar los datos de la página actual
+        // pero escalar el resultado al total
+        const estudiantesConPuntosEnPagina = props.estudiantes.data.filter((e) => e.puntaje > 0).length;
+        const porcentajeConPuntos = props.estudiantes.data.length > 0 ? estudiantesConPuntosEnPagina / props.estudiantes.data.length : 0;
+        const estudiantesConPuntos = Math.round(totalEstudiantes * porcentajeConPuntos);
+
+        const puntajeTotal = props.estudiantes.data.reduce((sum, e) => sum + (e.puntaje || 0), 0);
+
         estadisticasReporte.value = {
-            total_estudiantes: props.estudiantes.data.length,
-            estudiantes_con_puntos: 0,
-            puntos_asignados_total: 0,
-            puntos_disponibles_total: 0,
+            total_estudiantes: totalEstudiantes,
+            estudiantes_con_puntos: estudiantesConPuntos,
+            puntos_asignados_total: puntajeTotal,
+            puntos_disponibles_total: puntajeTotal,
             puntos_sin_asignar: 0,
-            promedio_asignados: 0,
+            promedio_asignados: totalEstudiantes > 0 ? Math.round(puntajeTotal / totalEstudiantes) : 0,
         };
         return;
     }
@@ -540,7 +551,7 @@ async function exportarExcel() {
                                     <div class="flex items-center gap-2">
                                         <input type="checkbox" v-model="selectAllFiltered" @change="handleSelectAllFiltered" />
                                         <Label class="text-white-700 text-sm font-medium">
-                                            🌐 Seleccionar TODOS los estudiantes (todas las páginas)
+                                            ✓ Seleccionar TODOS los estudiantes (todas las páginas)
                                         </Label>
                                     </div>
 
@@ -559,11 +570,12 @@ async function exportarExcel() {
                                         <Button
                                             :disabled="!materiaId || !isPeriodoActivo || (selectedIds.size === 0 && !selectAllFiltered)"
                                             @click="abrirConfirmacion"
+                                            class="bg-green-600 font-semibold text-white hover:bg-green-700"
                                         >
-                                            Atribuir puntos del período
+                                            Asignar puntos a
                                             <span
                                                 v-if="selectedIds.size > 0 || selectAllFiltered"
-                                                class="ml-2 rounded-full bg-blue-100 px-2 py-1 text-xs"
+                                                class="ml-2 rounded-full bg-white/30 px-3 py-0.5 text-sm font-bold"
                                             >
                                                 {{ totalSeleccionados }}
                                             </span>
@@ -592,7 +604,9 @@ async function exportarExcel() {
                                             <th class="px-3 py-3 text-left text-sm font-medium text-gray-500 dark:text-gray-400">Estudiante</th>
                                             <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Estado</th>
                                             <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Depósitos</th>
-                                            <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Extracurricular</th>
+                                            <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                Extracurricular
+                                            </th>
                                             <th class="w-24 px-3 py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">Total</th>
                                         </tr>
                                     </thead>
@@ -624,23 +638,33 @@ async function exportarExcel() {
                                             </td>
                                             <td class="px-3 py-2 text-center">
                                                 <span
-                                                    v-if="materiaId && atribuidosSet.has(e.id)"
-                                                    class="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
-                                                >
-                                                    Atribuido
-                                                </span>
-                                                <span
-                                                    v-else-if="e.puntaje === 0"
-                                                    class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                                                    v-if="e.puntaje === '0' || e.puntaje === 0"
+                                                    class="inline-flex rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
                                                 >
                                                     Sin puntos
                                                 </span>
+                                                <span
+                                                    v-else-if="materiaId && atribuidosSet.has(e.id)"
+                                                    class="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                                                >
+                                                    ✓ Atribuido
+                                                </span>
+                                                <span
+                                                    v-else
+                                                    class="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900 dark:text-blue-300"
+                                                >
+                                                    Con puntos
+                                                </span>
                                             </td>
                                             <td class="px-3 py-2 text-center">
-                                                <span class="text-sm font-medium text-blue-600 dark:text-blue-400">{{ e.puntos_depositos || 0 }}</span>
+                                                <span class="text-sm font-medium text-blue-600 dark:text-blue-400">{{
+                                                    e.puntos_depositos || 0
+                                                }}</span>
                                             </td>
                                             <td class="px-3 py-2 text-center">
-                                                <span class="text-sm font-medium text-purple-600 dark:text-purple-400">{{ e.puntos_extracurriculares || 0 }}</span>
+                                                <span class="text-sm font-medium text-purple-600 dark:text-purple-400">{{
+                                                    e.puntos_extracurriculares || 0
+                                                }}</span>
                                             </td>
                                             <td class="px-3 py-2 text-center">
                                                 <div class="flex flex-col items-center justify-center">
@@ -805,45 +829,23 @@ async function exportarExcel() {
                                 </div>
 
                                 <!-- Información del Período -->
-                                <div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                                    <div class="space-y-2">
-                                        <h3 class="font-semibold text-amber-900">📅 Información del Período</h3>
-                                        <div class="grid grid-cols-2 gap-4 text-sm">
-                                            <div>
-                                                <span class="font-medium text-amber-800">Período Seleccionado:</span>
-                                                <p class="text-amber-700">
-                                                    {{
-                                                        currentPeriodo ? `${currentPeriodo.nombre} (${currentPeriodo.codigo})` : 'Todos los períodos'
-                                                    }}
+                                <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                    <div class="space-y-3">
+                                        <h3 class="text-lg font-bold text-blue-900">📊 Resumen del Curso</h3>
+                                        <div class="grid grid-cols-3 gap-4">
+                                            <div class="rounded-lg border border-blue-100 bg-white p-3">
+                                                <p class="text-xs font-medium text-gray-500 uppercase">Total Estudiantes</p>
+                                                <p class="mt-1 text-2xl font-bold text-blue-600">{{ estadisticasReporte.total_estudiantes }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-green-100 bg-white p-3">
+                                                <p class="text-xs font-medium text-gray-500 uppercase">Con Puntos</p>
+                                                <p class="mt-1 text-2xl font-bold text-green-600">{{ estadisticasReporte.estudiantes_con_puntos }}</p>
+                                            </div>
+                                            <div class="rounded-lg border border-orange-100 bg-white p-3">
+                                                <p class="text-xs font-medium text-gray-500 uppercase">Sin Puntos</p>
+                                                <p class="mt-1 text-2xl font-bold text-orange-600">
+                                                    {{ estadisticasReporte.total_estudiantes - estadisticasReporte.estudiantes_con_puntos }}
                                                 </p>
-                                            </div>
-                                            <div>
-                                                <span class="font-medium text-amber-800">Total de Estudiantes:</span>
-                                                <p class="text-amber-700">{{ estadisticasReporte.total_estudiantes }} estudiantes</p>
-                                            </div>
-                                            <div>
-                                                <span class="font-medium text-amber-800">Estudiantes con Puntos Asignados:</span>
-                                                <p class="text-amber-700">{{ estadisticasReporte.estudiantes_con_puntos }} estudiantes</p>
-                                            </div>
-                                            <div>
-                                                <span class="font-medium text-amber-800">Puntos Asignados Total:</span>
-                                                <p class="text-amber-700">{{ estadisticasReporte.puntos_asignados_total }} puntos</p>
-                                            </div>
-                                            <div>
-                                                <span class="font-medium text-green-800">Puntos Disponibles Total:</span>
-                                                <p class="text-green-700">{{ estadisticasReporte.puntos_disponibles_total || 0 }} puntos</p>
-                                            </div>
-                                            <div>
-                                                <span class="font-medium text-orange-800">Puntos Sin Asignar:</span>
-                                                <p class="text-orange-700 font-bold">{{ estadisticasReporte.puntos_sin_asignar || 0 }} puntos</p>
-                                            </div>
-                                            <div>
-                                                <span class="font-medium text-amber-800">Promedio de Puntos Asignados:</span>
-                                                <p class="text-amber-700">{{ estadisticasReporte.promedio_asignados }} puntos</p>
-                                            </div>
-                                            <div>
-                                                <span class="font-medium text-amber-800">Fecha de Consulta:</span>
-                                                <p class="text-amber-700">{{ new Date().toLocaleDateString('es-ES') }}</p>
                                             </div>
                                         </div>
                                     </div>

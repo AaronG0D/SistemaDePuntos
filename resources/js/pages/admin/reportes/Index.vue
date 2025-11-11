@@ -3,7 +3,7 @@
     <AppLayout>
         <div class="container mx-auto py-6">
             <div class="mb-8">
-                <h1 class="text-3xl font-bold flex items-center gap-3">
+                <h1 class="flex items-center gap-3 text-3xl font-bold">
                     <FileText class="h-8 w-8 text-emerald-600" />
                     Reportes de Gestión de Residuos
                 </h1>
@@ -19,7 +19,7 @@
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-            <!-- Selección de tipo de reporte -->
+                    <!-- Selección de tipo de reporte -->
                     <div class="mb-6">
                         <label class="mb-2 block font-semibold">Tipo de Reporte</label>
                         <Select v-model="tipoReporte">
@@ -33,9 +33,9 @@
                                 <SelectItem value="fecha">Depósitos por Fecha</SelectItem>
                             </SelectContent>
                         </Select>
-                </div>
+                    </div>
 
-                <!-- Filtros dinámicos -->
+                    <!-- Filtros dinámicos -->
                     <div v-if="tipoReporte === 'depositos'" class="space-y-4">
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div>
@@ -92,8 +92,8 @@
                                         </SelectItem>
                                     </SelectContent>
                                 </Select>
-                    </div>
-                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div v-else-if="tipoReporte === 'basurero'" class="space-y-4">
@@ -118,8 +118,8 @@
                             <div>
                                 <label class="mb-2 block text-sm font-medium">Fecha fin</label>
                                 <Input type="date" v-model="filtros.fecha_fin" />
-                    </div>
-                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div v-else-if="tipoReporte === 'fecha'" class="space-y-4">
@@ -131,28 +131,28 @@
                             <div>
                                 <label class="mb-2 block text-sm font-medium">Fecha fin</label>
                                 <Input type="date" v-model="filtros.fecha_fin" />
-                    </div>
-                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Botones de exportación -->
                     <div class="mt-6 flex gap-3">
                         <Button @click="exportarPDF" :disabled="loading" class="flex items-center gap-2 bg-red-600 text-white hover:bg-red-700">
-                             <FileText class="mr-2 h-4 w-4" />
+                            <FileText class="mr-2 h-4 w-4" />
                             <span v-if="!loading">Exportar PDF</span>
                             <span v-else>Cargando...</span>
                         </Button>
-                <Button
+                        <Button
                             v-if="tipoReporte === 'depositos'"
                             @click="exportarExcel"
-                    :disabled="loading"
+                            :disabled="loading"
                             class="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
-                >
-                             <Table2 class="mr-2 h-4 w-4" />
+                        >
+                            <Table2 class="mr-2 h-4 w-4" />
                             <span v-if="!loading">Exportar Excel</span>
-                    <span v-else>Cargando...</span>
-                </Button>
-            </div>
+                            <span v-else>Cargando...</span>
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -217,7 +217,7 @@
             <!-- Gráficos Estadísticos -->
             <div class="grid gap-6 md:grid-cols-2">
                 <!-- Gráfico de Depósitos por Tipo -->
-                <Card>
+                <Card class="transition hover:shadow-md">
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             <Icon name="bar-chart-3" class="h-5 w-5" />
@@ -230,15 +230,30 @@
                                 v-if="datosGraficos?.porTipo?.labels?.length"
                                 :data="{
                                     labels: datosGraficos.porTipo.labels || [],
-                                    datasets: (datosGraficos.porTipo.datasets || []).map(dataset => ({
-                                        label: dataset.label || 'Sin etiqueta',
-                                        data: dataset.data || [],
-                                        backgroundColor: Array.isArray(dataset.backgroundColor) 
-                                            ? dataset.backgroundColor.filter(color => color !== undefined)
-                                            : [dataset.backgroundColor || '#3B82F6'].filter(color => color !== undefined),
-                                        borderColor: dataset.borderColor || '#1E40AF',
-                                        borderWidth: dataset.borderWidth || 1,
-                                    })),
+                                    datasets: (datosGraficos.porTipo.datasets || []).map((dataset) => {
+                                        const colorMap: Record<string, string> = {
+                                            papel: '#f97316',
+                                            plastico: '#3b82f6',
+                                            metal: '#ef4444',
+                                            biodegradable: '#22c55e',
+                                            default: '#9ca3af',
+                                        };
+                                        const labels = datosGraficos.porTipo.labels || [];
+                                        const normalize = (s: string) =>
+                                            s
+                                                .normalize('NFD')
+                                                .replace(/[\u0300-\u036f]/g, '')
+                                                .toLowerCase();
+                                        const backgroundColors = labels.map((label) => colorMap[normalize(label)] || colorMap.default);
+
+                                        return {
+                                            label: dataset.label || 'Sin etiqueta',
+                                            data: dataset.data || [],
+                                            backgroundColor: backgroundColors,
+                                            borderColor: '#4b5563',
+                                            borderWidth: 2,
+                                        };
+                                    }),
                                 }"
                                 type="doughnut"
                                 :options="{
@@ -254,12 +269,25 @@
                                                 boxWidth: 12,
                                                 padding: 10,
                                                 usePointStyle: true,
+                                                color: '#d1d5db',
                                             },
+                                        },
+                                        tooltip: {
+                                            callbacks: {
+                                                label: function (context: { label: string; raw: number }) {
+                                                    return `${context.label}: ${context.raw}`;
+                                                },
+                                            },
+                                            backgroundColor: getThemeColors().tooltipBg,
+                                            titleColor: getThemeColors().tooltipText,
+                                            bodyColor: getThemeColors().tooltipText,
+                                            borderColor: getThemeColors().tooltipBorder,
+                                            borderWidth: 1,
                                         },
                                     },
                                 }"
                             />
-                            <div v-else class="flex h-full items-center justify-center text-muted-foreground">
+                            <div v-else class="text-muted-foreground flex h-full items-center justify-center">
                                 <p>No hay datos disponibles para mostrar</p>
                             </div>
                         </div>
@@ -280,7 +308,7 @@
                                 v-if="datosGraficos?.porMes?.labels?.length"
                                 :data="{
                                     labels: datosGraficos.porMes.labels || [],
-                                    datasets: (datosGraficos.porMes.datasets || []).map(dataset => ({
+                                    datasets: (datosGraficos.porMes.datasets || []).map((dataset) => ({
                                         label: dataset.label || 'Depósitos',
                                         data: dataset.data || [],
                                         borderColor: dataset.borderColor || '#1E40AF',
@@ -303,7 +331,15 @@
                                                 boxWidth: 12,
                                                 padding: 10,
                                                 usePointStyle: true,
+                                                color: '#d1d5db',
                                             },
+                                        },
+                                        tooltip: {
+                                            backgroundColor: '#111827',
+                                            titleColor: '#F9FAFB',
+                                            bodyColor: '#F9FAFB',
+                                            borderColor: '#374151',
+                                            borderWidth: 1,
                                         },
                                     },
                                     scales: {
@@ -321,7 +357,7 @@
                                     },
                                 }"
                             />
-                            <div v-else class="flex h-full items-center justify-center text-muted-foreground">
+                            <div v-else class="text-muted-foreground flex h-full items-center justify-center">
                                 <p>No hay datos de tendencias disponibles</p>
                             </div>
                         </div>
@@ -342,10 +378,21 @@
                                 v-if="datosGraficos?.topUsuarios?.labels?.length"
                                 :data="{
                                     labels: datosGraficos.topUsuarios.labels || [],
-                                    datasets: (datosGraficos.topUsuarios.datasets || []).map(dataset => ({
+                                    datasets: (datosGraficos.topUsuarios.datasets || []).map((dataset) => ({
                                         label: dataset.label || 'Puntos',
                                         data: dataset.data || [],
-                                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'],
+                                        backgroundColor: [
+                                            '#3B82F6',
+                                            '#10B981',
+                                            '#F59E0B',
+                                            '#EF4444',
+                                            '#8B5CF6',
+                                            '#06B6D4',
+                                            '#84CC16',
+                                            '#F97316',
+                                            '#EC4899',
+                                            '#6366F1',
+                                        ],
                                         borderColor: dataset.borderColor || '#1E40AF',
                                         borderWidth: dataset.borderWidth || 1,
                                     })),
@@ -360,6 +407,13 @@
                                         },
                                         legend: {
                                             display: false,
+                                        },
+                                        tooltip: {
+                                            backgroundColor: '#111827',
+                                            titleColor: '#FFFFFF',
+                                            bodyColor: '#F9FAFB',
+                                            borderColor: '#374151',
+                                            borderWidth: 1,
                                         },
                                     },
                                     scales: {
@@ -378,7 +432,7 @@
                                     indexAxis: 'y',
                                 }"
                             />
-                            <div v-else class="flex h-full items-center justify-center text-muted-foreground">
+                            <div v-else class="text-muted-foreground flex h-full items-center justify-center">
                                 <p>No hay datos de usuarios disponibles</p>
                             </div>
                         </div>
@@ -429,6 +483,24 @@ const filtros = ref({
 
 const loading = ref(false);
 const { toast } = useToast();
+
+// Función para detectar modo oscuro/claro
+const isDarkMode = () => {
+    if (typeof window === 'undefined') return true;
+    return document.documentElement.classList.contains('dark');
+};
+
+// Colores adaptables según el tema
+const getThemeColors = () => {
+    const dark = isDarkMode();
+    return {
+        tooltipBg: dark ? '#111827' : '#FFFFFF',
+        tooltipText: dark ? '#F9FAFB' : '#1F2937',
+        tooltipBorder: dark ? '#374151' : '#E5E7EB',
+        legendText: dark ? '#d1d5db' : '#4B5563',
+        borderColor: dark ? '#374151' : '#E5E7EB',
+    };
+};
 
 const exportarPDF = async () => {
     let url = '';

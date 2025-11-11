@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Log;
 class QrGeneratorService
 {
     private $logoPath;
-    private $logoSizeRatio = 0.20; // 20% del tamaño del QR (logo más pequeño)
-    private $qrSize = 300; // Tamaño del QR en píxeles (más compacto)
+    private $logoSizeRatio = 0.13; // 13% del tamaño del QR (logo más pequeño para credencial)
+    private $qrSize = 600; // Tamaño del QR en píxeles (suficiente para impresión en credencial)
 
     public function __construct()
     {

@@ -88,16 +88,10 @@ class CredentialPdfService
             <meta charset="utf-8">
             <title>Códigos QR - ' . htmlspecialchars($cursoNombre) . '</title>
             <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }
-                body {
-                    font-family: Arial, sans-serif;
-                    padding: 15px;
-                }
-                .page-header {
+                @page { margin: 10mm; }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+                 .page-header {
                     text-align: center;
                     margin-bottom: 15px;
                     padding-bottom: 10px;
@@ -111,61 +105,34 @@ class CredentialPdfService
                     font-size: 12px;
                     color: #666;
                 }
-                .qr-grid {
-                    display: table;
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-                .qr-row {
-                    display: table-row;
-                }
-                .qr-item {
-                    display: table-cell;
-                    width: 33.33%;
-                    text-align: center;
-                    border: 1px solid #ddd;
-                    padding: 8px;
-                    vertical-align: top;
-                }
-                .qr-code {
-                    width: 120px;
-                    height: 120px;
-                    margin: 0 auto 5px;
-                    display: block;
-                }
-                .student-name {
-                    font-weight: bold;
-                    font-size: 9px;
-                    margin-bottom: 3px;
-                    line-height: 1.2;
-                    min-height: 20px;
-                }
-                .student-code {
-                    font-size: 8px;
-                    color: #666;
-                }
-                .page-break {
-                    page-break-before: always;
-                }
+                .qr-grid { display: table; width: 100%; border-collapse: collapse; }
+                .qr-row { display: table-row; }
+                .qr-item { display: table-cell; width: 33.33%; text-align: center; padding: 6mm; vertical-align: middle; }
+                .qr-card { border: 1px solid #e5e7eb; padding: 4mm; }
+                .qr-code { width: 45mm; height: 45mm; margin: 0 auto; display: block; }
+                .student-name { font-weight: bold; font-size: 11px; margin-top: 4px; line-height: 1.3; }
+                .student-code { font-size: 10px; color: #333; }
+                .page-break { page-break-before: always; }
             </style>
+            
         </head>
         <body>';
 
         $count = 0;
-        $totalPages = ceil(count($studentsWithQr) / 9);
+        $perPage = 9; // 3 columnas x 3 filas (tamaño credencial)
+        $totalPages = ceil(count($studentsWithQr) / $perPage);
         $currentPage = 1;
 
         foreach ($studentsWithQr as $index => $item) {
             // Nueva página cada 9 QRs
-            if ($count % 9 === 0) {
+            if ($count % $perPage === 0) {
                 if ($count > 0) {
-                    $html .= '</div></div>'; // Cerrar grid y body anterior
+                    $html .= '</div>'; // Cerrar grid anterior
                     $html .= '<div class="page-break"></div>'; // Salto de página
                     $currentPage++;
                 }
-                
-                // Header de la página
-                $html .= '
+                // Iniciar grid de la página
+                $html .='
                 <div class="page-header">
                     <h1>Códigos QR - ' . htmlspecialchars($cursoNombre) . '</h1>
                     <p>Página ' . $currentPage . ' de ' . $totalPages . '</p>
@@ -180,17 +147,19 @@ class CredentialPdfService
 
             $html .= '
                 <div class="qr-item">
-                    <img src="' . $item['qr_url'] . '" alt="QR Code" class="qr-code">
-                    <div class="student-name">' . htmlspecialchars($item['nombre_completo']) . '</div>
-                    <div class="student-code">' . htmlspecialchars($item['codigo']) . '</div>
+                    <div class="qr-card">
+                        <img src="' . $item['qr_url'] . '" alt="QR Code" class="qr-code">
+                        <div class="student-name">' . htmlspecialchars($item['nombre_completo']) . '</div>
+                        <div class="student-code">' . htmlspecialchars($item['codigo']) . '</div>
+                    </div>
                 </div>';
 
-            // Cerrar fila cada 3 QRs
-            if (($count + 1) % 3 === 0 || $index === count($studentsWithQr) - 1) {
-                // Rellenar celdas vacías si es la última fila y no está completa
+            // Cerrar fila cada 3 QRs o si es el último elemento
+            if ((($count + 1) % 3 === 0) || $index === count($studentsWithQr) - 1) {
+                // Rellenar celda vacía si la última fila quedó incompleta
                 $remaining = 3 - (($count % 3) + 1);
                 for ($i = 0; $i < $remaining; $i++) {
-                    $html .= '<div class="qr-item" style="border: none;"></div>';
+                    $html .= '<div class="qr-item"></div>';
                 }
                 $html .= '</div>'; // Cerrar fila
             }

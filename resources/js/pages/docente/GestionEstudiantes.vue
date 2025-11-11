@@ -83,7 +83,6 @@
                                     <TableHead>Curso</TableHead>
                                     <TableHead>Puntos Asignados</TableHead>
                                     <TableHead>Puntos Depósitos</TableHead>
-                                    <TableHead>Total Puntos</TableHead>
                                     <TableHead>Asignaciones</TableHead>
                                     <TableHead>Depósitos</TableHead>
                                     <TableHead>Rendimiento</TableHead>
@@ -124,16 +123,6 @@
                                             </div>
                                             <Badge variant="secondary" class="bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300">
                                                 {{ student.total_puntos_depositos || 0 }} pts
-                                            </Badge>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div class="flex items-center gap-2">
-                                            <div class="rounded-full bg-purple-100 p-1 dark:bg-purple-900">
-                                                <Trophy class="h-3 w-3 text-purple-600 dark:text-purple-400" />
-                                            </div>
-                                            <Badge class="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 font-bold">
-                                                {{ student.total_puntos || 0 }} pts
                                             </Badge>
                                         </div>
                                     </TableCell>
