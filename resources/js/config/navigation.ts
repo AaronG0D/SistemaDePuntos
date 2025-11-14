@@ -1,14 +1,5 @@
 import type { NavGroup } from '@/types';
-import { 
-    BarChart3, 
-    Book, 
-    FileText, 
-    GraduationCap, 
-    LineChart, 
-    PlusCircle, 
-    TrendingUp, 
-    Users 
-} from 'lucide-vue-next';
+import { BarChart3, FileText, GraduationCap, PlusCircle } from 'lucide-vue-next';
 
 export const docenteNavigation: NavGroup[] = [
     {
@@ -31,11 +22,6 @@ export const docenteNavigation: NavGroup[] = [
                 href: '/docente/asignacion-puntos',
                 icon: PlusCircle,
             },
-            {
-                title: 'Gestión de Estudiantes',
-                href: '/docente/gestion-estudiantes',
-                icon: Users,
-            },
         ],
     },
     {
@@ -46,11 +32,6 @@ export const docenteNavigation: NavGroup[] = [
                 title: 'Reportes por Materia',
                 href: '/docente/reportes-materia',
                 icon: FileText,
-            },
-            {
-                title: 'Estadísticas Avanzadas',
-                href: '/docente/estadisticas-avanzadas',
-                icon: TrendingUp,
             },
         ],
     },

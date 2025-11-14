@@ -138,7 +138,16 @@ class ReporteController extends Controller
         ]);
 
         $query = DB::table('usuario')
-            ->select('usuario.*')
+            ->select(
+                'usuario.id',
+                'usuario.nombres',
+                'usuario.primerApellido',
+                'usuario.segundoApellido',
+                DB::raw("CONCAT(usuario.nombres, ' ', usuario.primerApellido, ' ', COALESCE(usuario.segundoApellido, '')) as nombre_completo"),
+                'curso.nombre as curso_nombre',
+                'paralelo.nombre as paralelo_nombre',
+                DB::raw("CONCAT(curso.nombre, ' - ', paralelo.nombre) as curso_paralelo")
+            )
             ->selectRaw('(
                 SELECT SUM(tb.puntos)
                 FROM deposito d
@@ -146,6 +155,12 @@ class ReporteController extends Controller
                 WHERE d.idUser = usuario.id
                 AND ' . $this->getSqlPeriodo($request->periodo, 'd.fechaHora') . '
             ) as total_puntos')
+            ->leftJoin('estudiante', 'usuario.id', '=', 'estudiante.idUser')
+            ->leftJoin('curso_paralelo', 'estudiante.idCursoParalelo', '=', 'curso_paralelo.idCursoParalelo')
+            ->leftJoin('curso', 'curso_paralelo.idCurso', '=', 'curso.idCurso')
+            ->leftJoin('paralelo', 'curso_paralelo.idParalelo', '=', 'paralelo.idParalelo')
+            ->where('usuario.rol', 'estudiante')
+            ->where('usuario.deleted_at', null) // Excluir soft deleted
             ->orderByDesc('total_puntos')
             ->limit(10);
 
@@ -311,36 +326,57 @@ class ReporteController extends Controller
         ]);
 
         $periodo = $request->periodo;
-        $tipoResiduoId = $request->tipo_residuo_id;
+        $nombre_periodo = match($periodo) {
+            'semana' => 'Semana Actual (' . now()->startOfWeek()->format('d/m') . ' - ' . now()->endOfWeek()->format('d/m') . ')',
+            'mes'    => 'Mes Actual (' . now()->format('F Y') . ')',
+            'anio'   => 'Año Actual (' . now()->format('Y') . ')',
+            default  => 'Todo el Histórico'
+        };
 
-        $usuarios = \DB::table('usuario')
-            ->select('usuario.*')
+        $query = DB::table('usuario')
+            ->select(
+                'usuario.id',
+                'usuario.nombres',
+                'usuario.primerApellido',
+                'usuario.segundoApellido',
+                DB::raw("CONCAT(usuario.nombres, ' ', usuario.primerApellido, ' ', COALESCE(usuario.segundoApellido, '')) as nombre_completo"),
+                'curso.nombre as curso_nombre',
+                'paralelo.nombre as paralelo_nombre',
+                DB::raw("CONCAT(COALESCE(curso.nombre, 'N/A'), ' - ', COALESCE(paralelo.nombre, 'N/A')) as curso_paralelo")
+            )
             ->selectRaw('(
                 SELECT SUM(tb.puntos)
                 FROM deposito d
                 JOIN tipoBasura tb ON d.idTipoBasura = tb.idTipoBasura
                 WHERE d.idUser = usuario.id
-                ' . ($tipoResiduoId && $tipoResiduoId !== '' ? 'AND d.idTipoBasura = ' . intval($tipoResiduoId) : '') . '
-                AND ' . $this->getSqlPeriodo($periodo, 'd.fechaHora') . '
+                AND ' . $this->getSqlPeriodo($request->periodo, 'd.fechaHora') . '
             ) as total_puntos')
+            ->leftJoin('estudiante', 'usuario.id', '=', 'estudiante.idUser')
+            ->leftJoin('curso_paralelo', 'estudiante.idCursoParalelo', '=', 'curso_paralelo.idCursoParalelo')
+            ->leftJoin('curso', 'curso_paralelo.idCurso', '=', 'curso.idCurso')
+            ->leftJoin('paralelo', 'curso_paralelo.idParalelo', '=', 'paralelo.idParalelo')
+            ->where('usuario.rol', 'estudiante')
+            ->where('usuario.deleted_at', null)
             ->orderByDesc('total_puntos')
             ->limit(10)
             ->get();
 
         $fecha_generacion = now()->format('d/m/Y H:i');
-        $total_puntos = $usuarios->sum('total_puntos');
+
+        $total_puntos = $query->sum('total_puntos');
         $estadisticas = [
-            'total_usuarios' => $usuarios->count(),
+            'total_usuarios' => $query->count(),
             'total_puntos' => $total_puntos,
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reportes.ranking-pdf', [
-            'usuarios' => $usuarios,
+            'usuarios' => $query,
             'periodo' => $periodo,
-            'tipo_residuo_id' => $tipoResiduoId,
             'fecha_generacion' => $fecha_generacion,
             'estadisticas' => $estadisticas,
+            'nombre_periodo' => $nombre_periodo,
         ]);
+
         return $pdf->download('reporte_ranking.pdf');
     }
 
@@ -399,14 +435,17 @@ class ReporteController extends Controller
     // --- PDF: Depósitos por fecha ---
     public function exportarDepositosPorFechaPDF(Request $request)
     {
+
         $request->validate([
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio'
         ]);
 
         $query = \App\Models\Deposito::with(['user', 'tipoBasura', 'basurero'])
+                
             ->whereDate('fechaHora', '>=', $request->fecha_inicio)
-            ->whereDate('fechaHora', '<=', $request->fecha_fin);
+            ->whereDate('fechaHora', '<=', $request->fecha_fin)
+            ->orderBy('fechaHora');
 
         $depositos = $query->get();
         $fecha_generacion = now()->format('d/m/Y H:i');
@@ -522,23 +561,25 @@ class ReporteController extends Controller
                 break;
         }
     }
-
-    protected function getSqlPeriodo($periodo, $campo)
+    private function getSqlPeriodo($periodo, $campo)
     {
-        $ahora = Carbon::now();
-        
         switch ($periodo) {
             case 'semana':
-                return $campo . " BETWEEN '" . $ahora->startOfWeek()->format('Y-m-d H:i:s') . 
-                       "' AND '" . $ahora->endOfWeek()->format('Y-m-d H:i:s') . "'";
+                return "$campo BETWEEN '" . now()->startOfWeek()->toDateString() . " 00:00:00' 
+                        AND '" . now()->endOfWeek()->toDateString() . " 23:59:59'";
+
             case 'mes':
-                return $campo . " BETWEEN '" . $ahora->startOfMonth()->format('Y-m-d H:i:s') . 
-                       "' AND '" . $ahora->endOfMonth()->format('Y-m-d H:i:s') . "'";
+                return "$campo BETWEEN '" . now()->startOfMonth()->toDateString() . " 00:00:00' 
+                        AND '" . now()->endOfMonth()->toDateString() . " 23:59:59'";
+
             case 'anio':
-                return $campo . " BETWEEN '" . $ahora->startOfYear()->format('Y-m-d H:i:s') . 
-                       "' AND '" . $ahora->endOfYear()->format('Y-m-d H:i:s') . "'";
+                return "$campo BETWEEN '" . now()->startOfYear()->toDateString() . " 00:00:00' 
+                        AND '" . now()->endOfYear()->toDateString() . " 23:59:59'";
+
+            case 'todo':
             default:
-                return '1=1'; // todo el tiempo
+                return "1=1"; // sin filtro
         }
     }
+
 } 

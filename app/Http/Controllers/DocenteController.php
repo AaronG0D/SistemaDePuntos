@@ -27,7 +27,7 @@ class DocenteController extends Controller
             'docenteMateriaCursos.materia',
             'docenteMateriaCursos.cursoParalelo.curso',
             'docenteMateriaCursos.cursoParalelo.paralelo'
-        ]);
+        ])->whereNull('deleted_at');
 
         // Filtro por búsqueda
         if ($request->filled('search') && trim($request->input('search')) !== '') {
@@ -56,6 +56,14 @@ class DocenteController extends Controller
 
         $docentes = $query->paginate(10);
 
+        // Obtener docentes inactivos
+        $docentesInactivos = Docente::with([
+            'user',
+            'docenteMateriaCursos.materia',
+            'docenteMateriaCursos.cursoParalelo.curso',
+            'docenteMateriaCursos.cursoParalelo.paralelo'
+        ])->onlyTrashed()->get();
+
         // Trae solo datos activos para los filtros
         $materias = Materia::where('estado', true)->orderBy('nombre')->get(['idMateria', 'nombre']);
         $cursos = Curso::where('estado', true)->orderBy('nombre')->get(['idCurso', 'nombre']);
@@ -63,6 +71,7 @@ class DocenteController extends Controller
 
         return Inertia::render('admin/DocentesLIST', [
             'docentes' => $docentes,
+            'docentesInactivos' => $docentesInactivos,
             'materias' => $materias,
             'cursos' => $cursos,
             'paralelos' => $paralelos,
@@ -183,17 +192,41 @@ class DocenteController extends Controller
     {
         try {
             $docente = Docente::findOrFail($id);
-            
-      
-        
-            
-            // Eliminar el docente
+            $user = $docente->user;
+
+            // Soft delete del docente
             $docente->delete();
 
-            return redirect()->back()->with('success', 'Docente eliminado correctamente');
+            
+            
+            return redirect()->back()->with('success', 'Docente desactivado correctamente');
         } catch (\Exception $e) {
-            \Log::error('Error eliminando docente: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error al eliminar el docente');
+            \Log::error('Error desactivando docente: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al desactivar el docente');
+        }
+    }
+
+    /**
+     * Restaurar un docente inactivo
+     */
+    public function restore($id)
+    {
+        try {
+            $docente = Docente::withTrashed()->findOrFail($id);
+            $user = $docente->user()->withTrashed()->first();
+
+            // Restaurar docente
+            $docente->restore();
+
+            // Restaurar usuario
+            if ($user) {
+                $user->restore();
+            }
+
+            return redirect()->back()->with('success', 'Docente reactivado correctamente');
+        } catch (\Exception $e) {
+            \Log::error('Error reactivando docente: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al reactivar el docente');
         }
     }
 
@@ -378,9 +411,12 @@ class DocenteController extends Controller
 
    public function create()
 {
-    // Usuarios con rol docente que no tienen registro en docentes
+    // Usuarios con rol docente que no tienen registro en docentes (incluyendo inactivos)
     $usuariosDisponibles = User::where('rol', 'docente')
-        ->whereDoesntHave('docente')
+        ->whereDoesntHave('docente', function($q) {
+            // Excluir usuarios que ya tengan docente (activo o inactivo)
+            $q->withTrashed();
+        })
         ->get(['id', 'nombres', 'primerApellido', 'segundoApellido', 'email']);
 
     // Eager loading optimizado: curso → paralelos → materias

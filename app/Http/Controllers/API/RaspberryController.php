@@ -111,6 +111,17 @@ class RaspberryController extends Controller
                 'fechaHora' => now(),
             ]);
 
+            // Obtener el período académico activo para traer puntaje actualizado
+            $periodoActivo = \App\Models\PeriodoAcademico::where('activo', true)->first();
+            
+            // Obtener puntaje total actualizado del período activo
+            $puntosActualizados = 0;
+            if ($periodoActivo) {
+                $puntosActualizados = \App\Models\Puntaje::where('idUser', $user->id)
+                    ->where('idPeriodo', $periodoActivo->idPeriodo)
+                    ->sum('puntos') ?? 0;
+            }
+
             // 5) Actualizar evento como exitoso
             $event->update([
                 'idUser' => $user->id,
@@ -122,6 +133,7 @@ class RaspberryController extends Controller
                 'meta' => array_merge($event->meta ?? [], [
                     'resultado' => 'exitoso',
                     'puntos_ganados' => $tipoBasura->puntos,
+                    'puntos_totales_actuales' => $puntosActualizados,
                     'tipo_basura_encontrado' => $tipoBasura->nombre,
                     'timestamp_fin' => now()->toISOString(),
                     'duracion_ms' => now()->diffInMilliseconds($event->created_at),
@@ -141,6 +153,11 @@ class RaspberryController extends Controller
                     'id' => $deposito->idDeposito,
                     'tipo_basura' => $tipoBasura->nombre,
                     'puntos_ganados' => $tipoBasura->puntos,
+                ],
+                'puntaje' => [
+                    'puntos_ganados_ahora' => $tipoBasura->puntos,
+                    'puntos_totales_periodo' => $puntosActualizados,
+                    'periodo_activo' => $periodoActivo ? $periodoActivo->nombre : null,
                 ],
                 'event_id' => $event->id,
             ], 201);
@@ -190,18 +207,6 @@ class RaspberryController extends Controller
             $page = (int) $request->get('page', 1);
             $status = $request->get('status'); // pending|success|failed
 
-            // Verificar que la tabla existe
-            if (!DB::getSchemaBuilder()->hasTable('raspberry_events')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'La tabla raspberry_events no existe. Ejecuta: php artisan migrate',
-                    'data' => [],
-                    'total' => 0,
-                    'current_page' => 1,
-                    'last_page' => 1,
-                    'per_page' => $perPage,
-                ]);
-            }
 
             $query = \App\Models\RaspberryEvent::query()
                 ->latest('id');
@@ -383,8 +388,16 @@ class RaspberryController extends Controller
                 ], 403);
             }
 
-            // Obtener puntos totales del estudiante (JOIN con tipoBasura)
-            $puntosActuales = $user->puntajes()->Sum('puntos');
+            // Obtener el período académico activo
+            $periodoActivo = \App\Models\PeriodoAcademico::where('activo', true)->first();
+            
+            // Obtener puntaje total del período activo
+            $puntosActuales = 0;
+            if ($periodoActivo) {
+                $puntosActuales = \App\Models\Puntaje::where('idUser', $user->id)
+                    ->where('idPeriodo', $periodoActivo->idPeriodo)
+                    ->sum('puntos') ?? 0;
+            }
             
             // Obtener información del curso si está disponible
             $cursoInfo = null;
@@ -406,6 +419,7 @@ class RaspberryController extends Controller
                     'resultado' => 'exitoso',
                     'estudiante_nombre' => $user->nombres . ' ' . ($user->primerApellido ?? ''),
                     'puntos_actuales' => $puntosActuales,
+                    'periodo_activo' => $periodoActivo ? $periodoActivo->nombre : 'Ninguno',
                     'tiene_curso' => !is_null($cursoInfo),
                     'curso_info' => $cursoInfo,
                     'timestamp_fin' => now()->toISOString(),
@@ -417,11 +431,12 @@ class RaspberryController extends Controller
                 'success' => true,
                 'message' => 'Estudiante encontrado',
                 'estudiante' => [
-                    'id' => $user->idUsuario,
+                    'id' => $user->id,
                     'nombre' => $user->nombres,
                     'apellidos' => ($user->primerApellido ?? '') . ' ' . ($user->segundoApellido ?? ''),
                     'curso_info' => $cursoInfo,
                     'puntos_actuales' => $puntosActuales,
+                    'periodo_activo' => $periodoActivo ? $periodoActivo->nombre : null,
                 ],
                 'event_id' => $event->id,
             ], 200);

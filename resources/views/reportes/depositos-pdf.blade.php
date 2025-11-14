@@ -176,8 +176,6 @@
         </table>
     </div>
 
-    <div style="page-break-before: always;"></div>
-
     <div class="section">
         <div class="section-title">Últimos Depósitos Registrados</div>
         <table>

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { BarChart3, BookOpen, Calendar, ChevronLeft, Clock, FileSpreadsheet, FileText, Users } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 
@@ -65,6 +65,10 @@ const periodoId = ref<string>(
     props.periodoSeleccionado ? String(props.periodoSeleccionado) : props.periodoActivoId ? String(props.periodoActivoId) : '',
 );
 const searchQuery = ref('');
+
+// Obtener CSRF token de Inertia
+const page = usePage();
+const csrfToken = ref<string>('');
 const currentPeriodo = computed(() => props.periodos.find((p) => String(p.idPeriodo) === periodoId.value));
 const cursoData = computed(() => props.curso);
 const materiasSeleccionadasActuales = computed(() => {
@@ -80,6 +84,8 @@ const isPeriodoActivo = computed(() => {
 });
 
 onMounted(() => {
+    csrfToken.value = (page.props.csrf_token as string) || (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+    console.log('CSRF Token inicializado:', csrfToken.value ? 'OK' : 'MISSING');
     if (periodoId.value) {
         const activeButton = document.getElementById(`periodo-btn-${periodoId.value}`);
         if (activeButton) {
@@ -153,9 +159,9 @@ async function obtenerEstadisticasReporte() {
 
         const response = await fetch(`/docente/curso/${props.curso.idCursoParalelo}/materia/${materiaId.value}/reporte?${params}`, {
             headers: {
-                'X-CSRF-TOKEN': csrfToken,
                 Accept: 'application/json',
             },
+            credentials: 'include',
         });
 
         if (response.ok) {
@@ -191,9 +197,6 @@ watch(
     },
     { immediate: true },
 );
-
-// CSRF token para peticiones fetch (Laravel)
-const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
 
 // Estudiantes ya atribuidos para la materia seleccionada en el período actual
 const atribuidosSet = computed(() => {
@@ -295,21 +298,28 @@ async function asignar() {
     if (periodoId.value !== '') payload.idPeriodo = Number(periodoId.value);
 
     try {
+        // Log para debugging
+        console.log('Payload:', payload);
+        console.log('CSRF Token:', csrfToken.value);
+
         const res = await fetch(route('docente.curso.asignar', props.curso.idCursoParalelo), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-Inertia': 'true',
-                'X-CSRF-TOKEN': csrfToken,
+                'X-CSRF-TOKEN': csrfToken.value,
                 Accept: 'application/json',
             },
-            credentials: 'same-origin',
+            credentials: 'include',
             body: JSON.stringify(payload),
         });
+
         const data = await res.json().catch(() => ({}));
+
+        console.log('Response status:', res.status);
+        console.log('Response data:', data);
+
         if (!res.ok) {
-            throw new Error((data && (data.error || data.message)) || 'Error al atribuir');
+            throw new Error((data && (data.error || data.message)) || `Error HTTP ${res.status}`);
         }
 
         // Limpiar selección
@@ -638,7 +648,7 @@ async function exportarExcel() {
                                             </td>
                                             <td class="px-3 py-2 text-center">
                                                 <span
-                                                    v-if="e.puntaje === '0' || e.puntaje === 0"
+                                                    v-if="e.puntaje < 1 || e.puntaje === 0"
                                                     class="inline-flex rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
                                                 >
                                                     Sin puntos

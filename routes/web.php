@@ -43,6 +43,8 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.estudiantes.update');
     Route::delete('/admin/estudiantes/{id}', [EstudianteController::class, 'destroy'])
         ->name('admin.estudiantes.destroy');
+    Route::post('/admin/estudiantes/{id}/restore', [EstudianteController::class, 'restore'])
+        ->name('admin.estudiantes.restore');
 
     // Gestión de QR
     Route::get('/admin/qr-management', function () {
@@ -64,6 +66,8 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.docentes.update');
     Route::delete('/admin/docentes/{id}', [DocenteController::class, 'destroy'])
         ->name('admin.docentes.destroy');
+    Route::post('/admin/docentes/{id}/restore', [DocenteController::class, 'restore'])
+        ->name('admin.docentes.restore');
     
     // API endpoints para gestión de asignaciones
     Route::get('/admin/materias-por-curso', [DocenteController::class, 'getMateriasByCurso'])
@@ -191,6 +195,7 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
     Route::get('/admin/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('/admin/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
 
     // Rutas para Períodos Académicos
     Route::prefix('admin')->group(function () {
@@ -245,14 +250,6 @@ Route::middleware(['auth', RoleMiddleware::class.':docente'])->group(function ()
     // Asignación de Puntos
     Route::get('/docente/asignacion-puntos', [DocenteDashboardController::class, 'asignacionPuntos'])
         ->name('docente.asignacion-puntos');
-    
-    // Estadísticas Avanzadas
-    Route::get('/docente/estadisticas-avanzadas', [DocenteDashboardController::class, 'estadisticasAvanzadas'])
-        ->name('docente.estadisticas-avanzadas');
-    
-    // Gestión de Estudiantes
-    Route::get('/docente/gestion-estudiantes', [DocenteDashboardController::class, 'gestionEstudiantes'])
-        ->name('docente.gestion-estudiantes');
 
     // ===== RUTAS PARA EXPORTACIÓN =====
     // Descargar PDF

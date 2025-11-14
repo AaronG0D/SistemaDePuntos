@@ -28,8 +28,8 @@ class EstudianteController extends Controller
             'user.puntajes',
             'cursoParalelo.curso',
             'cursoParalelo.paralelo'
-        ]);
-
+        ])->whereNull('deleted_at'); // Solo estudiantes activos
+                
         // Filtro por búsqueda
         if ($request->filled('search') && trim($request->input('search')) !== '') {
             $search = trim($request->input('search'));
@@ -58,6 +58,13 @@ class EstudianteController extends Controller
 
         $estudiantes = $query->paginate(12);
 
+        // Obtener estudiantes inactivos
+        $estudiantesInactivos = Estudiante::with([
+            'user.puntajes',
+            'cursoParalelo.curso',
+            'cursoParalelo.paralelo'
+        ])->onlyTrashed()->get();
+
         // Trae solo cursos y paralelos activos para los selectores
         $cursos = \App\Models\Curso::where('estado', true)->orderBy('nombre')->get(['idCurso', 'nombre']);
         $paralelos = \App\Models\Paralelo::where('estado', true)->orderBy('nombre')->get(['idParalelo', 'nombre']);
@@ -82,6 +89,7 @@ class EstudianteController extends Controller
 
         return Inertia::render('admin/EstudiantesLIST', [
             'estudiantes' => $estudiantes,
+            'estudiantesInactivos' => $estudiantesInactivos,
             'cursos' => $cursos,
             'paralelos' => $paralelos,
             'historialImportaciones' => $historialImportaciones,
@@ -97,9 +105,13 @@ class EstudianteController extends Controller
             ->whereHas('paralelo', function($q) { $q->where('estado', true); })
             ->get();
         
-        // Obtener usuarios con rol estudiante que aún no están asignados
+        // Obtener usuarios con rol estudiante que aún no están asignados (incluyendo inactivos)
         $usuariosDisponibles = User::where('rol', 'estudiante')
-            ->whereDoesntHave('estudiante')
+            ->whereNull('deleted_at')
+            ->whereDoesntHave('estudiante', function($q) {
+                // Excluir usuarios que ya tengan estudiante (activo o inactivo)
+                $q->withTrashed();
+            })
             ->get(['id', 'nombres', 'primerApellido', 'segundoApellido', 'email']);
 
         return Inertia::render('admin/Estudiantes/Create', [
@@ -187,14 +199,34 @@ class EstudianteController extends Controller
         try {
             $estudiante = Estudiante::findOrFail($id);
             
-            
-            // Eliminar el estudiante
+            // Desactivar al estudiante
             $estudiante->delete();
+            
 
-            return redirect()->back()->with('success', 'Estudiante eliminado correctamente');
+            return redirect()->back()->with('success', 'Estudiante desactivado correctamente');
         } catch (\Exception $e) {
-            \Log::error('Error eliminando estudiante: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error al eliminar el estudiante');
+            \Log::error('Error desactivando estudiante: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al desactivar el estudiante');
+        }
+    }
+
+    public function restore($id)
+    {
+        try {
+            $estudiante = Estudiante::withTrashed()->findOrFail($id);
+            
+            // Reactivar al estudiante
+            $estudiante->restore();
+            
+            // Reactivar tambien el usuario asociado
+            if ($estudiante->user && $estudiante->user->trashed()) {
+                $estudiante->user->restore();
+            }
+
+            return redirect()->back()->with('success', 'Estudiante reactivado correctamente');
+        } catch (\Exception $e) {
+            \Log::error('Error reactivando estudiante: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error al reactivar el estudiante');
         }
     }
 

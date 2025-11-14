@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,11 +7,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/AppLayout.vue';
-import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { Check, ChevronDown, Edit, Plus, ToggleLeft, ToggleRight, Trash2, XCircle } from 'lucide-vue-next';
+import { Check, Edit, Plus, ToggleLeft, ToggleRight, Trash2, XCircle } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
@@ -99,11 +98,9 @@ const materiasDisponibles = computed(() => {
     if (!paraleloSeleccionado.value) return [];
 
     const materiasAsignadas = (paraleloSeleccionado.value.materias || []).map((m: Materia) => m.idMateria);
-    
+
     // Filtrar solo materias activas y no asignadas
-    return props.materias.filter((m: Materia) => 
-        (m as any).estado == 1 && !materiasAsignadas.includes(m.idMateria)
-    );
+    return props.materias.filter((m: Materia) => (m as any).estado == 1 && !materiasAsignadas.includes(m.idMateria));
 });
 
 // ===== MÉTODOS =====
@@ -118,59 +115,71 @@ function seleccionarParalelo(paraleloId: number) {
 
 function toggleCursoEstado(curso: any) {
     const nuevoEstado = !curso.estado;
-    router.patch(`/admin/cursos/${curso.idCurso}/toggle-estado`, {}, {
-        onSuccess: () => {
-            toast('Éxito', {
-                description: `Curso ${nuevoEstado ? 'activado' : 'desactivado'} correctamente`,
-                icon: Check,
-            });
+    router.patch(
+        `/admin/cursos/${curso.idCurso}/toggle-estado`,
+        {},
+        {
+            onSuccess: () => {
+                toast('Éxito', {
+                    description: `Curso ${nuevoEstado ? 'activado' : 'desactivado'} correctamente`,
+                    icon: Check,
+                });
+            },
+            onError: (errors) => {
+                console.error('Error al cambiar estado del curso:', errors);
+                toast('Error', {
+                    description: 'No se pudo cambiar el estado del curso',
+                    icon: XCircle,
+                });
+            },
         },
-        onError: (errors) => {
-            console.error('Error al cambiar estado del curso:', errors);
-            toast('Error', {
-                description: 'No se pudo cambiar el estado del curso',
-                icon: XCircle,
-            });
-        }
-    });
+    );
 }
 
 function toggleParaleloEstado(paralelo: any) {
     const nuevoEstado = !paralelo.estado;
-    router.patch(`/admin/paralelos/${paralelo.idParalelo}/toggle-estado`, {}, {
-        onSuccess: () => {
-            toast('Éxito', {
-                description: `Paralelo ${nuevoEstado ? 'activado' : 'desactivado'} correctamente`,
-                icon: Check,
-            });
+    router.patch(
+        `/admin/paralelos/${paralelo.idParalelo}/toggle-estado`,
+        {},
+        {
+            onSuccess: () => {
+                toast('Éxito', {
+                    description: `Paralelo ${nuevoEstado ? 'activado' : 'desactivado'} correctamente`,
+                    icon: Check,
+                });
+            },
+            onError: (errors) => {
+                console.error('Error al cambiar estado del paralelo:', errors);
+                toast('Error', {
+                    description: 'No se pudo cambiar el estado del paralelo',
+                    icon: XCircle,
+                });
+            },
         },
-        onError: (errors) => {
-            console.error('Error al cambiar estado del paralelo:', errors);
-            toast('Error', {
-                description: 'No se pudo cambiar el estado del paralelo',
-                icon: XCircle,
-            });
-        }
-    });
+    );
 }
 
 function toggleMateriaEstado(materia: any) {
     const nuevoEstado = !materia.estado;
-    router.patch(`/admin/materias/${materia.idMateria}/toggle-estado`, {}, {
-        onSuccess: () => {
-            toast('Éxito', {
-                description: `Materia ${nuevoEstado ? 'activada' : 'desactivada'} correctamente`,
-                icon: Check,
-            });
+    router.patch(
+        `/admin/materias/${materia.idMateria}/toggle-estado`,
+        {},
+        {
+            onSuccess: () => {
+                toast('Éxito', {
+                    description: `Materia ${nuevoEstado ? 'activada' : 'desactivada'} correctamente`,
+                    icon: Check,
+                });
+            },
+            onError: (errors) => {
+                console.error('Error al cambiar estado de la materia:', errors);
+                toast('Error', {
+                    description: 'No se pudo cambiar el estado de la materia',
+                    icon: XCircle,
+                });
+            },
         },
-        onError: (errors) => {
-            console.error('Error al cambiar estado de la materia:', errors);
-            toast('Error', {
-                description: 'No se pudo cambiar el estado de la materia',
-                icon: XCircle,
-            });
-        }
-    });
+    );
 }
 
 // ===== CRUD CURSOS =====
@@ -438,7 +447,7 @@ function onConfirmDelete() {
         <div class="container mx-auto py-6">
             <!-- ===== HEADER ===== -->
             <header class="mb-6">
-                <h1 class="text-3xl font-bold flex items-center gap-3">
+                <h1 class="flex items-center gap-3 text-3xl font-bold">
                     <BookOpen class="h-8 w-8 text-indigo-600" />
                     Cursos y Materias
                 </h1>
@@ -448,19 +457,31 @@ function onConfirmDelete() {
             <!-- ===== TABS PRINCIPALES ===== -->
             <Tabs v-model="activeTab" class="w-full">
                 <TabsList class="grid w-full grid-cols-4">
-                    <TabsTrigger value="cursos" class="flex items-center gap-2">
+                    <TabsTrigger
+                        value="cursos"
+                        class="flex items-center gap-2 text-gray-700 data-[state=active]:text-white-900 dark:text-gray-300 dark:data-[state=active]:text-white"
+                    >
                         <GraduationCap class="h-4 w-4" />
                         Cursos
                     </TabsTrigger>
-                    <TabsTrigger value="paralelos" class="flex items-center gap-2">
+                    <TabsTrigger
+                        value="paralelos"
+                        class="flex items-center gap-2 text-gray-700 data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:text-white"
+                    >
                         <Users class="h-4 w-4" />
                         Paralelos
                     </TabsTrigger>
-                    <TabsTrigger value="materias" class="flex items-center gap-2">
+                    <TabsTrigger
+                        value="materias"
+                        class="flex items-center gap-2 text-gray-700 data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:text-white"
+                    >
                         <BookOpen class="h-4 w-4" />
                         Materias
                     </TabsTrigger>
-                    <TabsTrigger value="asignaciones" class="flex items-center gap-2">
+                    <TabsTrigger
+                        value="asignaciones"
+                        class="flex items-center gap-2 text-gray-700 data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:text-white"
+                    >
                         <Settings class="h-4 w-4" />
                         Asignaciones
                     </TabsTrigger>
@@ -614,7 +635,7 @@ function onConfirmDelete() {
                                 <div
                                     v-for="curso in cursos"
                                     :key="curso.idCurso"
-                                    class="hover:bg-green-400 cursor-pointer rounded-lg border p-3 transition-colors"
+                                    class="cursor-pointer rounded-lg border p-3 transition-colors hover:bg-green-400"
                                     :class="{ 'bg-primary text-primary-foreground': selectedCurso === curso.idCurso }"
                                     @click="seleccionarCurso(curso.idCurso)"
                                 >
@@ -634,7 +655,7 @@ function onConfirmDelete() {
                                 <div
                                     v-for="cursoParalelo in paralelosDelCurso"
                                     :key="cursoParalelo.idCursoParalelo"
-                                    class="hover:bg-green-400 cursor-pointer rounded-lg border p-3 transition-colors"
+                                    class="cursor-pointer rounded-lg border p-3 transition-colors hover:bg-green-400"
                                     :class="{ 'bg-primary text-primary-foreground': selectedParalelo === cursoParalelo.paralelo.idParalelo }"
                                     @click="seleccionarParalelo(cursoParalelo.paralelo.idParalelo)"
                                 >
@@ -689,10 +710,10 @@ function onConfirmDelete() {
                     confirmContext?.type === 'curso'
                         ? '¿Estás seguro de que quieres eliminar este curso? Esto puede afectar paralelos relacionados.'
                         : confirmContext?.type === 'paralelo'
-                        ? '¿Estás seguro de que quieres eliminar este paralelo?'
-                        : confirmContext?.type === 'materia'
-                        ? '¿Estás seguro de que quieres eliminar esta materia?'
-                        : '¿Estás seguro de que quieres quitar esta materia del curso-paralelo seleccionado?'
+                          ? '¿Estás seguro de que quieres eliminar este paralelo?'
+                          : confirmContext?.type === 'materia'
+                            ? '¿Estás seguro de que quieres eliminar esta materia?'
+                            : '¿Estás seguro de que quieres quitar esta materia del curso-paralelo seleccionado?'
                 "
                 @update:open="(v) => (confirmOpen = v)"
                 @confirm="onConfirmDelete"
@@ -790,10 +811,10 @@ function onConfirmDelete() {
                 <div class="space-y-4">
                     <div class="space-y-2">
                         <Label for="materia-select">Materia</Label>
-                        <select 
+                        <select
                             id="materia-select"
-                            v-model="asignarMateriaData.idMateria" 
-                            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            v-model="asignarMateriaData.idMateria"
+                            class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             <option value="">Selecciona una materia</option>
                             <option v-for="materia in materiasDisponibles" :key="materia.idMateria" :value="materia.idMateria">

@@ -93,6 +93,11 @@ class PeriodoAcademicoController extends Controller
                 'codigo.unique' => 'El código ya está en uso por otro período académico.',
             ]);
 
+            // Si se está activando este período, desactivar todos los demás
+            if ($validated['activo'] && !$periodo->activo) {
+                PeriodoAcademico::where('idPeriodo', '!=', $periodo->idPeriodo)->update(['activo' => false]);
+            }
+
             $periodo->fill($validated);
             $periodo->save();
 

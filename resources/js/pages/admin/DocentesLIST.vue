@@ -34,9 +34,14 @@ const searchQuery = ref('');
 const isInitialized = ref(false);
 const docenteToDelete = ref<number | null>(null);
 const dialogOpen = ref(false);
+const tabActivo = ref<'activos' | 'inactivos'>('activos');
+const docenteToRestore = ref<number | null>(null);
 
 // ===== COMPUTED PROPERTIES =====
 const filteredDocentes = computed(() => {
+    if (tabActivo.value === 'inactivos') {
+        return props.docentesInactivos || [];
+    }
     return props.docentes.data;
 });
 
@@ -164,6 +169,24 @@ function confirmarEliminacion() {
     }
 }
 
+function restaurarDocente(id: number) {
+    router.post(`/admin/docentes/${id}/restore`, {}, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            docenteToRestore.value = null;
+            toast.success('Docente reactivado correctamente', {
+                description: 'El docente ha sido reactivado correctamente',
+            });
+        },
+        onError: () => {
+            toast.error('Error al reactivar', {
+                description: 'No se pudo reactivar el docente',
+            });
+        },
+    });
+}
+
 // ===== WATCHERS =====
 // Inicializar filtros desde la URL
 onMounted(() => {
@@ -211,6 +234,16 @@ watch(
                             <Search class="text-muted-foreground h-4 w-4" />
                         </template>
                     </Input>
+
+                    <Select v-model="tabActivo">
+                        <SelectTrigger class="w-[150px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="activos">Activos</SelectItem>
+                            <SelectItem value="inactivos">Inactivos</SelectItem>
+                        </SelectContent>
+                    </Select>
 
                     <Select v-model="selectedMateria" @update:model-value="handleMateriaChange">
                         <SelectTrigger>
@@ -298,42 +331,54 @@ watch(
                                 <UserQrCode v-if="docente.user.qr_codigo" :user="formatUserForQr(docente.user)" />
                             </TableCell>
                             <TableCell class="text-right">
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger as-child>
-                                            <Button variant="ghost" size="sm" as-child>
-                                                <Link :href="`/admin/docentes/${docente.idDocente}`">
-                                                    <Eye />
-                                                </Link>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Ver detalles</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <template v-if="tabActivo === 'inactivos'">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        class="border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950"
+                                        @click="restaurarDocente(docente.idDocente)"
+                                    >
+                                        Reactivar
+                                    </Button>
+                                </template>
+                                <template v-else>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button variant="ghost" size="sm" as-child>
+                                                    <Link :href="`/admin/docentes/${docente.idDocente}`">
+                                                        <Eye />
+                                                    </Link>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Ver detalles</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
 
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger as-child>
-                                            <Button variant="ghost" size="sm" as-child>
-                                                <Link :href="`/admin/docentes/${docente.idDocente}/edit`">
-                                                    <Edit />
-                                                </Link>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Editar docente</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button variant="ghost" size="sm" as-child>
+                                                    <Link :href="`/admin/docentes/${docente.idDocente}/edit`">
+                                                        <Edit />
+                                                    </Link>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Editar docente</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
 
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger as-child>
-                                            <Button variant="destructive" size="sm" @click="abrirDialogoEliminar(docente.idDocente)">
-                                                <Trash2 />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Eliminar docente</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button variant="destructive" size="sm" @click="abrirDialogoEliminar(docente.idDocente)">
+                                                    <Trash2 />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Desactivar docente</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </template>
                             </TableCell>
                         </TableRow>
                     </TableBody>

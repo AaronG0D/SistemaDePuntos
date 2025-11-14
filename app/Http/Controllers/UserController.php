@@ -13,6 +13,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $query = User::query()
+            ->whereNull('deleted_at')
             ->when($request->search, function($query, $search) {
                 $query->where(function($q) use ($search) {
                     $q->where('nombres', 'like', "%{$search}%")
@@ -25,8 +26,23 @@ class UserController extends Controller
             })
             ->latest();
 
+        // Usuarios inactivos
+        $usuariosInactivos = User::onlyTrashed()
+            ->when($request->search, function($query, $search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('nombres', 'like', "%{$search}%")
+                      ->orWhere('primerApellido', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->role, function($query, $role) {
+                $query->where('rol', $role);
+            })
+            ->get();
+
         return Inertia::render('admin/Users/Index', [
             'users' => $query->paginate(10)->withQueryString(),
+            'usuariosInactivos' => $usuariosInactivos,
             'filters' => $request->only(['search', 'role'])
         ]);
     }
@@ -102,16 +118,52 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         try {
-            // Con soft deletes, simplemente "eliminamos" el usuario
-            // Los registros relacionados se mantienen intactos
+            // Desactivar al usuario
             $user->delete();
+
+            // Si es estudiante, desactivar también el registro de estudiante
+            if ($user->estudiante) {
+                $user->estudiante->delete();
+            }
+
+            // Si es docente, desactivar también el registro de docente
+            if ($user->docente) {
+                $user->docente->delete();
+            }
             
             return redirect()->route('users.index')
-                ->with('success', 'Usuario eliminado correctamente');
+                ->with('success', 'Usuario desactivado correctamente');
                 
         } catch (\Exception $e) {
             return redirect()->route('users.index')
-                ->with('error', 'Error al eliminar el usuario: ' . $e->getMessage());
+                ->with('error', 'Error al desactivar el usuario: ' . $e->getMessage());
+        }
+    }
+
+    public function restore($id)
+    {
+        try {
+            $user = User::withTrashed()->findOrFail($id);
+
+            // Reactivar al usuario
+            $user->restore();
+
+            // Si tiene un estudiante desactivado, reactivarlo
+            if ($user->estudiante && $user->estudiante->trashed()) {
+                $user->estudiante->restore();
+            }
+
+            // Si tiene un docente desactivado, reactivarlo
+            if ($user->docente && $user->docente->trashed()) {
+                $user->docente->restore();
+            }
+            
+            return redirect()->route('users.index')
+                ->with('success', 'Usuario reactivado correctamente');
+                
+        } catch (\Exception $e) {
+            return redirect()->route('users.index')
+                ->with('error', 'Error al reactivar el usuario: ' . $e->getMessage());
         }
     }
 }

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -12,7 +11,7 @@ import UserQrCode from '@/components/UserQrCode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Estudiante } from '@/types';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { Check, Eye, Search, SquarePen, Trash2, Upload, XCircle, ChevronLeft, ChevronRight } from 'lucide-vue-next';
+import { Check, ChevronLeft, ChevronRight, Eye, Search, SquarePen, Trash2, Upload, XCircle } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
@@ -88,10 +87,11 @@ interface EditEstudianteData {
 }
 
 // ===== PROPS =====
-const { estudiantes, cursos, paralelos } = defineProps<{
+const { estudiantes, cursos, paralelos, estudiantesInactivos } = defineProps<{
     estudiantes: any;
     cursos: any[];
     paralelos: any[];
+    estudiantesInactivos?: any[];
 }>();
 
 // ===== ESTADOS REACTIVOS =====
@@ -105,12 +105,17 @@ const editEstudiante = ref<Estudiante | null>(null);
 const editCurso = ref<number | null>(null);
 const editParalelo = ref<number | null>(null);
 const isInitialized = ref(false); // Bandera para controlar inicialización
+const tabActivo = ref<'activos' | 'inactivos'>('activos'); // Tab para activos/inactivos
+const estudianteToRestore = ref<number | null>(null); // Para restaurar
 
 // CSRF token para peticiones fetch (Laravel)
 const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
 
 // ===== COMPUTED PROPERTIES =====
 const filteredEstudiantes = computed(() => {
+    if (tabActivo.value === 'inactivos') {
+        return estudiantesInactivos || [];
+    }
     return estudiantes.data;
 });
 
@@ -297,21 +302,45 @@ function eliminarEstudiante() {
     confirmOpen.value = false;
     router.delete(`/admin/estudiantes/${id}`, {
         onSuccess: () => {
-            toast('Estudiante eliminado', {
-                description: 'El estudiante ha sido eliminado correctamente',
+            toast('Estudiante desactivado', {
+                description: 'El estudiante ha sido desactivado correctamente',
                 icon: Check,
                 position: 'top-center',
             });
             estudianteToDelete.value = null;
         },
         onError: () => {
-            toast('Error al eliminar', {
-                description: 'No se pudo eliminar el estudiante',
+            toast('Error al desactivar', {
+                description: 'No se pudo desactivar el estudiante',
                 icon: XCircle,
                 position: 'top-center',
             });
         },
     });
+}
+
+function restaurarEstudiante(id: number) {
+    router.post(
+        `/admin/estudiantes/${id}/restore`,
+        {},
+        {
+            onSuccess: () => {
+                toast('Estudiante reactivado', {
+                    description: 'El estudiante ha sido reactivado correctamente',
+                    icon: Check,
+                    position: 'top-center',
+                });
+                estudianteToRestore.value = null;
+            },
+            onError: () => {
+                toast('Error al reactivar', {
+                    description: 'No se pudo reactivar el estudiante',
+                    icon: XCircle,
+                    position: 'top-center',
+                });
+            },
+        },
+    );
 }
 
 // ===== WATCHERS =====
@@ -405,12 +434,22 @@ watch(editParalelo, (val) => {
             >
                 <div class="space-y-4 border-b border-gray-200 pb-4 dark:border-gray-700">
                     <!-- Título y búsqueda -->
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between gap-4">
                         <Input v-model="searchQuery" placeholder="Buscar estudiantes..." class="w-[300px]" @input="handleSearchChange">
                             <template #prefix>
                                 <Search class="text-muted-foreground h-4 w-4" />
                             </template>
                         </Input>
+
+                        <Select v-model="tabActivo">
+                            <SelectTrigger class="w-[150px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="activos">Activos</SelectItem>
+                                <SelectItem value="inactivos">Inactivos</SelectItem>
+                            </SelectContent>
+                        </Select>
 
                         <div class="flex gap-2">
                             <Link
@@ -540,40 +579,56 @@ watch(editParalelo, (val) => {
                                 <UserQrCode v-if="estudiante.user.qr_codigo" :user="formatUserForQr(estudiante.user)" />
                             </TableCell>
                             <TableCell class="text-right">
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger as-child>
-                                            <Button variant="outline" size="sm" @click="openEditDialog(estudiante)">
-                                                <SquarePen />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Editar estudiante</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <!-- Si está en inactivos, mostrar solo botón Reactivar -->
+                                <template v-if="tabActivo === 'inactivos'">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        class="border-green-200 text-green-600 hover:bg-green-50 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950"
+                                        @click="restaurarEstudiante(estudiante.idUser)"
+                                    >
+                                        <Check class="mr-2 h-4 w-4" />
+                                        Reactivar
+                                    </Button>
+                                </template>
 
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger as-child>
-                                            <Button variant="ghost" size="sm" as-child>
-                                                <Link :href="`/admin/estudiantes/${estudiante.idUser}`">
-                                                    <Eye />
-                                                </Link>
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Ver detalles</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <!-- Si está en activos, mostrar acciones normales -->
+                                <template v-else>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button variant="outline" size="sm" @click="openEditDialog(estudiante)">
+                                                    <SquarePen />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Editar estudiante</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
 
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger as-child>
-                                            <Button variant="destructive" size="sm" @click="promptEliminarEstudiante(estudiante.idUser)">
-                                                <Trash2 />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Eliminar estudiante</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button variant="ghost" size="sm" as-child>
+                                                    <Link :href="`/admin/estudiantes/${estudiante.idUser}`">
+                                                        <Eye />
+                                                    </Link>
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Ver detalles</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger as-child>
+                                                <Button variant="destructive" size="sm" @click="promptEliminarEstudiante(estudiante.idUser)">
+                                                    <Trash2 />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Desactivar estudiante</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </template>
                             </TableCell>
                         </TableRow>
                     </TableBody>
@@ -591,19 +646,14 @@ watch(editParalelo, (val) => {
             </div>
 
             <!-- ===== PAGINACIÓN ===== -->
-            <div v-if="estudiantes.last_page > 1" class="mt-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4">
+            <div v-if="estudiantes.last_page > 1" class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700">
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                    Mostrando {{ ((estudiantes.current_page - 1) * estudiantes.per_page) + 1 }} a 
-                    {{ Math.min(estudiantes.current_page * estudiantes.per_page, estudiantes.total) }} 
+                    Mostrando {{ (estudiantes.current_page - 1) * estudiantes.per_page + 1 }} a
+                    {{ Math.min(estudiantes.current_page * estudiantes.per_page, estudiantes.total) }}
                     de {{ estudiantes.total }} estudiantes
                 </p>
                 <div class="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        :disabled="estudiantes.current_page === 1"
-                        @click="goToPage(estudiantes.current_page - 1)"
-                    >
+                    <Button variant="outline" size="sm" :disabled="estudiantes.current_page === 1" @click="goToPage(estudiantes.current_page - 1)">
                         <ChevronLeft class="h-4 w-4" />
                         <span class="ml-1">Anterior</span>
                     </Button>

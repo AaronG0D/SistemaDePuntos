@@ -312,7 +312,7 @@
                             <div class="text-center sm:text-left">
                                 <h4 class="mb-2 font-semibold text-gray-900 dark:text-gray-100">Código: {{ student.codigo_estudiante || student.id }}</h4>
                                 <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-                                    Muestra este código QR al docente o encargado cuando realices un depósito de residuos.
+                                    Muestra este código QR a la camara del basurero inteligente cuando realices un depósito de residuos.
                                 </p>
                                 <div class="flex flex-col gap-2 sm:flex-row">
                                     <Button 

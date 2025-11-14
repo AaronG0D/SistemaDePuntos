@@ -63,6 +63,7 @@ export interface PaginacionDocentes {
 // Props para componentes de administración
 export interface AdminDocentesProps {
     docentes: PaginacionDocentes;
+    docentesInactivos?: Docente[];
     materias: Materia[];
     cursos: Curso[];
     paralelos: Paralelo[];
