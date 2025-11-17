@@ -126,20 +126,35 @@ class StudentController extends Controller
         $currentPeriod = $this->getCurrentPeriod();
         $year = $currentPeriod?->fecha_inicio?->year ?? Carbon::now()->year;
 
-        // Obtener ranking del curso-paralelo
-        $ranking = $this->getCourseRanking($user, $year);
-        $myPosition = $this->getStudentRanking($user, $year);
+        // Período seleccionado vía query (opcional)
+        $selectedPeriodId = $request->integer('periodo_id');
+        $selectedPeriod = $selectedPeriodId ? PeriodoAcademico::find($selectedPeriodId) : null;
+        if ($selectedPeriod) {
+            $year = $selectedPeriod->fecha_inicio?->year ?? $year;
+        }
+
+        // Períodos disponibles para el año
+        $periods = $this->getPeriodsForYear($year);
+
+        // Obtener ranking del curso-paralelo filtrando por período si se selecciona
+        $ranking = $this->getCourseRanking($user, $year, $selectedPeriod?->idPeriodo);
+        $myPosition = $this->getStudentRanking($user, $year, $selectedPeriod?->idPeriodo);
         $totalStudents = $ranking->count();
 
         return Inertia::render('Students/Ranking', [
             'student' => $student,
             'ranking' => $ranking,
             'currentPeriod' => $currentPeriod ? [
-                'id' => $currentPeriod->id,
+                'id' => $currentPeriod->idPeriodo,
                 'nombre' => $currentPeriod->nombre,
             ] : null,
             'myPosition' => $myPosition,
             'totalStudents' => $totalStudents,
+            'periods' => $periods->map(fn($p) => [
+                'idPeriodo' => $p->idPeriodo,
+                'nombre' => $p->nombre,
+            ]),
+            'selectedPeriodId' => $selectedPeriod?->idPeriodo,
         ]);
     }
 
@@ -193,9 +208,12 @@ class StudentController extends Controller
     private function getStudentDeposits(User $user, ?int $year = null)
     {
         $query = $user->depositos()
-            ->join('tipoBasura', 'deposito.idTipoBasura', '=', 'tipoBasura.idTipoBasura')
-            ->select('deposito.*', 'tipoBasura.puntos')
-            ->orderBy('fechaHora', 'desc');
+            ->join('tipoBasura as tb', 'deposito.idTipoBasura', '=', 'tb.idTipoBasura')
+            // Evitar sobrescribir el campo 'puntos' del depósito: alias
+            ->select('deposito.*', 'deposito.puntos as puntos_deposito',\DB::raw('tb.puntos as puntos_tipo'))
+
+            // Orden principal por período (nulos al final), luego por fecha
+            ->orderBy('deposito.fechaHora', 'desc');
 
         if ($year) {
             $query->whereYear('fechaHora', $year);
@@ -229,8 +247,8 @@ class StudentController extends Controller
                 $data = [
                     'id' => $deposito->idDeposito,
                     'fecha_deposito' => $deposito->fechaHora,
-                    'cantidad' => 0, // No hay campo peso en deposito
-                    'puntaje_obtenido' => (int) ($deposito->puntos_calculados ?? 0),
+                    // Preferir snapshot de puntos del depósito; fallback a puntos del tipo de basura
+                    'puntaje_obtenido' => (int) ($deposito->puntos_deposito ?? $deposito->puntos_calculados ?? 0),
                     'periodo_id' => $deposito->idPeriodo,
                     'tipo_basura' => [
                         'id' => $deposito->idTipoBasura,
@@ -258,7 +276,8 @@ class StudentController extends Controller
                     'id' => $deposito->idDeposito,
                     'fecha_deposito' => $deposito->fechaHora->toDateTimeString(),
                     'cantidad' => (float) $deposito->peso,
-                    'puntaje_obtenido' => (int) $deposito->puntos,
+                    // Preferir snapshot de puntos del depósito
+                    'puntaje_obtenido' => (int) ($deposito->puntos_deposito ?? $deposito->puntos_tipo ?? 0),
                     'tipo_basura' => $deposito->tipoBasura ? [
                         'id' => $deposito->tipoBasura->idTipoBasura,
                         'nombre' => $deposito->tipoBasura->nombre,
@@ -296,7 +315,7 @@ class StudentController extends Controller
     /**
      * Obtiene el ranking del estudiante en su curso
      */
-    private function getStudentRanking(User $user, ?int $year = null): int
+    private function getStudentRanking(User $user, ?int $year = null, ?int $periodId = null): int
     {
         $estudiante = $user->estudiante()->first();
         if (!$estudiante) {
@@ -311,7 +330,9 @@ class StudentController extends Controller
         $query = Puntaje::select('idUser', DB::raw('COALESCE(SUM(puntos), 0) as total_puntos'))
             ->whereIn('idUser', $estudiantesIds);
 
-        if ($year) {
+        if ($periodId) {
+            $query->where('idPeriodo', $periodId);
+        } elseif ($year) {
             $query->whereHas('periodoAcademico', function($q) use ($year) {
                 $q->whereYear('fecha_inicio', $year);
             });
@@ -399,7 +420,7 @@ class StudentController extends Controller
     /**
      * Obtiene el ranking completo del curso-paralelo
      */
-    private function getCourseRanking(User $user, ?int $year = null)
+    private function getCourseRanking(User $user, ?int $year = null, ?int $periodId = null)
     {
         $estudiante = $user->estudiante()->first();
         if (!$estudiante) {
@@ -414,7 +435,9 @@ class StudentController extends Controller
         $query = Puntaje::select('idUser', DB::raw('COALESCE(SUM(puntos), 0) as total_puntos'))
             ->whereIn('idUser', $estudiantesIds);
 
-        if ($year) {
+        if ($periodId) {
+            $query->where('idPeriodo', $periodId);
+        } elseif ($year) {
             $query->whereHas('periodoAcademico', function($q) use ($year) {
                 $q->whereYear('fecha_inicio', $year);
             });
@@ -471,6 +494,7 @@ class StudentController extends Controller
         $tiposBasura = DB::table('tipoBasura')
             ->select('idTipoBasura', 'nombre', 'descripcion', 'puntos')
             ->where('estado', true)
+            ->whereNull('deleted_at')
             ->orderBy('nombre')
             ->get();
 
@@ -480,8 +504,7 @@ class StudentController extends Controller
                 'tipo' => 'tipo_basura',
                 'materia' => $tipo->nombre,
                 'puntos' => (int) $tipo->puntos,
-                'descripcion' => $tipo->descripcion,
-                'docentes' => [], // Los tipos de basura no tienen docentes asignados directamente
+                'descripcion' => $tipo->descripcion,// Los tipos de basura no tienen docentes asignados directamente
             ];
         }
 
@@ -546,10 +569,15 @@ class StudentController extends Controller
         $query = DB::table('deposito')
             ->join('tipoBasura', 'deposito.idTipoBasura', '=', 'tipoBasura.idTipoBasura')
             ->join('basurero', 'deposito.idBasurero', '=', 'basurero.idBasurero')
+            ->leftJoin('periodos_academicos as pa', 'deposito.idPeriodo', '=', 'pa.idPeriodo')
             ->where('deposito.idUser', $user->id)
+            // Excluir depósitos soft-deleted
+            ->whereNull('deposito.deleted_at')
             ->select(
                 'deposito.idDeposito',
                 'deposito.fechaHora',
+                'deposito.idPeriodo',
+                'deposito.puntos as puntos_deposito',
                 'tipoBasura.puntos as puntos_calculados', // Puntos del tipo de basura
                 'tipoBasura.idTipoBasura',
                 'tipoBasura.nombre as tipo_basura_nombre',
@@ -558,23 +586,32 @@ class StudentController extends Controller
                 'basurero.idBasurero',
                 'basurero.descripcion as basurero_nombre',
                 'basurero.ubicacion as basurero_ubicacion',
-                'basurero.descripcion as basurero_descripcion'
+                'basurero.descripcion as basurero_descripcion',
+                DB::raw('pa.nombre as periodo_nombre')
             );
 
         if ($year) {
             $query->whereYear('deposito.fechaHora', $year);
         }
 
-        $depositos = $query->orderBy('deposito.fechaHora', 'desc')->get();
-        
-        // Obtener períodos para determinar a cuál pertenece cada depósito
+        // Orden: primero por existencia de período (nulos al final), luego por período desc, luego por fecha desc
+        $depositos = $query
+            ->orderBy('deposito.fechaHora', 'desc')
+            ->get();
+
+        // Fallback: si algún depósito no trae nombre de período, calcularlo por fecha
+        if ($depositos->isEmpty()) {
+            return $depositos;
+        }
+
         $periodos = $this->getPeriodsForYear($year ?? Carbon::now()->year);
-        
-        // Agregar información del período a cada depósito
         return $depositos->map(function($deposito) use ($periodos) {
-            $periodo = $this->findPeriodForDate(Carbon::parse($deposito->fechaHora), $periodos);
-            $deposito->idPeriodo = $periodo?->idPeriodo;
-            $deposito->periodo_nombre = $periodo?->nombre ?? 'Sin período';
+            if (empty($deposito->periodo_nombre)) {
+                $p = $this->findPeriodForDate(Carbon::parse($deposito->fechaHora), $periodos);
+                // Mantener idPeriodo si ya existe; sino, asignar por fecha
+                $deposito->idPeriodo = $deposito->idPeriodo ?? $p?->idPeriodo;
+                $deposito->periodo_nombre = $p?->nombre ?? 'Sin período';
+            }
             return $deposito;
         });
     }

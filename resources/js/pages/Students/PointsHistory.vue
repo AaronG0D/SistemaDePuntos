@@ -1,5 +1,6 @@
 <template>
     <StudentLayout :student="student">
+        <Head title="Historial de Puntos" />
         <!-- Hero Section -->
         <div class="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-800 dark:via-indigo-800 dark:to-purple-800 px-6 py-16 sm:px-8 lg:px-12">
             <!-- Background Pattern -->
@@ -72,7 +73,6 @@
                     bimesters.length === 1 ? 'lg:grid-cols-1 max-w-md mx-auto' : '',
                     bimesters.length === 2 ? 'lg:grid-cols-2' : '',
                     bimesters.length === 3 ? 'lg:grid-cols-3' : '',
-                    bimesters.length >= 4 ? 'lg:grid-cols-4' : ''
                 ]">
                     <Card
                         v-for="bimester in bimesters"
@@ -139,9 +139,12 @@
                                     <div class="flex items-center justify-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
                                         <span class="flex items-center">
                                             <Trash2 class="mr-1 h-3 w-3" />
-                                            {{ getBimesterDeposits(bimester.number) }}
+                                            {{ getBimesterDeposits(bimester.number) }} depósitos
                                         </span>
-                                        
+                                        <span class="flex items-center">
+                                            <Star class="mr-1 h-3 w-3" />
+                                            Promedio {{ getBimesterAveragePoints(bimester.number) }} pts/dep
+                                        </span>
                                     </div>
                                 </div>
                                 <!-- Selection Indicator -->
@@ -184,8 +187,10 @@
                                     <div class="text-sm text-blue-600 dark:text-blue-400">Depósitos</div>
                                 </div>
                                 <div class="rounded-lg bg-purple-50 dark:bg-purple-900/50 p-4 text-center">
-                                    <div class="text-2xl font-bold text-purple-900 dark:text-purple-100">{{ getBimesterWeight(selectedBimester) }}kg</div>
-                                    <div class="text-sm text-purple-600 dark:text-purple-400">Peso Total</div>
+                                    <div class="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                                        {{ getBimesterAveragePoints(selectedBimester) }}
+                                    </div>
+                                    <div class="text-sm text-purple-600 dark:text-purple-400">Promedio/Depósito</div>
                                 </div>
                             </div>
 
@@ -218,7 +223,7 @@
                                         </div>
                                         <div class="text-right">
                                             <p class="font-bold text-green-600">+{{ deposit.puntaje_obtenido }} pts</p>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400">{{ deposit.cantidad }}kg</p>
+                                            
                                             <p class="text-xs text-gray-400 dark:text-gray-500">Ver detalles →</p>
                                         </div>
                                     </div>
@@ -339,10 +344,7 @@
                                         <Trash2 class="mr-1 h-3 w-3" />
                                         {{ getBimesterDeposits(bimester.number) }} depósitos
                                     </span>
-                                    <span class="flex items-center">
-                                        <Weight class="mr-1 h-3 w-3" />
-                                        {{ getBimesterWeight(bimester.number) }}kg reciclados
-                                    </span>
+                                    
                                 </div>
                             </div>
                         </div>
@@ -401,6 +403,19 @@
                         </button>
                     </div>
 
+                    <!-- Chips resumen -->
+                    <div class="mb-4 flex flex-wrap items-center gap-2">
+                        <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                            <Trash2 class="h-3 w-3" /> {{ selectedDeposit.tipo_basura?.nombre || 'Sin tipo' }}
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                            <MapPin class="h-3 w-3" /> {{ selectedDeposit.basurero?.nombre || 'Sin basurero' }}
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-1 text-xs font-medium text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                            <Star class="h-3 w-3" /> +{{ selectedDeposit.puntaje_obtenido }} pts
+                        </span>
+                    </div>
+
                     <div class="space-y-4">
                         <!-- Información Principal -->
                         <Card class="border-green-200 dark:border-green-700">
@@ -419,13 +434,14 @@
                                     <span class="text-gray-600 dark:text-gray-400">Hora:</span>
                                     <span class="font-medium dark:text-gray-200">{{ formatTime(selectedDeposit.fecha_deposito) }}</span>
                                 </div>
+                                
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600 dark:text-gray-400">Cantidad:</span>
-                                    <span class="font-medium dark:text-gray-200">{{ selectedDeposit.cantidad }} kg</span>
+                                        <span class="text-gray-600 dark:text-gray-400">Trimestre:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ selectedDeposit.bimestre }}°</span>
                                 </div>
                                 <div class="flex justify-between">
-                                    <span class="text-gray-600 dark:text-gray-400">Bimestre:</span>
-                                    <span class="font-medium dark:text-gray-200">{{ selectedDeposit.bimestre }}°</span>
+                                    <span class="text-gray-600 dark:text-gray-400">Período:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ selectedDeposit.periodo?.nombre || 'Sin período' }}</span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -490,6 +506,26 @@
                                 </div>
                             </CardContent>
                         </Card>
+
+                        <!-- Identificadores -->
+                        <Card class="border-gray-200 dark:border-gray-700">
+                            <CardHeader class="pb-3">
+                                <div class="flex items-center gap-2">
+                                    <Hash class="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                                    <CardTitle class="text-gray-800 dark:text-gray-200 text-sm">Identificadores</CardTitle>
+                                </div>
+                            </CardHeader>
+                            <CardContent class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">ID Depósito:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ selectedDeposit.id }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">Código Estudiante:</span>
+                                    <span class="font-medium dark:text-gray-200">{{ student.codigo_estudiante || 'N/D' }}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
             </div>
@@ -501,6 +537,7 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Head } from '@inertiajs/vue3';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StudentLayout from '@/layouts/StudentLayout.vue';
@@ -514,6 +551,7 @@ import {
     ChevronRight,
     Clock,
     Coins,
+    Hash,
     Filter,
     Leaf,
     MapPin,
@@ -725,6 +763,8 @@ const showDepositDetails = (deposit: any) => {
     selectedDeposit.value = deposit;
 };
 
+// Simplificado: usar los datos provistos por el backend (bimestre, periodo_id, periodo.nombre)
+
 const getBimesterDeposits = (bimester: number) => {
     if (!props.deposits || props.deposits.length === 0) return 0;
     return props.deposits.filter((d) => d.bimestre === bimester).length;
@@ -736,6 +776,15 @@ const getBimesterWeight = (bimester: number) => {
         .filter((d) => d.bimestre === bimester)
         .reduce((sum, d) => sum + d.cantidad, 0)
         .toFixed(1);
+};
+
+// Promedio de puntos por depósito del bimestre
+const getBimesterAveragePoints = (bimester: number) => {
+    if (!props.deposits || props.deposits.length === 0) return 0;
+    const list = props.deposits.filter((d) => d.bimestre === bimester);
+    if (list.length === 0) return 0;
+    const total = list.reduce((sum, d) => sum + (d.puntaje_obtenido || 0), 0);
+    return Math.round(total / list.length);
 };
 
 // Function for progress rings (based on 100 points goal per bimester)
@@ -753,7 +802,15 @@ const getFilteredDeposits = (bimester: number) => {
     if (!props.deposits || props.deposits.length === 0) return [];
     const filtered = props.deposits
         .filter((d) => d.bimestre === bimester)
-        .sort((a, b) => new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime());
+        .sort((a, b) => {
+            const ap = a.periodo_id;
+            const bp = b.periodo_id;
+            if (ap && bp) return bp - ap; // primero por período (desc)
+            if (ap && !bp) return -1;     // con período antes que sin período
+            if (!ap && bp) return 1;      // sin período después
+            // si ninguno tiene período, ordenar por fecha
+            return new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime();
+        });
     
     // Aplicar paginación
     const startIndex = (currentPage.value - 1) * itemsPerPage;
@@ -765,7 +822,15 @@ const getAllFilteredDeposits = (bimester: number) => {
     if (!props.deposits || props.deposits.length === 0) return [];
     return props.deposits
         .filter((d) => d.bimestre === bimester)
-        .sort((a, b) => new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime());
+        .sort((a, b) => {
+            const ap = a.periodo_id;
+            const bp = b.periodo_id;
+            if (ap && bp) return bp - ap; // primero por período (desc)
+            if (ap && !bp) return -1;     // con período antes que sin período
+            if (!ap && bp) return 1;      // sin período después
+            // si ninguno tiene período, ordenar por fecha
+            return new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime();
+        });
 };
 
 const getTotalPages = (bimester: number) => {

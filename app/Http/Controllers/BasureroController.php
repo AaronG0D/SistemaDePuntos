@@ -28,9 +28,16 @@ class BasureroController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'ubicacion' => 'required|string|max:255',
-            'descripcion' => 'nullable|string',
+            'ubicacion' => 'required|string|max:50',
+            'descripcion' => 'nullable|string|max:50',
             'estado' => 'required|boolean',
+        ], [
+            'ubicacion.required' => 'El campo ubicación es obligatorio.',
+            'ubicacion.string' => 'La ubicación debe ser una cadena de texto.',
+            'ubicacion.max' => 'La ubicación no puede superar los 50 caracteres.',
+            'descripcion.string' => 'La descripción debe ser una cadena de texto.',
+            'descripcion.max' => 'La descripción no puede superar los 50 caracteres.',
+            'estado.required' => 'El campo estado es obligatorio.',
         ]);
 
         Basurero::create([
@@ -56,12 +63,7 @@ class BasureroController extends Controller
             }
         ]);
 
-        // Para debug
-        \Log::info('Datos del basurero y depósitos:', [
-            'basurero' => $basurero->toArray(),
-            'depositos_count' => $basurero->depositos->count(),
-            'primer_deposito' => $basurero->depositos->first()
-        ]);
+    
 
         return Inertia::render('admin/residuos/BasureroView', [
             'basurero' => $basurero
@@ -78,9 +80,16 @@ class BasureroController extends Controller
     public function update(Request $request, Basurero $basurero)
     {
         $request->validate([
-            'ubicacion' => 'required|string|max:255',
-            'descripcion' => 'nullable|string',
+            'ubicacion' => 'required|string|max:50',
+            'descripcion' => 'nullable|string|max:50',
             'estado' => 'required|boolean',
+        ], [
+            'ubicacion.required' => 'El campo ubicación es obligatorio.',
+            'ubicacion.string' => 'La ubicación debe ser una cadena de texto.',
+            'ubicacion.max' => 'La ubicación no puede superar los 50 caracteres.',
+            'descripcion.string' => 'La descripción debe ser una cadena de texto.',
+            'descripcion.max' => 'La descripción no puede superar los 50 caracteres.',
+            'estado.required' => 'El campo estado es obligatorio.',
         ]);
 
         $basurero->update([
@@ -95,10 +104,7 @@ class BasureroController extends Controller
 
     public function destroy(Basurero $basurero)
     {
-        // Verificar si tiene depósitos asociados
-        if ($basurero->depositos()->count() > 0) {
-            return back()->with('error', 'No se puede eliminar un basurero que tiene depósitos asociados');
-        }
+        
 
         $basurero->delete();
 
@@ -118,4 +124,15 @@ class BasureroController extends Controller
 
         return back()->with('success', $mensaje);
     }
+
+    public function restore($id)
+    {
+        $basurero = Basurero::withTrashed()->findOrFail($id);
+        $basurero->restore();
+
+        return redirect()->route('admin.basureros.index')
+            ->with('success', 'Basurero restaurado exitosamente');
+    }
+
+    
 }

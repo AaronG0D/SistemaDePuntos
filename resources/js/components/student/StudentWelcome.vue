@@ -27,7 +27,7 @@
                         </div>
                         <div class="ml-4">
                             <h1 class="text-2xl font-bold sm:text-3xl">
-                                ¡Hola, {{ firstName }}! 👋
+                                ¡Hola, {{ firstName }}!
                             </h1>
                             <p class="text-green-100">
                                 {{ course || 'Sin curso' }} - {{ parallel || 'Sin paralelo' }}
@@ -40,14 +40,17 @@
                             {{ welcomeMessage }}
                         </p>
                         <div class="flex flex-wrap justify-center gap-2 lg:justify-start">
-                            <span class="rounded-full bg-white/20 px-3 py-1 text-sm backdrop-blur-sm">
-                                🌱 Eco-Estudiante
+                            <span class="rounded-full px-3 py-1 text-sm backdrop-blur-sm flex items-center gap-1 bg-green-500/20 text-green-100">
+                                <Leaf class="h-4 w-4 text-green-200" />
+                                Eco-Estudiante
                             </span>
-                            <span class="rounded-full bg-white/20 px-3 py-1 text-sm backdrop-blur-sm">
-                                ♻️ Reciclador
+                            <span class="rounded-full px-3 py-1 text-sm backdrop-blur-sm flex items-center gap-1 bg-emerald-500/20 text-emerald-100">
+                                <Recycle class="h-4 w-4 text-emerald-200" />
+                                Reciclador
                             </span>
-                            <span class="rounded-full bg-white/20 px-3 py-1 text-sm backdrop-blur-sm">
-                                🌍 Guardián del Planeta
+                            <span class="rounded-full px-3 py-1 text-sm backdrop-blur-sm flex items-center gap-1 bg-blue-500/20 text-blue-100">
+                                <Globe class="h-4 w-4 text-blue-200" />
+                                Guardián del Planeta
                             </span>
                         </div>
                     </div>
@@ -80,10 +83,10 @@
                         "{{ motivationalQuote }}"
                     </p>
                     <div class="mt-2 flex justify-center space-x-2 text-2xl">
-                        <span>🌱</span>
-                        <span>♻️</span>
-                        <span>🌍</span>
-                        <span>💚</span>
+                        <Leaf class="h-5 w-5 text-green-200" />
+                        <Recycle class="h-5 w-5 text-emerald-200" />
+                        <Globe class="h-5 w-5 text-blue-200" />
+                        <Heart class="h-5 w-5 text-pink-200" />
                     </div>
                 </div>
             </div>
@@ -98,6 +101,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { Leaf, Recycle, Globe, Heart } from 'lucide-vue-next';
 
 interface Props {
     studentName: string;

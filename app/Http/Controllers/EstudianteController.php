@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Estudiante;
 use App\Models\User;
+use \App\Models\Deposito;
 use App\Models\HistorialImportacion;
 use App\Imports\EstudiantesImport;
 use App\Exports\PlantillaEstudiantesExport;
@@ -38,7 +39,17 @@ class EstudianteController extends Controller
                 $q->where('nombres', 'like', "%{$search}%")
                   ->orWhere('primerApellido', 'like', "%{$search}%")
                   ->orWhere('segundoApellido', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                  ->orWhere('email', 'like', "%{$search}%")
+                  // Búsqueda por nombre completo: nombres + apellidos
+                  ->orWhereRaw(
+                      "CONCAT(TRIM(IFNULL(nombres,'')), ' ', TRIM(IFNULL(primerApellido,'')), ' ', TRIM(IFNULL(segundoApellido,''))) LIKE ?",
+                      ["%{$search}%"]
+                  )
+                  // También considerar formato común: apellidos primero
+                  ->orWhereRaw(
+                      "CONCAT(TRIM(IFNULL(primerApellido,'')), ' ', TRIM(IFNULL(segundoApellido,'')), ' ', TRIM(IFNULL(nombres,''))) LIKE ?",
+                      ["%{$search}%"]
+                  );
             });
         }
 
@@ -58,12 +69,12 @@ class EstudianteController extends Controller
 
         $estudiantes = $query->paginate(12);
 
-        // Obtener estudiantes inactivos
+        // Obtener estudiantes inactivos (soft delete) paginados
         $estudiantesInactivos = Estudiante::with([
             'user.puntajes',
             'cursoParalelo.curso',
             'cursoParalelo.paralelo'
-        ])->onlyTrashed()->get();
+        ])->onlyTrashed()->paginate(12, ['*'], 'inactivos_page');
 
         // Trae solo cursos y paralelos activos para los selectores
         $cursos = \App\Models\Curso::where('estado', true)->orderBy('nombre')->get(['idCurso', 'nombre']);
@@ -131,6 +142,9 @@ class EstudianteController extends Controller
             $request->validate([
                 'idUser' => 'required|exists:usuario,id',
                 'idCursoParalelo' => 'required|exists:curso_paralelo,idCursoParalelo',
+            ],[ 
+                'idUser.required' => 'El campo usuario es obligatorio.',
+                'idCursoParalelo.required' => 'El campo curso-paralelo es obligatorio.',
             ]);
 
             // Verificar que el usuario no esté ya asignado como estudiante
@@ -173,18 +187,48 @@ class EstudianteController extends Controller
     {
         try {
             $estudiante = Estudiante::findOrFail($id);
-
+            
+            // Validar datos
+            $request->validate([
+                'user.nombres' => 'required|string|max:100',
+                'user.primerApellido' => 'required|string|max:100',
+                'user.segundoApellido' => 'nullable|string|max:100',
+                'user.email' => 'required|email|max:255',
+                'curso_paralelo.idCurso' => 'nullable|exists:curso,idCurso',
+                'curso_paralelo.idParalelo' => 'nullable|exists:paralelo,idParalelo',
+            ], [
+                'user.nombres.required' => 'El campo nombres es obligatorio.',
+                'user.nombres.string' => 'El campo nombres debe ser una cadena de texto.',
+                'user.nombres.max' => 'El campo nombres no puede superar los 100 caracteres.',
+                'user.primerApellido.required' => 'El campo primer apellido es obligatorio.',
+                'user.primerApellido.string' => 'El campo primer apellido debe ser una cadena de texto.',
+                'user.primerApellido.max' => 'El campo primer apellido no puede superar los 100 caracteres.',
+                'user.segundoApellido.string' => 'El campo segundo apellido debe ser una cadena de texto.',
+                'user.email.required' => 'El campo email es obligatorio.',
+                'user.email.email' => 'El campo email debe ser una dirección de correo electrónico válida.',
+                'curso_paralelo.idCurso.exists' => 'El curso seleccionado no existe.',
+                'curso_paralelo.idParalelo.exists' => 'El paralelo seleccionado no existe.',
+            ]);
+            
             // Actualiza los datos del usuario
-            $estudiante->user->update($request->input('user'));
-
-            // Busca o crea el registro de curso_paralelo
-            $cursoParalelo = \App\Models\CursoParalelo::firstOrCreate([
-                'idCurso' => $request->input('curso_paralelo.idCurso'),
-                'idParalelo' => $request->input('curso_paralelo.idParalelo')
+            $estudiante->user->update([
+                'nombres' => $request->input('user.nombres'),
+                'primerApellido' => $request->input('user.primerApellido'),
+                'segundoApellido' => $request->input('user.segundoApellido'),
+                'email' => $request->input('user.email'),
             ]);
 
-            // Actualiza el idCursoParalelo del estudiante y guarda
-            $estudiante->idCursoParalelo = $cursoParalelo->idCursoParalelo;
+            // Actualiza el curso-paralelo del estudiante (usando el id recibido)
+            $idCurso = $request->input('curso_paralelo.idCurso');
+            $idParalelo = $request->input('curso_paralelo.idParalelo');
+
+            if ($idCurso && $idParalelo) {
+                $cursoParalelo = \App\Models\CursoParalelo::firstOrCreate([
+                    'idCurso' => $idCurso,
+                    'idParalelo' => $idParalelo,
+                ]);
+                $estudiante->idCursoParalelo = $cursoParalelo->idCursoParalelo;
+            }
             $estudiante->save();
 
             return redirect()->back()->with('success', 'Estudiante actualizado correctamente');
@@ -239,15 +283,19 @@ class EstudianteController extends Controller
                 'cursoParalelo.paralelo'
             ])->findOrFail($id);
 
-            // Obtener los últimos depósitos del estudiante agrupados por tipo de basura
-            $ultimosDepositos = \App\Models\Deposito::with(['tipoBasura', 'basurero'])
+            // Obtener los últimos depósitos del estudiante (incluyendo tipo de basura con soft-deletes)
+            $ultimosDepositos = Deposito::with([
+                    'tipoBasura' => function ($q) { $q->withTrashed(); },
+                    'basurero',
+                    'periodo'
+                ])
                 ->where('idUser', $estudiante->idUser)
                 ->orderBy('fechaHora', 'desc')
-                ->limit(10)
+                ->limit(5)
                 ->get();
 
             // Estadísticas de depósitos por tipo de basura (últimos 30 días)
-            $depositosPorTipo = \App\Models\Deposito::with('tipoBasura')
+            $depositosPorTipo = Deposito::with('tipoBasura')
                 ->where('idUser', $estudiante->idUser)
                 ->where('fechaHora', '>=', now()->subDays(30))
                 ->get()
@@ -269,7 +317,7 @@ class EstudianteController extends Controller
                     ->whereMonth('fechaHora', now()->month)
                     ->whereYear('fechaHora', now()->year)
                     ->count(),
-                'kg_reciclados_estimados' => \App\Models\Deposito::where('idUser', $estudiante->idUser)->count() * 0.5, // Estimación
+                 
                 'dias_activo' => \App\Models\Deposito::where('idUser', $estudiante->idUser)
                     ->selectRaw('COUNT(DISTINCT DATE(fechaHora)) as dias')
                     ->value('dias') ?? 0

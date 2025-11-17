@@ -1,5 +1,6 @@
 <template>
     <StudentLayout :student="student">
+        <Head title="Ranking" />
         <!-- Hero Section -->
         <div class="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 px-6 py-16 text-white sm:px-8 lg:px-12">
             <div class="mx-auto max-w-7xl">
@@ -15,7 +16,7 @@
                             {{ student.curso?.nombre }} "{{ student.paralelo?.nombre }}"
                         </p>
                         <p class="mt-2 text-lg text-purple-200">
-                            {{ currentPeriod?.nombre || 'Período Actual' }}
+                            {{ selectedPeriodId ? (currentPeriod?.nombre || 'Período') : 'Todos los bimestres' }}
                         </p>
                         <div class="mt-6 flex items-center space-x-6">
                             <div class="flex items-center">
@@ -40,6 +41,37 @@
         <!-- Main Content -->
         <div class="px-6 py-12 sm:px-8 lg:px-12">
             <div class="mx-auto max-w-7xl space-y-8">
+                <!-- Period Filter -->
+                <div v-if="periods && periods.length" class="flex items-center gap-2 overflow-x-auto py-2">
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Período:</span>
+                    <!-- Botón Todos -->
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        :class="[
+                            selectedPeriodId === null 
+                                ? 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700' 
+                                : 'border-gray-300 bg-white text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
+                        ]"
+                        @click="changePeriod(null)"
+                    >
+                        Todos
+                    </Button>
+                    <Button
+                        v-for="p in periods"
+                        :key="p.idPeriodo"
+                        size="sm"
+                        variant="outline"
+                        :class="[
+                            selectedPeriodId === p.idPeriodo 
+                                ? 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700' 
+                                : 'border-gray-300 bg-white text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
+                        ]"
+                        @click="changePeriod(p.idPeriodo)"
+                    >
+                        {{ p.nombre }}
+                    </Button>
+                </div>
                 <!-- Stats Cards -->
                 <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                     <Card class="border-yellow-200 bg-gradient-to-br from-yellow-50 to-orange-50 dark:border-yellow-700 dark:from-yellow-900/50 dark:to-orange-900/50">
@@ -227,24 +259,26 @@
                                 </div>
 
                                 <!-- Points Display -->
-                                <div class="text-right">
-                                    <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ studentRank.puntaje }}</div>
-                                    <div class="text-sm text-gray-500 dark:text-gray-400">puntos</div>
-                                    <div v-if="studentRank.posicion <= 3" class="mt-1">
-                                        <Badge 
-                                            :class="[
-                                                studentRank.posicion === 1 
-                                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                                    : studentRank.posicion === 2
-                                                      ? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                                      : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                                            ]"
-                                        >
-                                            {{ studentRank.posicion === 1 ? '🥇' : studentRank.posicion === 2 ? '🥈' : '🥉' }}
-                                            {{ studentRank.posicion === 1 ? 'Oro' : studentRank.posicion === 2 ? 'Plata' : 'Bronce' }}
-                                        </Badge>
+                                    <div class="text-right">
+                                        <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ studentRank.puntaje }}</div>
+                                        <div class="text-sm text-gray-500 dark:text-gray-400">puntos</div>
+                                        <div v-if="studentRank.posicion <= 3" class="mt-1">
+                                            <Badge 
+                                                :class="[
+                                                    studentRank.posicion === 1 
+                                                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                                        : studentRank.posicion === 2
+                                                          ? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                                          : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                                ]"
+                                            >
+                                                <Crown v-if="studentRank.posicion === 1" class="mr-1 h-3 w-3" />
+                                                <Medal v-else-if="studentRank.posicion === 2" class="mr-1 h-3 w-3" />
+                                                <Award v-else class="mr-1 h-3 w-3" />
+                                                {{ studentRank.posicion === 1 ? 'Oro' : studentRank.posicion === 2 ? 'Plata' : 'Bronce' }}
+                                            </Badge>
+                                        </div>
                                     </div>
-                                </div>
                             </div>
                         </div>
 
@@ -264,7 +298,10 @@
 </template>
 
 <script setup lang="ts">
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { defineProps } from 'vue';
+import { Head } from '@inertiajs/vue3';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import StudentLayout from '@/layouts/StudentLayout.vue';
 import { 
@@ -279,6 +316,7 @@ import {
     Zap 
 } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { router } from '@inertiajs/vue3';
 
 interface Props {
     student: {
@@ -302,11 +340,20 @@ interface Props {
     currentPeriod?: {
         nombre: string;
     };
+    periods?: Array<{ idPeriodo: number; nombre: string }>;
+    selectedPeriodId?: number | null;
     myPosition: number;
     totalStudents: number;
 }
 
 const props = defineProps<Props>();
+
+const changePeriod = (idPeriodo?: number | null) => {
+    const params = idPeriodo ? { periodo_id: idPeriodo } : {};
+    router.get('/estudiante/ranking', params, { preserveScroll: true });
+};
+const periods = props.periods || [];
+const selectedPeriodId = props.selectedPeriodId ?? null;
 
 // Computed properties
 const topStudent = computed(() => {

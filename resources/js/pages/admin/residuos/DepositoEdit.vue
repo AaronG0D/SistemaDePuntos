@@ -18,8 +18,6 @@ const props = defineProps<{
             nombres: string;
             primerApellido: string;
         };
-        basurero: Basurero;
-        tipoBasura: TipoBasura;
     };
     basureros: Basurero[];
     tiposBasura: TipoBasura[];
@@ -188,11 +186,11 @@ function handleCancel() {
                                     </div>
                                     <div>
                                         <span class="text-muted-foreground">Tipo de Basura:</span>
-                                        <span class="ml-2 font-medium">{{ deposito.tipoBasura?.nombre }}</span>
+                                        <span class="ml-2 font-medium">{{ deposito.tipoBasura?.nombre ?? deposito.tipo_basura?.nombre }}</span>
                                     </div>
                                     <div>
                                         <span class="text-muted-foreground">Puntos:</span>
-                                        <span class="ml-2 font-medium">{{ deposito.tipoBasura?.puntos }}</span>
+                                        <span class="ml-2 font-medium">{{ deposito.puntos ?? deposito.puntos_generados ?? deposito.tipoBasura?.puntos }}</span>
                                     </div>
                                 </div>
                             </div>

@@ -182,7 +182,7 @@ if (localStorage.getItem('theme') === 'dark') {
 </script>
 
 <template>
-    <Head title="EcoPoints - Sistema de Gestión de Residuos">
+    <Head title="Dario Montano - Sistema de Gestión de Residuos">
         <link rel="preconnect" href="https://rsms.me/" />
         <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     </Head>
@@ -752,7 +752,8 @@ if (localStorage.getItem('theme') === 'dark') {
                                                 index >= 3,
                                         }"
                                     >
-                                        🏆 Top {{ index + 1 }}
+                                        <Trophy class="inline h-4 w-4 mr-1" />
+                                        Top {{ index + 1 }}
                                     </div>
                                 </div>
 

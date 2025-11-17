@@ -8,7 +8,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import UserQrCode from '@/components/UserQrCode.vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Plus, Users } from 'lucide-vue-next';
+import { ChevronLeft, ChevronRight, Plus, Users } from 'lucide-vue-next';
 import { computed, onMounted, ref, watch } from 'vue';
 import { Toaster, toast } from 'vue-sonner';
 import { route } from 'ziggy-js';
@@ -26,14 +26,19 @@ type User = {
 interface Pagination<T> {
     data: T[];
     links: Array<{ url: string | null; label: string; active: boolean }>;
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
 }
 
 const props = defineProps<{
     users: Pagination<User>;
-    usuariosInactivos?: User[];
+    usuariosInactivos?: Pagination<User>;
     filters: {
         search: string;
         role: string;
+        tab?: string;
     };
 }>();
 
@@ -81,6 +86,22 @@ function restoreUser(id: number) {
     );
 }
 
+// ===== MÉTODOS DE NAVEGACIÓN =====
+function goToPage(page: number) {
+    const params = {
+        page,
+        search: filters.value.search || undefined,
+        role: filters.value.role,
+        tab: tabActivo.value,
+    };
+
+    router.get(route('users.index'), params, {
+        preserveState: false,
+        preserveScroll: true,
+        replace: true,
+    });
+}
+
 // Handle flash messages from server
 onMounted(() => {
     const flashSuccess = page.props.flash?.success;
@@ -98,20 +119,39 @@ onMounted(() => {
 // Filters
 const filters = ref({
     search: props.filters?.search || '',
-    role: props.filters?.role || '',
+    role: props.filters?.role || 'all',
 });
 
 const filteredUsers = computed(() => {
     if (tabActivo.value === 'inactivos') {
-        return props.usuariosInactivos || [];
+        return props.usuariosInactivos?.data || [];
     }
     return props.users.data;
+});
+
+const paginationData = computed(() => {
+    if (tabActivo.value === 'inactivos' && props.usuariosInactivos) {
+        return props.usuariosInactivos;
+    }
+    return props.users;
+});
+
+const selectedRoleLabel = computed(() => {
+    const role = roles.find((r) => r.value === filters.value.role);
+    return role?.label || 'Filtrar por rol';
 });
 
 watch(
     filters,
     (value) => {
-        router.get(route('users.index'), value, {
+        const params = {
+            search: value.search || undefined,
+            role: value.role,
+            tab: tabActivo.value,
+            page: 1,
+        };
+
+        router.get(route('users.index'), params, {
             preserveState: true,
             preserveScroll: true,
         });
@@ -119,8 +159,23 @@ watch(
     { deep: true },
 );
 
+// Sincronizar cuando cambia el tab
+watch(tabActivo, (newTab) => {
+    const params = {
+        search: filters.value.search || undefined,
+        role: filters.value.role,
+        tab: newTab,
+        page: 1,
+    };
+
+    router.get(route('users.index'), params, {
+        preserveState: true,
+        preserveScroll: true,
+    });
+});
+
 const roles = [
-    { value: '', label: 'Todos los roles' },
+    { value: 'all', label: 'Todos los roles' },
     { value: 'administrador', label: 'Administrador' },
     { value: 'docente', label: 'Docente' },
     { value: 'estudiante', label: 'Estudiante' },
@@ -170,8 +225,8 @@ const roles = [
                 </Select>
 
                 <Select v-model="filters.role">
-                    <SelectTrigger class="bg-background border-input text-foreground w-[180px]">
-                        <SelectValue :placeholder="filters.role || 'Filtrar por rol'" />
+                    <SelectTrigger class="bg-background border-input text-foreground w-[220px]">
+                        <SelectValue :placeholder="selectedRoleLabel" />
                     </SelectTrigger>
                     <SelectContent class="bg-popover border-border">
                         <SelectItem
@@ -241,19 +296,49 @@ const roles = [
                         </Table>
                     </div>
 
-                    <nav v-if="props.users.links?.length" class="mt-4 flex flex-wrap gap-1">
-                        <Link
-                            v-for="(l, i) in props.users.links"
-                            :key="i"
-                            :href="l.url || '#'"
-                            :class="[
-                                'rounded border px-3 py-1 text-sm',
-                                l.active ? 'bg-primary border-primary text-white' : 'hover:bg-muted',
-                                !l.url && 'pointer-events-none opacity-50',
-                            ]"
-                            v-html="l.label"
-                        />
-                    </nav>
+                    <!-- ===== MENSAJE VACÍO ===== -->
+                    <div
+                        v-if="!filteredUsers.length"
+                        class="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center dark:border-gray-600 dark:bg-gray-900/50"
+                    >
+                        <h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-white">No hay usuarios</h3>
+                        <p class="mb-4 text-gray-500 dark:text-gray-400">No se encontraron usuarios con los filtros aplicados</p>
+                    </div>
+
+                    <!-- ===== PAGINACIÓN ===== -->
+                    <div
+                        v-if="paginationData.last_page > 1"
+                        class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700"
+                    >
+                        <p class="text-sm text-gray-600 dark:text-gray-400">
+                            Mostrando {{ (paginationData.current_page - 1) * paginationData.per_page + 1 }} a
+                            {{ Math.min(paginationData.current_page * paginationData.per_page, paginationData.total) }}
+                            de {{ paginationData.total }} usuarios
+                        </p>
+                        <div class="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                :disabled="paginationData.current_page === 1"
+                                @click="goToPage(paginationData.current_page - 1)"
+                            >
+                                <ChevronLeft class="h-4 w-4" />
+                                <span class="ml-1">Anterior</span>
+                            </Button>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                Página {{ paginationData.current_page }} de {{ paginationData.last_page }}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                :disabled="paginationData.current_page >= paginationData.last_page"
+                                @click="goToPage(paginationData.current_page + 1)"
+                            >
+                                <span class="mr-1">Siguiente</span>
+                                <ChevronRight class="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </div>

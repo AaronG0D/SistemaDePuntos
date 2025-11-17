@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Basurero extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'basurero';
     protected $primaryKey = 'idBasurero';
@@ -24,6 +25,7 @@ class Basurero extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
+
 
     // ===== RELACIONES =====
     public function depositos(): HasMany
@@ -65,4 +67,6 @@ class Basurero extends Model
         $this->estado = false;
         $this->save();
     }
+
+    // ===== ACCESSORS ====
 }

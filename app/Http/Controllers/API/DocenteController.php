@@ -23,7 +23,17 @@ class DocenteController extends Controller
             $query->whereHas('user', function($q) use ($search) {
                 $q->where('nombres', 'LIKE', "%{$search}%")
                   ->orWhere('primerApellido', 'LIKE', "%{$search}%")
-                  ->orWhere('segundoApellido', 'LIKE', "%{$search}%");
+                  ->orWhere('segundoApellido', 'LIKE', "%{$search}%")
+                  // Búsqueda por nombre completo
+                  ->orWhereRaw(
+                      "CONCAT(TRIM(IFNULL(nombres,'')), ' ', TRIM(IFNULL(primerApellido,'')), ' ', TRIM(IFNULL(segundoApellido,''))) LIKE ?",
+                      ["%{$search}%"]
+                  )
+                  // Formato apellidos primero
+                  ->orWhereRaw(
+                      "CONCAT(TRIM(IFNULL(primerApellido,'')), ' ', TRIM(IFNULL(segundoApellido,'')), ' ', TRIM(IFNULL(nombres,''))) LIKE ?",
+                      ["%{$search}%"]
+                  );
             });
         }
 

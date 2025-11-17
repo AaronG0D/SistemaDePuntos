@@ -12,6 +12,9 @@ import type { Basurero, Deposito, FiltrosDepositos, PaginacionDepositos, TipoBas
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, Award, BoxIcon, Calendar, Edit, Eye, FileText, Filter, Plus, Search, Table2, Trash2, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { toast, Toaster } from 'vue-sonner';
+
+
 
 // ===== PROPS =====
 const props = defineProps<{
@@ -19,6 +22,9 @@ const props = defineProps<{
     basureros: Basurero[];
     tiposBasura: TipoBasura[];
     filters: FiltrosDepositos;
+    totalPuntos: number;
+    totalDepositos: number;
+    TotalEstudiantes: number;
 }>();
 
 // ===== COMPOSABLE =====
@@ -87,7 +93,7 @@ function limpiarFiltros() {
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
                         <Button variant="outline" size="sm" as-child>
-                            <Link href="/dashboard">
+                            <Link href="/admin">
                                 <ArrowLeft class="mr-2 h-4 w-4" />
                                 Volver
                             </Link>
@@ -105,6 +111,14 @@ function limpiarFiltros() {
                             <Link :href="ROUTES.depositos.create">
                                 <Plus class="mr-2 h-4 w-4" />
                                 Nuevo Depósito
+                            </Link>
+                        </Button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Button variant="outline" as-child> 
+                            <Link href="/admin/depositos/estadisticas">
+                                <Trash2 class="mr-2 h-4 w-4" />
+                                Ver Estadísticas
                             </Link>
                         </Button>
                     </div>
@@ -195,14 +209,14 @@ function limpiarFiltros() {
             <div class="mb-6 grid gap-4 md:grid-cols-4">
                 <Card>
                     <CardContent class="pt-6">
-                        <div class="text-2xl font-bold">{{ props.depositos.total }}</div>
+                        <div class="text-2xl font-bold">{{ props.totalDepositos }}</div>
                         <p class="text-muted-foreground text-sm">Total depósitos</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardContent class="pt-6">
                         <div class="text-2xl font-bold text-green-600">
-                            {{ formatearPuntos(props.depositos.data.reduce((sum, d) => sum + (d.puntos_generados ?? d.tipoBasura?.puntos ?? d.tipo_basura?.puntos ?? 0), 0)) }}
+        {{ formatearPuntos(props.totalPuntos) }}
                         </div>
                         <p class="text-muted-foreground text-sm">Total puntos generados</p>
                     </CardContent>
@@ -210,7 +224,7 @@ function limpiarFiltros() {
                 <Card>
                     <CardContent class="pt-6">
                         <div class="text-2xl font-bold text-blue-600">
-                            {{ new Set(props.depositos.data.map((d) => d.idUser)).size }}
+                            {{ props.TotalEstudiantes }}
                         </div>
                         <p class="text-muted-foreground text-sm">Usuarios únicos</p>
                     </CardContent>
@@ -250,12 +264,12 @@ function limpiarFiltros() {
                                     <TableCell>{{ deposito.basurero?.ubicacion }}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline" class="bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-100">
-                                            {{ deposito.tipo_basura?.nombre ?? deposito.tipoBasura?.nombre ?? 'Sin especificar' }}
+                                            {{ deposito.tipoBasura?.nombre ?? deposito.tipo_basura?.nombre ?? 'Sin especificar' }}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary" class="bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
-                                            {{ formatearPuntos(deposito.puntos_generados ?? deposito.tipoBasura?.puntos ?? deposito.tipo_basura?.puntos ?? 0) }} pts
+            {{ formatearPuntos(deposito.puntos ?? deposito.puntos_generados ?? deposito.tipoBasura?.puntos ?? deposito.tipo_basura?.puntos ?? 0) }} pts
                                         </Badge>
                                     </TableCell>
                                     <TableCell>{{ formatearFecha(deposito.fechaHora) }}</TableCell>
@@ -286,8 +300,12 @@ function limpiarFiltros() {
                             <p>No se encontraron depósitos</p>
                         </div>
                     </div>
+                    <Toaster />
                 </CardContent>
             </Card>
+
+            
+
         </div>
     </AppLayout>
 </template>

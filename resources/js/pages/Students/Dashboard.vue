@@ -1,5 +1,6 @@
 <template>
     <StudentLayout :student="student">
+        <Head title="Dashboard" />
         <!-- Hero Section -->
         <StudentWelcome
             :student-name="student.nombres"
@@ -50,7 +51,7 @@
                                     <Leaf class="h-6 w-6 text-green-600" />
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-green-600 dark:text-green-400">Puntos Este Bimestre</p>
+                                    <p class="text-sm font-medium text-green-600 dark:text-green-400">Puntos Este Trimestre</p>
                                     <p class="text-2xl font-bold text-green-900 dark:text-green-100">{{ currentBimesterPoints }}</p>
                                 </div>
                             </div>
@@ -98,13 +99,31 @@
                                     <Target class="h-6 w-6 text-orange-600" />
                                 </div>
                                 <div class="ml-4">
-                                    <p class="text-sm font-medium text-orange-600 dark:text-orange-400">Meta del Bimestre</p>
+                                    <p class="text-sm font-medium text-orange-600 dark:text-orange-400">Meta del Trimestre</p>
                                     <p class="text-2xl font-bold text-orange-900 dark:text-orange-100">{{ goalProgress }}%</p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
+
+                <!-- Período Activo Destacado -->
+                <Card class="border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 dark:border-blue-700 dark:from-blue-900/30 dark:to-indigo-900/30">
+                    <CardContent class="p-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-full bg-blue-100 p-3">
+                                    <Calendar class="h-6 w-6 text-blue-600" />
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-blue-700 dark:text-blue-300">Período Académico Activo</p>
+                                    <p class="text-xl font-bold text-blue-900 dark:text-blue-100">{{ currentPeriod?.nombre || 'Sin período activo' }}</p>
+                                </div>
+                            </div>
+                            <Badge class="bg-blue-600 text-white">Activo</Badge>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 <!-- Main Horizontal Layout -->
                 <div class="grid gap-8 xl:grid-cols-3 lg:grid-cols-2">
@@ -117,7 +136,7 @@
                                     <TrendingUp class="mr-2 h-5 w-5" />
                                     Tu Progreso Ecológico
                                 </CardTitle>
-                                <CardDescription> Progreso hacia tu meta de {{ bimesterGoal }} puntos este bimestre </CardDescription>
+                                <CardDescription> Progreso hacia tu meta de {{ bimesterGoal }} puntos este trimestre </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div class="space-y-4">
@@ -136,7 +155,7 @@
                                         </div>
                                     </div>
                                     <div class="text-muted-foreground flex justify-between text-xs">
-                                        <span>Inicio del bimestre</span>
+                                        <span>Inicio del trimestre</span>
                                         <span>Meta alcanzada</span>
                                     </div>
                                 </div>
@@ -150,13 +169,13 @@
                                 <CardHeader>
                                     <CardTitle class="flex items-center text-blue-800 dark:text-blue-300">
                                         <History class="mr-2 h-5 w-5" />
-                                        Depósitos Recientes
+                                        Depósitos del Trimestre Actual
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div class="space-y-3">
                                         <div
-                                            v-for="deposit in recentDeposits.slice(0, 4)"
+                                            v-for="deposit in recentDepositsCurrentPeriod.slice(0, 4)"
                                             :key="deposit.id"
                                             class="hover:bg-muted/50 flex items-center justify-between rounded-lg border p-3 transition-colors dark:border-gray-600 dark:hover:bg-gray-700/50"
                                         >
@@ -172,13 +191,14 @@
                                                 </div>
                                             </div>
                                             <div class="text-right">
-                                                <p class="text-sm font-bold text-green-600">+{{ deposit.puntaje_obtenido }}</p>
+                                                <p class="text-sm font-bold text-green-600">+{{ deposit.puntaje_obtenido ?? deposit.puntaje_obtenido}} pts</p>
+                                                <p class="text-muted-foreground text-xs"></p>
                                             </div>
                                         </div>
 
-                                        <div v-if="recentDeposits.length === 0" class="text-muted-foreground py-6 text-center">
+                                        <div v-if="recentDepositsCurrentPeriod.length === 0" class="text-muted-foreground py-6 text-center">
                                             <Leaf class="mx-auto mb-2 h-8 w-8 opacity-50" />
-                                            <p class="text-sm">Sin depósitos recientes</p>
+                                            <p class="text-sm">Sin depósitos en el trimestre actual</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -422,7 +442,7 @@
                             <!-- Impacto estimado -->
                             <div class="border-t pt-6">
                                 <h4 class="mb-4 font-semibold text-gray-800 dark:text-gray-200">Impacto Ambiental Estimado</h4>
-                                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                     <div class="text-center rounded-lg border p-3">
                                         <TreePine class="mx-auto mb-2 h-6 w-6 text-green-600" />
                                         <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ environmentalImpact.treesSaved }}</p>
@@ -441,11 +461,7 @@
                                         <p class="text-xs text-gray-600 dark:text-gray-400">kWh ahorrados</p>
                                     </div>
                                     
-                                    <div class="text-center rounded-lg border p-3">
-                                        <Globe class="mx-auto mb-2 h-6 w-6 text-purple-600" />
-                                        <p class="text-lg font-bold text-gray-900 dark:text-gray-100">{{ environmentalImpact.co2Reduced }}kg</p>
-                                        <p class="text-xs text-gray-600 dark:text-gray-400">CO₂ reducido</p>
-                                    </div>
+                                    
                                 </div>
                                 
                                 <div class="mt-4 rounded-lg bg-gray-50 p-3 dark:bg-gray-800/50">
@@ -626,6 +642,7 @@
 <script setup lang="ts">
 import StudentWelcome from '@/components/student/StudentWelcome.vue';
 import { Badge } from '@/components/ui/badge';
+import { Head } from '@inertiajs/vue3';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import StudentLayout from '@/layouts/StudentLayout.vue';
@@ -653,6 +670,7 @@ interface Props {
         fecha_deposito: string;
         cantidad: number;
         puntaje_obtenido: number;
+        periodo_id?: number;
         tipo_basura?: {
             id?: number;
             nombre: string;
@@ -704,6 +722,29 @@ const totalDeposits = computed(() => props.totalDepositsCount);
 const recentDeposits = computed(() =>
     props.deposits.sort((a, b) => new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime()).slice(0, 5),
 );
+
+// Depósitos del período activo si se dispone de periodo_id; fallback a recientes por fecha
+const recentDepositsCurrentPeriod = computed(() => {
+    const list = [...props.deposits];
+    if (props.currentPeriod?.id) {
+        const filtered = list.filter((d) => d.periodo_id === props.currentPeriod!.id);
+        if (filtered.length > 0) {
+            return filtered
+                .sort((a, b) => {
+                    const ap = a.periodo_id;
+                    const bp = b.periodo_id;
+                    if (ap && bp) return (bp as number) - (ap as number);
+                    if (ap && !bp) return -1;
+                    if (!ap && bp) return 1;
+                    return new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime();
+                })
+                .slice(0, 5);
+        }
+    }
+    return list
+        .sort((a, b) => new Date(b.fecha_deposito).getTime() - new Date(a.fecha_deposito).getTime())
+        .slice(0, 5);
+});
 
 const goalProgress = computed(() => Math.min(Math.round((props.currentBimesterPoints / props.bimesterGoal) * 100), 100));
 

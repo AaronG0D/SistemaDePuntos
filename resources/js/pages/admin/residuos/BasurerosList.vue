@@ -61,7 +61,7 @@ function handleSearch() {
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
                         <Button variant="outline" size="sm" as-child>
-                            <Link href="/dashboard">
+                            <Link href="/admin">
                                 <ArrowLeft class="mr-2 h-4 w-4" />
                                 Volver
                             </Link>

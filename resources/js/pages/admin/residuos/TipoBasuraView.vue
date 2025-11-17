@@ -27,26 +27,21 @@ const props = defineProps<{
             };
         }>;
     };
+    totalDepositos: number;
+    totalPuntos: number;
+    usuariosUnicos: number;
+    promedioPorUsuario: number;
+    basurerosUnicos: number;
 }>();
 
 // ===== COMPOSABLE =====
 const { ROUTES, formatearFecha, formatearPuntos } = useResiduos();
 
 // ===== COMPUTED =====
-const estadisticas = computed(() => {
-    const depositos = props.tipoBasura.depositos || [];
-    const totalPuntos = depositos.length * props.tipoBasura.puntos;
-    const usuariosUnicos = new Set(depositos.map((d) => d.user?.id).filter(Boolean)).size;
-    const basurerosUnicos = new Set(depositos.map((d) => d.basurero?.idBasurero).filter(Boolean)).size;
+const redondear = (num: number) => {
+    return Math.round(num * 100) / 100;
+}
 
-    return {
-        totalDepositos: depositos.length,
-        totalPuntos,
-        usuariosUnicos,
-        basurerosUnicos,
-        promedioPorUsuario: usuariosUnicos > 0 ? Math.round(depositos.length / usuariosUnicos) : 0,
-    };
-});
 
 const depositosRecientes = computed(() => {
     return (props.tipoBasura.depositos || []).slice(0, 10);
@@ -105,7 +100,7 @@ const depositosRecientes = computed(() => {
                                 <label class="text-muted-foreground text-sm font-medium">Puntos por depósito</label>
                                 <div class="mt-1">
                                     <Badge variant="secondary" class="text-lg">
-                                        {{ formatearPuntos(tipoBasura.puntos) }}
+                                        {{ (tipoBasura.puntos) }}
                                     </Badge>
                                 </div>
                             </div>
@@ -133,23 +128,23 @@ const depositosRecientes = computed(() => {
                     <CardContent>
                         <div class="grid grid-cols-1 gap-4 md:grid-cols-5">
                             <div class="text-center">
-                                <div class="text-primary text-2xl font-bold">{{ estadisticas.totalDepositos }}</div>
+                                <div class="text-primary text-2xl font-bold">{{ props.totalDepositos }}</div>
                                 <div class="text-muted-foreground text-sm">Total depósitos</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-green-600">{{ formatearPuntos(estadisticas.totalPuntos) }}</div>
+                                <div class="text-2xl font-bold text-green-600">{{ (props.totalPuntos) }}</div>
                                 <div class="text-muted-foreground text-sm">Puntos generados</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-blue-600">{{ estadisticas.usuariosUnicos }}</div>
+                                <div class="text-2xl font-bold text-blue-600">{{ props.usuariosUnicos }}</div>
                                 <div class="text-muted-foreground text-sm">Usuarios únicos</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-orange-600">{{ estadisticas.basurerosUnicos }}</div>
+                                <div class="text-2xl font-bold text-orange-600">{{ props.basurerosUnicos }}</div>
                                 <div class="text-muted-foreground text-sm">Basureros utilizados</div>
                             </div>
                             <div class="text-center">
-                                <div class="text-2xl font-bold text-purple-600">{{ estadisticas.promedioPorUsuario }}</div>
+                                <div class="text-2xl font-bold text-purple-600">{{ redondear(props.promedioPorUsuario) }}</div>
                                 <div class="text-muted-foreground text-sm">Promedio por usuario</div>
                             </div>
                         </div>
@@ -182,7 +177,7 @@ const depositosRecientes = computed(() => {
                                         <TableCell>{{ deposito.basurero?.ubicacion || 'N/A' }}</TableCell>
                                         <TableCell>
                                             <Badge variant="secondary">
-                                                {{ formatearPuntos(tipoBasura.puntos) }}
+                                                {{ (deposito.puntos ?? tipoBasura.puntos) }}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>{{ formatearFecha(deposito.fechaHora) }}</TableCell>

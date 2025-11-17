@@ -88,7 +88,15 @@ export function useResiduos() {
         });
     }
 
-    function eliminarBasurero(id: number) {
+    async function eliminarBasurero(id: number, options: { confirmFn?: () => Promise<boolean> } = {}) {
+        const ok = options.confirmFn ? await options.confirmFn() : window.confirm('¿Seguro que deseas eliminar este basurero?');
+        if (!ok) {
+            toast('Eliminación cancelada', {
+                description: 'No se realizó ninguna acción',
+                ...TOAST_CONFIG,
+            });
+            return;
+        }
         router.delete(ROUTES.basureros.destroy(id), {
             onSuccess: () => {
                 toast('Basurero eliminado', {
@@ -193,7 +201,15 @@ export function useResiduos() {
         }
     }
 
-    function eliminarTipoBasura(id: number) {
+    async function eliminarTipoBasura(id: number, options: { confirmFn?: () => Promise<boolean> } = {}) {
+        const ok = options.confirmFn ? await options.confirmFn() : window.confirm('¿Seguro que deseas eliminar este tipo de basura?');
+        if (!ok) {
+            toast('Eliminación cancelada', {
+                description: 'No se realizó ninguna acción',
+                ...TOAST_CONFIG,
+            });
+            return;
+        }
         router.delete(ROUTES.tiposBasura.destroy(id), {
             onSuccess: () => {
                 toast('Tipo de basura eliminado', {
@@ -277,7 +293,15 @@ export function useResiduos() {
         }
     }
 
-    function eliminarDeposito(id: number) {
+    async function eliminarDeposito(id: number, options: { confirmFn?: () => Promise<boolean> } = {}) {
+        const ok = options.confirmFn ? await options.confirmFn() : window.confirm('¿Seguro que deseas eliminar este depósito?');
+        if (!ok) {
+            toast('Eliminación cancelada', {
+                description: 'No se realizó ninguna acción',
+                ...TOAST_CONFIG,
+            });
+            return;
+        }
         router.delete(ROUTES.depositos.destroy(id), {
             onSuccess: () => {
                 toast('Depósito eliminado', {

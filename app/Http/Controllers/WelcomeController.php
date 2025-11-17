@@ -29,6 +29,7 @@ class WelcomeController extends Controller
                 ->where('u.rol', 'estudiante')
                 ->whereNull('u.deleted_at')
                 ->whereNull('e.deleted_at')
+                ->where('pt.tipo_puntaje', 'deposito')
                 ->select(
                     'u.id as idUser',
                     'u.nombres',
@@ -147,11 +148,11 @@ class WelcomeController extends Controller
         $estadisticas = [
             'totalEstudiantes' => User::where('rol', 'estudiante')->whereNull('deleted_at')->count(),
             'totalDepositos' => Deposito::count(),
-            'totalPuntos' => Puntaje::sum('puntos') ?? 0,
+            'totalPuntos' => Puntaje::where('tipo_puntaje', 'depositos')->sum('puntos') ?? 0,
             'totalBasureros' => Basurero::where('estado', 'activo')->count(),
             'tiposBasura' => TipoBasura::where('estado', 'activo')->count(),
             'depositosHoy' => Deposito::whereDate('fechaHora', today())->count(),
-            'puntosHoy' => Puntaje::whereDate('fechaAsignacion', today())->sum('puntos') ?? 0,
+            'puntosHoy' => Puntaje::where('tipo_puntaje', 'depositos')->whereDate('fechaAsignacion', today())->sum('puntos') ?? 0,
             'cursoMasActivo' => $this->getCursoMasActivo(),
             'tipoBasuraMasComun' => $this->getTipoBasuraMasComun()
         ];

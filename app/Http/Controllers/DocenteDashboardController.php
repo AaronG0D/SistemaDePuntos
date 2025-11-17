@@ -334,7 +334,17 @@ class DocenteDashboardController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('usuario.nombres', 'like', "%{$search}%")
                   ->orWhere('usuario.primerApellido', 'like', "%{$search}%")
-                  ->orWhere('usuario.segundoApellido', 'like', "%{$search}%");
+                  ->orWhere('usuario.segundoApellido', 'like', "%{$search}%")
+                  // Búsqueda por nombre completo
+                  ->orWhereRaw(
+                      "CONCAT(TRIM(IFNULL(usuario.nombres,'')), ' ', TRIM(IFNULL(usuario.primerApellido,'')), ' ', TRIM(IFNULL(usuario.segundoApellido,''))) LIKE ?",
+                      ["%{$search}%"]
+                  )
+                  // Formato apellidos primero
+                  ->orWhereRaw(
+                      "CONCAT(TRIM(IFNULL(usuario.primerApellido,'')), ' ', TRIM(IFNULL(usuario.segundoApellido,'')), ' ', TRIM(IFNULL(usuario.nombres,''))) LIKE ?",
+                      ["%{$search}%"]
+                  );
             });
         }
 

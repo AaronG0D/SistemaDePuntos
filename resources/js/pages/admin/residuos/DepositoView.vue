@@ -86,13 +86,17 @@ const { ROUTES, formatearFecha, formatearPuntos } = useResiduos();
                                 <label class="text-muted-foreground text-sm font-medium">Puntos Generados</label>
                                 <div class="mt-1">
                                     <Badge variant="secondary" class="text-lg">
-                                        {{ formatearPuntos(deposito.tipo_basura?.puntos || 0) }}
+                                        {{ formatearPuntos(deposito.puntos ?? deposito.tipo_basura?.puntos) }}
                                     </Badge>
                                 </div>
                             </div>
                             <div>
                                 <label class="text-muted-foreground text-sm font-medium">Fecha y Hora</label>
                                 <p class="text-lg">{{ formatearFecha(deposito.fechaHora) }}</p>
+                            </div>
+                            <div>
+                                <label class="text-muted-foreground text-sm font-medium">Período Académico</label>
+                                <p class="text-lg">{{ deposito.idPeriodo ?? 'N/A' }}</p>
                             </div>
                             <div>
                                 <label class="text-muted-foreground text-sm font-medium">Registrado</label>

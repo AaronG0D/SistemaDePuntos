@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Estudiante } from '@/types';
+import { TipoBasura,Deposito } from '@/types/residuos';
 import { Head, Link, router } from '@inertiajs/vue3';
 import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import { ArrowLeft, Award, Edit, GraduationCap, Mail, MapPin, QrCode, Trash2, User, Recycle, Calendar, TrendingUp } from 'lucide-vue-next';
@@ -10,6 +11,7 @@ import { toast, Toaster } from 'vue-sonner';
 import  UserQrCode  from '@/components/UserQrCode.vue';
 import 'vue-sonner/style.css';
 import { ref } from 'vue';
+import { useResiduos } from '@/composables/useResiduos';
 
 // ===== UTILIDADES =====
 // Función para calcular el total de puntos de un estudiante
@@ -25,20 +27,7 @@ function getTotalPuntos(puntajes: any[] | undefined): string {
 // ===== PROPS =====
 const props = defineProps<{
     estudiante: Estudiante;
-    ultimosDepositos?: Array<{
-        idDeposito: number;
-        fechaHora: string;
-        tipoBasura: {
-            idTipoBasura: number;
-            nombre: string;
-            puntos: number;
-        };
-        basurero: {
-            idBasurero: number;
-            nombre: string;
-            ubicacion: string;
-        };
-    }>;
+    ultimosDepositos?: Deposito;
     depositosPorTipo?: Array<{
         tipo: string;
         cantidad: number;
@@ -48,12 +37,12 @@ const props = defineProps<{
     estadisticas?: {
         total_depositos: number;
         depositos_este_mes: number;
-        kg_reciclados_estimados: number;
         dias_activo: number;
     };
 }>();
 
 // ===== MÉTODOS =====
+const { formatearPuntos } = useResiduos();
 const confirmOpen = ref(false);
 function promptEliminarEstudiante() {
     confirmOpen.value = true;
@@ -262,14 +251,10 @@ const formatUserForQr = (user: any) => {
                         <CardDescription>Actividad reciente del estudiante</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <div class="text-center">
                                 <div class="text-primary text-2xl font-bold">{{ estadisticas?.depositos_este_mes || 0 }}</div>
                                 <div class="text-muted-foreground text-sm">Depósitos este mes</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-green-600">{{ (estadisticas?.kg_reciclados_estimados || 0).toFixed(1) }}</div>
-                                <div class="text-muted-foreground text-sm">Kg reciclados (est.)</div>
                             </div>
                             <div class="text-center">
                                 <div class="text-2xl font-bold text-blue-600">{{ estadisticas?.dias_activo || 0 }}</div>
@@ -314,11 +299,11 @@ const formatUserForQr = (user: any) => {
                 </Card>
 
                 <!-- Tarjeta de últimos depósitos -->
-                <Card v-if="ultimosDepositos && ultimosDepositos.length > 0">
+                <Card v-if="ultimosDepositos">
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             <Calendar class="h-5 w-5" />
-                            Últimos Depósitos
+                             5 Últimos Depósitos 
                         </CardTitle>
                         <CardDescription>Historial de actividades recientes</CardDescription>
                     </CardHeader>
@@ -330,12 +315,14 @@ const formatUserForQr = (user: any) => {
                                         <Recycle class="h-4 w-4" />
                                     </div>
                                     <div>
-                                        <p class="font-medium">{{ deposito.tipoBasura.nombre }}</p>
-                                        <p class="text-muted-foreground text-sm">{{ deposito.basurero.nombre }} - {{ deposito.basurero.ubicacion }}</p>
+                                        <p class="font-medium">{{ deposito.tipo ?? deposito.tipoBasura?.nombre ?? deposito.tipo_basura?.nombre ?? 'Sin especificar' }}</p>
+                                        <p class="text-muted-foreground text-sm">
+                                            {{ deposito.basurero?.descripcion ?? 'Basurero' }} - {{ deposito.basurero?.ubicacion ?? '-' }}
+                                        </p>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <p class="font-bold text-green-600">+{{ deposito.tipoBasura.puntos }} pts</p>
+                                    <p class="font-bold text-green-600">+{{ formatearPuntos(deposito.puntos ?? deposito.puntos_generados ?? deposito.tipoBasura?.puntos ?? deposito.tipo_basura?.puntos ?? 0) }}</p>
                                     <p class="text-muted-foreground text-xs">{{ new Date(deposito.fechaHora).toLocaleString() }}</p>
                                 </div>
                             </div>

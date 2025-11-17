@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Basurero;
 use App\Models\Deposito;
+use App\Models\PeriodoAcademico;
 use App\Models\TipoBasura;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -14,6 +16,7 @@ class DepositoController extends Controller
     public function index(Request $request): Response
     {
         $query = Deposito::with(['user', 'basurero', 'tipoBasura'])
+            
             ->orderBy('fechaHora', 'desc');
 
         // Filtros
@@ -68,11 +71,19 @@ class DepositoController extends Controller
         // Datos para filtros
         $basureros = Basurero::activos()->get();
         $tiposBasura = TipoBasura::all();
+        $totalPuntos= Deposito::with('tipoBasura')->get()->sum('tipoBasura.puntos');
+        $totalDepositos = Deposito::count();
+        $TotalEstudiantes=Deposito::select('idUser')->distinct('idUser')->count();
+        
+
 
         return Inertia::render('admin/residuos/DepositosList', [
             'depositos' => $depositos,
             'basureros' => $basureros,
             'tiposBasura' => $tiposBasura,
+            'totalPuntos' => $totalPuntos,
+            'totalDepositos' => $totalDepositos,
+            'TotalEstudiantes' => $TotalEstudiantes, 
             'filters' => $request->only(['usuario', 'basurero', 'tipo_basura', 'fecha', 'search']),
         ]);
     }
@@ -97,11 +108,17 @@ class DepositoController extends Controller
             'fechaHora' => 'nullable|date',
         ]);
 
+        $fecha = $request->fechaHora ? Carbon::parse($request->fechaHora) : now();
+        $periodo = $this->findPeriodForDate($fecha) ?? $this->getActivePeriod();
+        $tipo = TipoBasura::find($request->idTipoBasura);
+
         Deposito::create([
             'idUser' => $request->idUser,
             'idBasurero' => $request->idBasurero,
             'idTipoBasura' => $request->idTipoBasura,
-            'fechaHora' => $request->fechaHora ?? now(),
+            'fechaHora' => $fecha,
+            'idPeriodo' => $periodo?->idPeriodo,
+            'puntos' => $tipo?->puntos ?? 0,
         ]);
 
         return redirect()->route('admin.depositos.index')
@@ -137,13 +154,24 @@ class DepositoController extends Controller
             'idBasurero' => 'required|exists:basurero,idBasurero',
             'idTipoBasura' => 'required|exists:tipoBasura,idTipoBasura',
             'fechaHora' => 'required|date',
+
+        ], [
+            'idUser.required' => 'El campo usuario es obligatorio.',
+            'idBasurero.required' => 'El campo basurero es obligatorio.',
+            'idTipoBasura.required' => 'El campo tipo de basura es obligatorio.',
+            'fechaHora.required' => 'El campo fecha y hora es obligatorio.',    
+            'fechaHora.date' => 'El campo fecha y hora debe ser una fecha válida.',
         ]);
+
+        $fecha = Carbon::parse($request->fechaHora);
+        $tipo = TipoBasura::find($request->idTipoBasura);
 
         $deposito->update([
             'idUser' => $request->idUser,
             'idBasurero' => $request->idBasurero,
             'idTipoBasura' => $request->idTipoBasura,
-            'fechaHora' => $request->fechaHora,
+            'fechaHora' => $fecha,  
+            'puntos' => $tipo?->puntos ?? 0,
         ]);
 
         return redirect()->route('admin.depositos.index')
@@ -160,7 +188,7 @@ class DepositoController extends Controller
 
     public function estadisticas(): Response
     {
-        $estadisticas = [
+        $estadisticas = [ 
             'total_depositos' => Deposito::count(),
             'depositos_hoy' => Deposito::porFecha(now()->toDateString())->count(),
             'depositos_semana' => Deposito::recientes(7)->count(),
@@ -206,4 +234,44 @@ class DepositoController extends Controller
             'topTiposBasura' => $topTiposBasura,
         ]);
     }
-} 
+
+    /**
+     * Obtiene el período activo actual.
+     */
+    private function getActivePeriod(): ?PeriodoAcademico
+    {
+        return PeriodoAcademico::where('activo', true)
+            ->orderBy('fecha_inicio', 'desc')
+            ->first();
+    }
+
+    /**
+     * Encuentra el período académico en el que cae la fecha dada.
+     */
+    private function findPeriodForDate($fecha): ?PeriodoAcademico
+    {
+        $date = $fecha instanceof Carbon ? $fecha->toDateString() : (string) $fecha;
+        return PeriodoAcademico::whereDate('fecha_inicio', '<=', $date)
+            ->whereDate('fecha_fin', '>=', $date)
+            ->orderBy('fecha_inicio', 'desc')
+            ->first();
+    }
+
+    public function restore($id)
+    {
+        $deposito = Deposito::withTrashed()->findOrFail($id);
+        $deposito->restore();
+
+        return redirect()->route('admin.depositos.index')
+            ->with('success', 'Depósito restaurado exitosamente');
+    }
+
+    public function forceDelete($id)
+    {
+        $deposito = Deposito::withTrashed()->findOrFail($id);
+        $deposito->forceDelete();
+
+        return redirect()->route('admin.depositos.index')
+            ->with('success', 'Depósito eliminado permanentemente');
+    }
+}

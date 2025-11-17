@@ -91,7 +91,7 @@ const { estudiantes, cursos, paralelos, estudiantesInactivos } = defineProps<{
     estudiantes: any;
     cursos: any[];
     paralelos: any[];
-    estudiantesInactivos?: any[];
+    estudiantesInactivos?: any; // paginador para inactivos
 }>();
 
 // ===== ESTADOS REACTIVOS =====
@@ -102,21 +102,28 @@ const dialogOpen = ref(false);
 const confirmOpen = ref(false);
 const estudianteToDelete = ref<number | null>(null);
 const editEstudiante = ref<Estudiante | null>(null);
-const editCurso = ref<number | null>(null);
-const editParalelo = ref<number | null>(null);
+const editCurso = ref<string>('0');
+const editParalelo = ref<string>('0');
 const isInitialized = ref(false); // Bandera para controlar inicialización
 const tabActivo = ref<'activos' | 'inactivos'>('activos'); // Tab para activos/inactivos
 const estudianteToRestore = ref<number | null>(null); // Para restaurar
 
-// CSRF token para peticiones fetch (Laravel)
-const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '';
+// No se requiere CSRF manual aquí: las acciones usan Inertia router
 
 // ===== COMPUTED PROPERTIES =====
 const filteredEstudiantes = computed(() => {
     if (tabActivo.value === 'inactivos') {
-        return estudiantesInactivos || [];
+        return estudiantesInactivos?.data || [];
     }
     return estudiantes.data;
+});
+
+const paginatorEstudiantes = computed(() => {
+    // Siempre devolver un paginador válido; si inactivos no existe aún, caer a activos
+    if (tabActivo.value === 'inactivos') {
+        return estudiantesInactivos || estudiantes;
+    }
+    return estudiantes;
 });
 
 // Función para formatear los datos del usuario para el QR
@@ -144,7 +151,7 @@ const formatUserForQr = (user: any) => {
 // ===== MÉTODOS DE NAVEGACIÓN =====
 function goToPage(page: number) {
     const params = {
-        page,
+        ...(tabActivo.value === 'inactivos' ? { inactivos_page: page } : { page }),
         curso: selectedCurso.value !== 'all' ? selectedCurso.value : undefined,
         paralelo: selectedParalelo.value !== 'all' ? selectedParalelo.value : undefined,
         search: searchQuery.value || undefined,
@@ -160,7 +167,7 @@ function goToPage(page: number) {
 // Función para aplicar filtros
 function aplicarFiltros() {
     const params: Record<string, any> = {
-        page: 1, // Resetear a la primera página
+        ...(tabActivo.value === 'inactivos' ? { inactivos_page: 1 } : { page: 1 }), // Resetear a la primera página
     };
 
     // Solo agregar parámetros si tienen valores válidos
@@ -226,16 +233,16 @@ function handleParaleloChange() {
 // ===== MÉTODOS DEL DIÁLOGO =====
 function openEditDialog(estudiante: Estudiante) {
     editEstudiante.value = JSON.parse(JSON.stringify(estudiante));
-    editCurso.value = estudiante.curso_paralelo?.curso?.idCurso || null;
-    editParalelo.value = estudiante.curso_paralelo?.paralelo?.idParalelo || null;
+    editCurso.value = estudiante.curso_paralelo?.curso?.idCurso ? String(estudiante.curso_paralelo.curso.idCurso) : '0';
+    editParalelo.value = estudiante.curso_paralelo?.paralelo?.idParalelo ? String(estudiante.curso_paralelo.paralelo.idParalelo) : '0';
     dialogOpen.value = true;
 }
 
 function closeEditDialog() {
     dialogOpen.value = false;
     editEstudiante.value = null;
-    editCurso.value = null;
-    editParalelo.value = null;
+    editCurso.value = '0';
+    editParalelo.value = '0';
 }
 
 function guardarCambios() {
@@ -249,8 +256,8 @@ function guardarCambios() {
             email: editEstudiante.value.user.email,
         },
         curso_paralelo: {
-            idCurso: editCurso.value,
-            idParalelo: editParalelo.value,
+            idCurso: editCurso.value === '0' ? null : Number(editCurso.value),
+            idParalelo: editParalelo.value === '0' ? null : Number(editParalelo.value),
         },
     } as Record<string, any>;
 
@@ -271,10 +278,6 @@ function showSuccessToast() {
         description: 'Los cambios han sido guardados correctamente',
         icon: Check,
         position: 'top-center',
-        action: {
-            label: 'Ver detalles',
-            onClick: () => router.visit(`/admin/estudiantes/${editEstudiante.value?.idUser}`),
-        },
     });
 }
 
@@ -346,8 +349,10 @@ function restaurarEstudiante(id: number) {
 // ===== WATCHERS =====
 watch(dialogOpen, (open) => {
     if (open && editEstudiante.value) {
-        editCurso.value = editEstudiante.value.curso_paralelo?.curso?.idCurso ?? null;
-        editParalelo.value = editEstudiante.value.curso_paralelo?.paralelo?.idParalelo ?? null;
+        editCurso.value = editEstudiante.value.curso_paralelo?.curso?.idCurso ? String(editEstudiante.value.curso_paralelo.curso.idCurso) : '0';
+        editParalelo.value = editEstudiante.value.curso_paralelo?.paralelo?.idParalelo
+            ? String(editEstudiante.value.curso_paralelo.paralelo.idParalelo)
+            : '0';
     }
 });
 
@@ -382,6 +387,23 @@ watch(
     },
     { deep: true },
 );
+
+// Sincronizar cuando cambia el tab
+watch(tabActivo, (newTab) => {
+    const params: Record<string, any> = {
+        ...(newTab === 'inactivos' ? { inactivos_page: 1 } : { page: 1 }),
+        curso: selectedCurso.value !== 'all' ? selectedCurso.value : undefined,
+        paralelo: selectedParalelo.value !== 'all' ? selectedParalelo.value : undefined,
+        search: searchQuery.value || undefined,
+        tab: newTab,
+    };
+
+    router.get('/admin/estudiantes', params, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+});
 
 watch(editCurso, (val) => {
     if (editEstudiante.value && val !== null) {
@@ -646,25 +668,33 @@ watch(editParalelo, (val) => {
             </div>
 
             <!-- ===== PAGINACIÓN ===== -->
-            <div v-if="estudiantes.last_page > 1" class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700">
+            <div
+                v-if="paginatorEstudiantes && (paginatorEstudiantes.last_page || 0) > 1"
+                class="mt-6 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700"
+            >
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                    Mostrando {{ (estudiantes.current_page - 1) * estudiantes.per_page + 1 }} a
-                    {{ Math.min(estudiantes.current_page * estudiantes.per_page, estudiantes.total) }}
-                    de {{ estudiantes.total }} estudiantes
+                    Mostrando {{ ((paginatorEstudiantes?.current_page || 1) - 1) * (paginatorEstudiantes?.per_page || 0) + 1 }} a
+                    {{ Math.min((paginatorEstudiantes?.current_page || 1) * (paginatorEstudiantes?.per_page || 0), paginatorEstudiantes?.total || 0) }}
+                    de {{ paginatorEstudiantes?.total || 0 }} estudiantes
                 </p>
                 <div class="flex items-center gap-2">
-                    <Button variant="outline" size="sm" :disabled="estudiantes.current_page === 1" @click="goToPage(estudiantes.current_page - 1)">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        :disabled="!paginatorEstudiantes || paginatorEstudiantes.current_page === 1"
+                        @click="goToPage((paginatorEstudiantes?.current_page || 2) - 1)"
+                    >
                         <ChevronLeft class="h-4 w-4" />
                         <span class="ml-1">Anterior</span>
                     </Button>
                     <span class="text-sm text-gray-600 dark:text-gray-400">
-                        Página {{ estudiantes.current_page }} de {{ estudiantes.last_page }}
+                        Página {{ paginatorEstudiantes?.current_page || 1 }} de {{ paginatorEstudiantes?.last_page || 1 }}
                     </span>
                     <Button
                         variant="outline"
                         size="sm"
-                        :disabled="estudiantes.current_page >= estudiantes.last_page"
-                        @click="goToPage(estudiantes.current_page + 1)"
+                        :disabled="!paginatorEstudiantes || paginatorEstudiantes.current_page >= paginatorEstudiantes.last_page"
+                        @click="goToPage((paginatorEstudiantes?.current_page || 1) + 1)"
                     >
                         <span class="mr-1">Siguiente</span>
                         <ChevronRight class="h-4 w-4" />
@@ -713,8 +743,8 @@ watch(editParalelo, (val) => {
                                     <SelectValue placeholder="Selecciona un curso" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem :value="null">Sin curso</SelectItem>
-                                    <SelectItem v-for="curso in cursos" :key="curso.idCurso" :value="curso.idCurso">
+                                    <SelectItem value="0">Sin curso</SelectItem>
+                                    <SelectItem v-for="curso in cursos" :key="curso.idCurso" :value="String(curso.idCurso)">
                                         {{ curso.nombre }}
                                     </SelectItem>
                                 </SelectContent>
@@ -729,8 +759,8 @@ watch(editParalelo, (val) => {
                                     <SelectValue placeholder="Selecciona un paralelo" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem :value="null">Sin paralelo</SelectItem>
-                                    <SelectItem v-for="paralelo in paralelos" :key="paralelo.idParalelo" :value="paralelo.idParalelo">
+                                    <SelectItem value="0">Sin paralelo</SelectItem>
+                                    <SelectItem v-for="paralelo in paralelos" :key="paralelo.idParalelo" :value="String(paralelo.idParalelo)">
                                         {{ paralelo.nombre }}
                                     </SelectItem>
                                 </SelectContent>

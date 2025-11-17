@@ -12,38 +12,57 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::query()
+        // Obtener parámetros de filtro
+        $search = $request->get('search');
+        $role = $request->get('role', 'all');
+        $tab = $request->get('tab', 'activos');
+        $page = $request->get('page', 1);
+
+        // Usuarios activos
+        $queryActivos = User::query()
             ->whereNull('deleted_at')
-            ->when($request->search, function($query, $search) {
+            ->when($search, function($query, $search) {
                 $query->where(function($q) use ($search) {
                     $q->where('nombres', 'like', "%{$search}%")
                       ->orWhere('primerApellido', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-            ->when($request->role, function($query, $role) {
+            ->when($role && $role !== 'all', function($query) use ($role) {
                 $query->where('rol', $role);
             })
             ->latest();
 
         // Usuarios inactivos
-        $usuariosInactivos = User::onlyTrashed()
-            ->when($request->search, function($query, $search) {
+        $queryInactivos = User::onlyTrashed()
+            ->when($search, function($query, $search) {
                 $query->where(function($q) use ($search) {
                     $q->where('nombres', 'like', "%{$search}%")
                       ->orWhere('primerApellido', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-            ->when($request->role, function($query, $role) {
+            ->when($role && $role !== 'all', function($query) use ($role) {
                 $query->where('rol', $role);
             })
-            ->get();
+            ->latest();
+
+        // Paginar ambas queries
+        $usuariosActivos = $queryActivos->paginate(10, ['*'], 'page', $tab === 'activos' ? $page : 1);
+        $usuariosInactivos = $queryInactivos->paginate(10, ['*'], 'page', $tab === 'inactivos' ? $page : 1);
+        
+        // Restaurar query strings
+        $usuariosActivos->appends($request->query());
+        $usuariosInactivos->appends($request->query());
 
         return Inertia::render('admin/Users/Index', [
-            'users' => $query->paginate(10)->withQueryString(),
+            'users' => $usuariosActivos,
             'usuariosInactivos' => $usuariosInactivos,
-            'filters' => $request->only(['search', 'role'])
+            'filters' => [
+                'search' => $search ?? '',
+                'role' => $role,
+                'tab' => $tab
+            ]
         ]);
     }
 
@@ -55,12 +74,26 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombres' => ['required', 'string', 'max:255'],
-            'primerApellido' => ['required', 'string', 'max:255'],
-            'segundoApellido' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:usuario,email'],
+            'nombres' => ['required', 'string', 'max:100'],
+            'primerApellido' => ['required', 'string', 'max:100'],
+            'segundoApellido' => ['nullable', 'string', 'max:100'],
+            'email' => ['required', 'email', 'max:100', 'unique:usuario,email'],
             'rol' => ['required', 'in:estudiante,docente,administrador'],
             'password' => ['required', 'string', 'min:6'],
+        ],[
+            'nombres.required' => 'El campo nombres es obligatorio.',
+            'nombres.string' => 'El nombre debe ser una cadena de texto.',
+            'nombres.max' => 'El nombre debe tener como máximo 100 caracteres.',
+            'primerApellido.required' => 'El campo primer apellido es obligatorio.',
+            'primerApellido.string' => 'El primer apellido debe ser una cadena de texto.',
+            'primerApellido.max' => 'El primer apellido debe tener como máximo 100 caracteres.',
+            'email.required' => 'El campo email es obligatorio.',
+            'email.email' => 'El email ingresado no es válido.',
+            'email.max' => 'El email debe tener como máximo 100 caracteres.',
+            'email.unique' => 'El email ya está registrado.',
+            'rol.required' => 'El campo rol es obligatorio.',
+            'password.required' => 'El campo contraseña es obligatorio.',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
         ]);
 
         // Generar qr_codigo basado en nombre y apellidos
@@ -92,12 +125,25 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
-            'nombres' => ['required', 'string', 'max:255'],
-            'primerApellido' => ['required', 'string', 'max:255'],
-            'segundoApellido' => ['nullable', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:usuario,email,' . $user->id . ',id'],
+            'nombres' => ['required', 'string', 'max:100'],
+            'primerApellido' => ['required', 'string', 'max:100'],
+            'segundoApellido' => ['nullable', 'string', 'max:100'],
+            'email' => ['required', 'email', 'max:100', 'unique:usuario,email,' . $user->id . ',id'],
             'rol' => ['required', 'in:estudiante,docente,administrador'],
             'password' => ['nullable', 'string', 'min:6'],
+        ],[
+            'nombres.required' => 'El campo nombres es obligatorio.',
+            'nombres.string' => 'El nombre debe ser una cadena de texto.',
+            'nombres.max' => 'El nombre debe tener como máximo 100 caracteres.',
+            'primerApellido.required' => 'El campo primer apellido es obligatorio.',
+            'primerApellido.string' => 'El primer apellido debe ser una cadena de texto.',
+            'primerApellido.max' => 'El primer apellido debe tener como máximo 100 caracteres.',
+            'email.required' => 'El campo email es obligatorio.',
+            'email.email' => 'El email ingresado no es válido.',
+            'email.max' => 'El email debe tener como máximo 100 caracteres.',
+            'email.unique' => 'El email ya está registrado.',
+            'rol.required' => 'El campo rol es obligatorio.',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres.',
         ]);
 
         // Si password viene vacío, no actualizar el campo

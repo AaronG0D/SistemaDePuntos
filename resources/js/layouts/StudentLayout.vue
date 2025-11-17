@@ -144,9 +144,9 @@
                                         <User class="mr-2 h-4 w-4" />
                                         <span>Mi Perfil</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                        <Settings class="mr-2 h-4 w-4" />
-                                        <span>Configuración</span>
+                                    <DropdownMenuItem @click="openChangePasswordFromMenu">
+                                        <Lock class="mr-2 h-4 w-4" />
+                                        <span>Cambiar contraseña</span>
                                     </DropdownMenuItem>
                                 </DropdownMenuGroup>
                                 <DropdownMenuSeparator />
@@ -248,6 +248,17 @@
                             <GraduationCap class="mr-2 h-4 w-4" />
                             Mis Notas
                         </Button>
+
+                        <!-- Cambiar contraseña Mobile -->
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            class="w-full justify-start text-gray-600 dark:text-gray-300"
+                            @click="navigateAndCloseMobile('students.profile', { change_password: 1 })"
+                        >
+                            <Lock class="mr-2 h-4 w-4" />
+                            Cambiar contraseña
+                        </Button>
                         
                         <!-- Separador -->
                         <div class="border-t border-green-200 dark:border-gray-700 my-2"></div>
@@ -332,10 +343,14 @@
                 </div>
             </div>
         </footer>
+        <!-- Global Toaster for Student views -->
+        <Toaster position="top-center" richColors />
     </div>
 </template>
 
 <script setup lang="ts">
+import { Toaster } from 'vue-sonner';
+import 'vue-sonner/style.css';
 import { Button } from '@/components/ui/button';
 import { 
     DropdownMenu, 
@@ -361,6 +376,7 @@ import {
     Moon, 
     Recycle, 
     Settings, 
+    Lock,
     Sun, 
     Trophy, 
     User 
@@ -417,9 +433,9 @@ const isCurrentRoute = (routeName: string) => {
     return route().current(routeName);
 };
 
-const navigateAndCloseMobile = (routeName: string) => {
+const navigateAndCloseMobile = (routeName: string, params: Record<string, any> = {}) => {
     mobileMenuOpen.value = false;
-    router.visit(route(routeName)); // Usar router en lugar de window.$inertia
+    router.get(route(routeName), params);
 };
 
 const getInitials = (nombres: string, apellidos: string) => {
@@ -427,4 +443,10 @@ const getInitials = (nombres: string, apellidos: string) => {
     const lastInitial = apellidos.charAt(0).toUpperCase();
     return `${firstInitial}${lastInitial}`;
 };
+const openChangePasswordFromMenu = () => {
+ router.get(route('students.profile'), { change_password: 1 });
+};
 </script>
+const openChangePasswordFromMenu = () => {
+    router.get(route('students.profile'), { change_password: 1 });
+};

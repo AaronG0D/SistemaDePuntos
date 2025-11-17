@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import axios from 'axios'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { Head } from '@inertiajs/vue3';
 import { 
   CheckCircle, 
   XCircle, 
@@ -256,6 +257,7 @@ watch(() => refreshInterval.value, () => {
 
 <template>
   <AppLayout>
+    <Head title="Monitoreo Raspberry Pi" />
       <div class="container mx-auto py-6">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div class="flex justify-between items-center">

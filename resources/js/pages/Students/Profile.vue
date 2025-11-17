@@ -2,7 +2,7 @@
     
     <StudentLayout :student="student">
         <!-- Hero Section -->
-
+        <Head title="Perfil" />
         <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-6 py-12 sm:px-8 lg:px-12">
             <div class="mx-auto max-w-7xl text-center">
                 <div class="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-white/20 text-3xl font-bold text-white shadow-lg backdrop-blur-sm">
@@ -249,6 +249,93 @@
                     </Card>
                 </div>
 
+                <!-- Account Security -->
+                <Card class="border-gray-200 dark:border-gray-700">
+                    <CardHeader>
+                        <CardTitle class="flex items-center text-gray-800 dark:text-gray-200">
+                            <Shield class="mr-2 h-5 w-5" />
+                            Seguridad de la Cuenta
+                        </CardTitle>
+                        <CardDescription class="dark:text-gray-400">
+                            Actualiza tu contraseña para mantener tu cuenta segura.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                Cambia tu contraseña regularmente y evita reutilizar contraseñas.
+                            </div>
+                            <Button variant="outline" @click="showPasswordModal = true">
+                                Cambiar contraseña
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <!-- Password Change Modal -->
+                <div v-if="showPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div class="w-full max-w-lg rounded-lg border bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                        <div class="mb-4 flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Cambiar contraseña</h3>
+                            <button class="rounded p-1 hover:bg-gray-100 dark:hover:bg-gray-700" @click="showPasswordModal = false">
+                                <X class="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                            </button>
+                        </div>
+
+                        <form @submit.prevent="updatePassword" class="space-y-4">
+                            <div class="grid gap-2">
+                                <Label for="current_password">Contraseña actual</Label>
+                                <Input
+                                    id="current_password"
+                                    ref="currentPasswordInput"
+                                    v-model="form.current_password"
+                                    type="password"
+                                    autocomplete="current-password"
+                                    placeholder="Contraseña actual"
+                                />
+                                <InputError :message="form.errors.current_password" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Label for="password">Nueva contraseña</Label>
+                                <Input
+                                    id="password"
+                                    ref="passwordInput"
+                                    v-model="form.password"
+                                    type="password"
+                                    autocomplete="new-password"
+                                    placeholder="Nueva contraseña"
+                                />
+                                <InputError :message="form.errors.password" />
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Label for="password_confirmation">Confirmar contraseña</Label>
+                                <Input
+                                    id="password_confirmation"
+                                    v-model="form.password_confirmation"
+                                    type="password"
+                                    autocomplete="new-password"
+                                    placeholder="Confirmar contraseña"
+                                />
+                                <InputError :message="form.errors.password_confirmation" />
+                            </div>
+
+                            <div class="flex items-center gap-4">
+                                <Button type="submit" :disabled="form.processing">Guardar contraseña</Button>
+                                <Transition
+                                    enter-active-class="transition ease-in-out"
+                                    enter-from-class="opacity-0"
+                                    leave-active-class="transition ease-in-out"
+                                    leave-to-class="opacity-0"
+                                >
+                                    <p v-show="form.recentlySuccessful" class="text-sm text-neutral-600">Guardado.</p>
+                                </Transition>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <!-- Alerta QR Desactivado -->
                 <div v-if="!student.qr_codigo || student.qr_codigo === ''" class="rounded-lg border-2 border-red-300 bg-red-50 dark:border-red-600 dark:bg-red-900/20 p-6">
                     <div class="flex items-start gap-4">
@@ -414,8 +501,15 @@
 <script setup lang="ts">
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import InputError from '@/components/InputError.vue';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import StudentLayout from '@/layouts/StudentLayout.vue';
-import { router } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+
+import { defineProps } from 'vue';
+import { toast } from 'vue-sonner';
 import {
     AlertCircle,
     ArrowLeft,
@@ -428,6 +522,7 @@ import {
     IdCard,
     Leaf,
     QrCode,
+    Shield,
     Recycle,
     Target,
     TreePine,
@@ -435,8 +530,9 @@ import {
     Trophy,
     Users,
     Zap,
+    X,
 } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 interface Props {
     student: {
@@ -498,14 +594,7 @@ const earnedAchievements = computed(() => {
     if (props.deposits.length >= 10) count++; // Guardián Verde: 10 depósitos
     if (props.totalPoints >= 300) count++; // Campeón Ecológico: 300 puntos
     if (!props.deposits || props.deposits.length === 0) return 0;
-                                                                  //Deposito en todos los bimestres
-    const bimesterPoints = [1, 2, 3].map((b) => ({
-        bimester: b,
-        points: props.deposits.filter((d) => d.bimestre === b).reduce((sum, d) => sum + d.puntaje_obtenido, 0),
-    }));
-    const allBimestersHaveDeposits = bimesterPoints.every((b) => b.points > 0);
-    if (allBimestersHaveDeposits) count++; // Eco-Responsable: Primer depósito en todos los bimestres
-    
+    if (props.deposits.every((d) => d.bimestre !== null)) count++; // Eco-Responsable: Primer depósito en todos los bimestres
     
     return count;
 });
@@ -626,14 +715,87 @@ const printQr = () => {
         `;
         printWindow.document.write(htmlContent);
         printWindow.document.close();
-        printWindow.onload = () => {
-            setTimeout(() => {
-                printWindow.print();
-            }, 500);
-        };
-    }
+                printWindow.onload = () => {
+                    setTimeout(() => {
+                        printWindow.print();
+                    }, 500);
+                };
+            }
 };
 
 // Cargar QR al montar
 loadQr();
+
+// Estado y lógica para cambio de contraseña (vista de estudiante)
+const showPasswordModal = ref(false);
+const passwordInput = ref<HTMLInputElement | null>(null);
+const currentPasswordInput = ref<HTMLInputElement | null>(null);
+
+const form = useForm({
+    current_password: '',
+    password: '',
+    password_confirmation: '',
+});
+
+const updatePassword = () => {
+    form.put(route('password.update'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            form.reset();
+            showPasswordModal.value = false;
+            toast('Contraseña actualizada', {
+                description: 'Por seguridad, puedes iniciar sesión nuevamente.',
+                position: 'top-center',
+                duration: 3000,
+                action: {
+                    label: 'Reiniciar sesión',
+                    onClick: () => {
+                        router.post(route('logout'),{}, {
+                            onSuccess: () => router.visit(route('login')),
+                        });
+                    },
+                },
+            });
+        },
+        onError: (errors: any) => {
+            toast.error('Error al cambiar contraseña', {
+                description: errors.current_password ? 'La contraseña actual no es correcta.' : 'Revisa los campos ingresados.',
+                position: 'top-center',
+                duration: 3000,
+            });
+            if (errors.password) {
+                form.reset('password', 'password_confirmation');
+                if (passwordInput.value instanceof HTMLInputElement) {
+                    passwordInput.value.focus();
+                }
+            }
+
+            if (errors.current_password) {
+                form.reset('current_password');
+                if (currentPasswordInput.value instanceof HTMLInputElement) {
+                    currentPasswordInput.value.focus();
+                }
+            }
+        },
+    });
+};
+
+// Abrir modal si viene query ?change_password=1
+const page = usePage();
+const openPasswordModalFromQuery = (url: string) => {
+    try {
+        const query = url.split('?')[1] || '';
+        const params = new URLSearchParams(query);
+        if (params.get('change_password') === '1') {
+            showPasswordModal.value = true;
+        }
+    } catch (e) {
+        // Ignorar errores de parseo
+    }
+};
+
+openPasswordModalFromQuery(page.url);
+watch(() => page.url, (newUrl) => {
+    openPasswordModalFromQuery(newUrl);
+});
 </script>

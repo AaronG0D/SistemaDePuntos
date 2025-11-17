@@ -11,7 +11,7 @@ class TipoBasura extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $table = 'tipoBasura';
+    protected $table = 'tipobasura';
     protected $primaryKey = 'idTipoBasura';
     public $timestamps = true;
 

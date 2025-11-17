@@ -8,6 +8,7 @@ export interface Basurero {
     estado: number;
     created_at: string;
     updated_at: string;
+    deleted_at?: string;
     depositos_count?: number;
     depositos?: Deposito[];
 }
@@ -19,6 +20,7 @@ export interface TipoBasura {
     puntos: number;
     created_at: string;
     updated_at: string;
+    deleted_at?: string;
     depositos_count?: number;
     depositos?: Deposito[];
 }
@@ -30,9 +32,12 @@ export interface Deposito {
     idUser: number;
     idBasurero: number;
     idTipoBasura: number;
+    idPeriodo?: number;
     fechaHora: string;
     created_at: string;
     updated_at: string;
+    deleted_at?: string;
+    puntos?: number;
     user?: User;
     basurero?: Basurero;
     // Laravel may serialize relations as snake_case in JSON

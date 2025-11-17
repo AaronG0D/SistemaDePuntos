@@ -17,6 +17,9 @@ use App\Http\Controllers\DocenteDashboardController;
 use App\Http\Controllers\PeriodoAcademicoController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\QrController;
+use App\Http\Controllers\PapeleraController;
+
+
 
 Route::get('/', [\App\Http\Controllers\WelcomeController::class, 'index'])->name('home');
 
@@ -135,6 +138,10 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.basureros.update');
     Route::delete('/admin/basureros/{basurero}', [BasureroController::class, 'destroy'])
         ->name('admin.basureros.destroy');
+    Route::post('/admin/basureros/{basurero}/restore', [BasureroController::class, 'restore'])
+        ->name('admin.basureros.restore');
+    Route::delete('/admin/basureros/{basurero}/force', [BasureroController::class, 'forceDelete'])
+        ->name('admin.basureros.force-delete');
     Route::patch('/admin/basureros/{basurero}/toggle-estado', [BasureroController::class, 'toggleEstado'])
         ->name('admin.basureros.toggle-estado');
 
@@ -153,6 +160,10 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.tipos-basura.update');
     Route::delete('/admin/tipos-basura/{tipoBasura}', [TipoBasuraController::class, 'destroy'])
         ->name('admin.tipos-basura.destroy');
+    Route::post('/admin/tipos-basura/{tipoBasura}/restore', [TipoBasuraController::class, 'restore'])
+        ->name('admin.tipos-basura.restore');
+    Route::delete('/admin/tipos-basura/{tipoBasura}/force', [TipoBasuraController::class, 'forceDelete'])
+        ->name('admin.tipos-basura.force-delete');
     Route::patch('/admin/tipos-basura/{tipoBasura}/toggle-estado', [TipoBasuraController::class, 'toggleEstado'])
         ->name('admin.tipos-basura.toggle-estado');
 
@@ -173,6 +184,10 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
         ->name('admin.depositos.update');
     Route::delete('/admin/depositos/{deposito}', [DepositoController::class, 'destroy'])
         ->name('admin.depositos.destroy');
+    Route::post('/admin/depositos/{deposito}/restore', [DepositoController::class, 'restore'])
+        ->name('admin.depositos.restore');
+    Route::delete('/admin/depositos/{deposito}/force', [DepositoController::class, 'forceDelete'])
+        ->name('admin.depositos.force-delete');
 
     // Rutas de reportes
     Route::get('/admin/reportes', [ReporteController::class, 'index'])->name('admin.reportes.index');
@@ -211,6 +226,9 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
     Route::get('/admin/raspberry/eventos', function () {
         return Inertia::render('admin/RaspberryEventos');
     })->name('admin.raspberry.eventos');
+
+    // Papelera de reciclaje
+    Route::get('/admin/papelera',[PapeleraController::class, 'index'])->name('admin.papelera.index');
 });
 
 

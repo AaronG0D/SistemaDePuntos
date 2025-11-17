@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -17,7 +18,9 @@ class Deposito extends Model
         'idBasurero',
         'idUser',
         'idTipoBasura',
-        'fechaHora'
+        'fechaHora',
+        'idPeriodo',
+        'puntos'
     ];
 
     protected $casts = [
@@ -29,6 +32,7 @@ class Deposito extends Model
     protected $appends = [
         'puntos_generados'
     ];
+    
 
     public function basurero(): BelongsTo
     {
@@ -75,6 +79,11 @@ class Deposito extends Model
      */
     public function getPuntosGeneradosAttribute()
     {
-        return $this->tipoBasura ? $this->tipoBasura->puntos : 0;
+        // Preferir el snapshot almacenado en el depósito
+        if (!is_null($this->puntos)) {
+            return (int) $this->puntos;
+        }
+        // Fallback: puntos actuales del tipo de basura
+        return $this->tipoBasura ? (int) $this->tipoBasura->puntos : 0;
     }
 }

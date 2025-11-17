@@ -1,5 +1,6 @@
 <template>
     <AppLayout>
+        <Head title="Gestión de Códigos QR" />
         <div class="container mx-auto space-y-6 p-6">
             <!-- Header -->
             <div class="flex items-center justify-between">
@@ -328,6 +329,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Head } from '@inertiajs/vue3';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';

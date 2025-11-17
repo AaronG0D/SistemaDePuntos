@@ -11,6 +11,7 @@ import type { PaginacionTiposBasura, TipoBasura } from '@/types/residuos';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, Award, Edit, Eye, Plus, Recycle, Search, ToggleLeft, ToggleRight, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { toast, Toaster } from 'vue-sonner';
 import { Switch } from '@/components/ui/switch';
 
 // ===== PROPS =====
@@ -66,7 +67,7 @@ function toggleEstado(tipo: TipoBasura) {
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
                         <Button variant="outline" size="sm" as-child>
-                            <Link href="/dashboard">
+                            <Link href="/admin">
                                 <ArrowLeft class="mr-2 h-4 w-4" />
                                 Volver
                             </Link>
@@ -217,6 +218,7 @@ function toggleEstado(tipo: TipoBasura) {
                     </div>
                 </CardContent>
             </Card>
+            <Toaster />
         </div>
     </AppLayout>
 </template>

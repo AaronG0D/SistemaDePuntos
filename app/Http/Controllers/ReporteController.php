@@ -21,7 +21,7 @@ class ReporteController extends Controller
             'total_puntos' => Deposito::join('tipoBasura', 'deposito.idTipoBasura', '=', 'tipoBasura.idTipoBasura')
                 ->sum('tipoBasura.puntos'),
             'total_tipos_residuos' => TipoBasura::count(),
-            'total_basureros' => Basurero::count(),
+            'total_basureros' => Basurero::where('estado', '1')->count(),
         ];
 
         $tiposResiduos = TipoBasura::select('idTipoBasura as id', 'nombre')->get();
@@ -112,6 +112,11 @@ class ReporteController extends Controller
             'tipo_residuo_id' => 'nullable|exists:tipoBasura,idTipoBasura',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio'
+        ],[
+            'tipo_residuo_id.exists' => 'El tipo de residuo seleccionado no es válido.',
+            'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
+            'fecha_fin.date' => 'La fecha de fin debe ser una fecha válida.',
+            'fecha_fin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',
         ]);
 
         $query = Deposito::with(['user', 'tipoBasura', 'basurero'])
@@ -135,6 +140,9 @@ class ReporteController extends Controller
     {
         $request->validate([
             'periodo' => 'required|in:semana,mes,anio,todo'
+        ],[
+            'periodo.required' => 'El campo período es obligatorio.',
+            'periodo.in' => 'El período seleccionado no es válido.',
         ]);
 
         $query = DB::table('usuario')
@@ -178,6 +186,12 @@ class ReporteController extends Controller
             'basurero_id' => 'required|exists:basurero,idBasurero',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio'
+        ],[
+            'basurero_id.required' => 'El campo basurero es obligatorio.',
+            'basurero_id.exists' => 'El basurero seleccionado no es válido.',
+            'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
+            'fecha_fin.date' => 'La fecha de fin debe ser una fecha válida.',
+            'fecha_fin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',    
         ]);
 
         $query = Deposito::with(['tipoBasura'])
@@ -203,6 +217,14 @@ class ReporteController extends Controller
             'agrupacion' => 'required|in:dia,semana,mes',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio'
+        ],[
+            'agrupacion.required' => 'El campo agrupación es obligatorio.',
+            'agrupacion.in' => 'La agrupación seleccionada no es válida.',
+            'fecha_inicio.required' => 'El campo fecha de inicio es obligatorio.',
+            'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
+            'fecha_fin.required' => 'El campo fecha de fin es obligatorio.',
+            'fecha_fin.date' => 'La fecha de fin debe ser una fecha válida.',
+            'fecha_fin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',    
         ]);
 
         $format = $request->agrupacion === 'dia' ? '%Y-%m-%d' : 
@@ -231,6 +253,14 @@ class ReporteController extends Controller
             'metrica' => 'required|in:co2,agua,energia',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio'
+        ],[
+            'metrica.required' => 'El campo métrica es obligatorio.',
+            'metrica.in' => 'La métrica seleccionada no es válida.',
+            'fecha_inicio.required' => 'El campo fecha de inicio es obligatorio.',
+            'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
+            'fecha_fin.required' => 'El campo fecha de fin es obligatorio.',
+            'fecha_fin.date' => 'La fecha de fin debe ser una fecha válida.',
+            'fecha_fin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',    
         ]);
 
         // Factores de conversión (ejemplo)
@@ -262,6 +292,11 @@ class ReporteController extends Controller
             'tipo_residuo_id' => 'nullable|exists:tipoBasura,idTipoBasura',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio'
+        ],[
+            'tipo_residuo_id.exists' => 'El tipo de residuo seleccionado no es válido.',
+            'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
+            'fecha_fin.date' => 'La fecha de fin debe ser una fecha válida.',
+            'fecha_fin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',    
         ]);
 
         $query = Deposito::with(['user', 'tipoBasura', 'basurero'])
@@ -323,6 +358,10 @@ class ReporteController extends Controller
         $request->validate([
             'periodo' => 'required|in:semana,mes,anio,todo',
             'tipo_residuo_id' => 'nullable|exists:tipoBasura,idTipoBasura',
+        ],[
+            'periodo.required' => 'El campo periodo es obligatorio.',
+            'periodo.in' => 'El periodo seleccionado no es válido.',
+            'tipo_residuo_id.exists' => 'El tipo de residuo seleccionado no es válido.',
         ]);
 
         $periodo = $request->periodo;
@@ -387,6 +426,12 @@ class ReporteController extends Controller
             'basurero_id' => 'required|exists:basurero,idBasurero',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio'
+        ],[
+            'basurero_id.required' => 'El campo basurero es obligatorio.',
+            'basurero_id.exists' => 'El basurero seleccionado no es válido.',
+            'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
+            'fecha_fin.date' => 'La fecha de fin debe ser una fecha válida.',
+            'fecha_fin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',    
         ]);
 
         $query = \App\Models\Deposito::with(['user', 'tipoBasura', 'basurero'])
@@ -439,6 +484,12 @@ class ReporteController extends Controller
         $request->validate([
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after_or_equal:fecha_inicio'
+        ],[
+            'fecha_inicio.required' => 'El campo fecha de inicio es obligatorio.',
+            'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
+            'fecha_fin.required' => 'El campo fecha de fin es obligatorio.',
+            'fecha_fin.date' => 'La fecha de fin debe ser una fecha válida.',
+            'fecha_fin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',    
         ]);
 
         $query = \App\Models\Deposito::with(['user', 'tipoBasura', 'basurero'])
@@ -487,6 +538,11 @@ class ReporteController extends Controller
             'tipo_residuo_id' => 'nullable|exists:tipoBasura,idTipoBasura',
             'fecha_inicio' => 'nullable|date',
             'fecha_fin' => 'nullable|date|after_or_equal:fecha_inicio'
+        ],[
+            'tipo_residuo_id.exists' => 'El tipo de residuo seleccionado no es válido.',
+            'fecha_inicio.date' => 'La fecha de inicio debe ser una fecha válida.',
+            'fecha_fin.date' => 'La fecha de fin debe ser una fecha válida.',
+            'fecha_fin.after_or_equal' => 'La fecha de fin no puede ser anterior a la fecha de inicio.',    
         ]);
 
         $query = Deposito::with(['user', 'tipoBasura', 'basurero'])

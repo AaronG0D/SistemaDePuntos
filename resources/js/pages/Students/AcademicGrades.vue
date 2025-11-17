@@ -1,5 +1,6 @@
 <template>
     <StudentLayout :student="student">
+        <Head title="Notas Académicas" />
         <!-- Hero Section -->
         <div class="bg-gradient-to-r from-yellow-600 via-yellow-700 to-orange-600 px-6 py-16 text-white sm:px-8 lg:px-12">
             <div class="mx-auto max-w-7xl">
@@ -249,6 +250,7 @@
 
 <script setup lang="ts">
 import { Badge } from '@/components/ui/badge';
+import { Head } from '@inertiajs/vue3';
 import { Card, CardContent } from '@/components/ui/card';
 import StudentLayout from '@/layouts/StudentLayout.vue';
 import { BookOpen, Clock, GraduationCap, Star, Target, TrendingUp, Trophy } from 'lucide-vue-next';

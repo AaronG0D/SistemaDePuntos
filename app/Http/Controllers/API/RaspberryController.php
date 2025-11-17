@@ -51,6 +51,13 @@ class RaspberryController extends Controller
                 'qr_codigo' => 'required|string',
                 'tipo_basura' => 'required|string',
                 'peso' => 'nullable|numeric|min:0',
+            ], [
+                'qr_codigo.required' => 'El campo código QR es obligatorio.',
+                'qr_codigo.string' => 'El código QR debe ser una cadena de texto.',
+                'tipo_basura.required' => 'El campo tipo de basura es obligatorio.',
+                'tipo_basura.string' => 'El tipo de basura debe ser una cadena de texto.',
+                'peso.numeric' => 'El peso debe ser un número.',
+                'peso.min' => 'El peso debe ser mayor o igual a 0.',
             ]);
 
             // 1) Buscar usuario por código QR
@@ -103,12 +110,25 @@ class RaspberryController extends Controller
                 ], 422);
             }
 
-            // 4) Crear el depósito
+            // 4) Determinar período académico para la fecha del depósito (ahora)
+            $fechaDeposito = now();
+            $periodo = \App\Models\PeriodoAcademico::where('activo', true)->first();
+
+            if (!$periodo) {
+                $periodo = \App\Models\PeriodoAcademico::where('fecha_inicio', '<=', $fechaDeposito)
+                ->where('fecha_fin', '>=', $fechaDeposito)
+                ->first();
+                
+            }
+
+            // 5) Crear el depósito con snapshot de puntos y período
             $deposito = Deposito::create([
                 'idBasurero' => 1,
                 'idUser' => $user->id,
                 'idTipoBasura' => $tipoBasura->idTipoBasura,
-                'fechaHora' => now(),
+                'fechaHora' => $fechaDeposito,
+                'idPeriodo' => $periodo ? $periodo->idPeriodo : null,
+                'puntos' => $tipoBasura->puntos,
             ]);
 
             // Obtener el período académico activo para traer puntaje actualizado
@@ -122,7 +142,7 @@ class RaspberryController extends Controller
                     ->sum('puntos') ?? 0;
             }
 
-            // 5) Actualizar evento como exitoso
+            // 6) Actualizar evento como exitoso
             $event->update([
                 'idUser' => $user->id,
                 'idTipoBasura' => $tipoBasura->idTipoBasura,
@@ -132,7 +152,7 @@ class RaspberryController extends Controller
                 'processed_at' => now(),
                 'meta' => array_merge($event->meta ?? [], [
                     'resultado' => 'exitoso',
-                    'puntos_ganados' => $tipoBasura->puntos,
+                    'puntos_ganados' => $deposito->puntos ?? $tipoBasura->puntos,
                     'puntos_totales_actuales' => $puntosActualizados,
                     'tipo_basura_encontrado' => $tipoBasura->nombre,
                     'timestamp_fin' => now()->toISOString(),
@@ -140,7 +160,7 @@ class RaspberryController extends Controller
                 ]),
             ]);
 
-            // 6) Respuesta exitosa
+            // 7) Respuesta exitosa
             return response()->json([
                 'success' => true,
                 'message' => '¡Depósito registrado correctamente!',
@@ -152,10 +172,11 @@ class RaspberryController extends Controller
                 'deposito' => [
                     'id' => $deposito->idDeposito,
                     'tipo_basura' => $tipoBasura->nombre,
-                    'puntos_ganados' => $tipoBasura->puntos,
+                    'puntos_ganados' => $deposito->puntos ?? $tipoBasura->puntos,
+                    'idPeriodo' => $deposito->idPeriodo,
                 ],
                 'puntaje' => [
-                    'puntos_ganados_ahora' => $tipoBasura->puntos,
+                    'puntos_ganados_ahora' => $deposito->puntos ?? $tipoBasura->puntos,
                     'puntos_totales_periodo' => $puntosActualizados,
                     'periodo_activo' => $periodoActivo ? $periodoActivo->nombre : null,
                 ],
@@ -264,8 +285,9 @@ class RaspberryController extends Controller
                         ] : null,
                         'deposito' => $evento->deposito ? [
                             'id' => $evento->deposito->idDeposito,
-                            'puntos' => $evento->tipoBasura ? $evento->tipoBasura->puntos : 0,
+                            'puntos' => $evento->deposito->puntos ?? ($evento->tipoBasura ? $evento->tipoBasura->puntos : 0),
                             'fecha' => $evento->deposito->fechaHora ? $evento->deposito->fechaHora->format('Y-m-d H:i:s') : null,
+                            'idPeriodo' => $evento->deposito->idPeriodo ?? null,
                         ] : null,
                     ];
                 }),

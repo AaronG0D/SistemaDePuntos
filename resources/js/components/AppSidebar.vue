@@ -91,6 +91,11 @@ const navigationGroups: NavGroup[] = [
                 icon: BoxIcon,
             },
             {
+                    title: 'Papelera',
+                href: route('admin.papelera.index'),
+                icon: Trash2,
+            },
+            {
                 title: 'Eventos Raspberry Pi',
                 href: route('admin.raspberry.eventos'),
                 icon: Activity,

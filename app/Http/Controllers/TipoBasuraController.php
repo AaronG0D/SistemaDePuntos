@@ -28,9 +28,19 @@ class TipoBasuraController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nombre' => 'required|string|max:100|unique:tipoBasura,nombre',
+            'nombre' => 'required|string|max:50|unique:tipoBasura,nombre',
             'descripcion' => 'nullable|string',
-            'puntos' => 'required|integer|min:1|max:1000',
+            'puntos' => 'required|integer|min:1|max:10',
+        ], [
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+            'nombre.unique' => 'El nombre ya está en uso.',
+            'descripcion.string' => 'La descripción debe ser una cadena de texto.',
+            'puntos.required' => 'El campo puntos es obligatorio.',
+            'puntos.integer' => 'Los puntos deben ser un número entero.',
+            'puntos.min' => 'Los puntos deben ser al menos 1.',
+            'puntos.max' => 'Los puntos no pueden superar los 10.',
         ]);
 
         TipoBasura::create([
@@ -50,9 +60,23 @@ class TipoBasuraController extends Controller
                 ->orderBy('fechaHora', 'desc')
                 ->limit(20);
         }]);
+        
+        $totalDepositos = $tipoBasura->depositos()->count();
+        $totalPuntos = $tipoBasura->puntos * $totalDepositos;
+        $usuariosUnicos = $tipoBasura->depositos()->distinct('idUser')->count('idUser');
+        $promedioPorUsuario = $totalPuntos / $usuariosUnicos;
+        $BasureroUnicos = $tipoBasura->depositos()->distinct('idBasurero')->count('idBasurero');
+
+
 
         return Inertia::render('admin/residuos/TipoBasuraView', [
             'tipoBasura' => $tipoBasura,
+            'totalDepositos' => $totalDepositos,
+            'totalPuntos' => $totalPuntos,
+            'usuariosUnicos' => $usuariosUnicos,
+            'promedioPorUsuario' => $promedioPorUsuario,
+            'basurerosUnicos' => $BasureroUnicos,    
+
         ]);
     }
 
@@ -66,10 +90,22 @@ class TipoBasuraController extends Controller
     public function update(Request $request, TipoBasura $tipoBasura)
     {
         $request->validate([
-            'nombre' => 'required|string|max:100|unique:tipoBasura,nombre,' . $tipoBasura->idTipoBasura . ',idTipoBasura',
+            'nombre' => 'required|string|max:50|unique:tipoBasura,nombre,' . $tipoBasura->idTipoBasura . ',idTipoBasura',
             'descripcion' => 'nullable|string',
-            'puntos' => 'required|integer|min:1|max:1000',
+            'puntos' => 'required|integer|min:1|max:10',
+        ], [
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+            'nombre.unique' => 'El nombre ya está en uso.',
+            'descripcion.string' => 'La descripción debe ser una cadena de texto.',
+            'puntos.required' => 'El campo puntos es obligatorio.',
+            'puntos.integer' => 'Los puntos deben ser un número entero.',
+            'puntos.min' => 'Los puntos deben ser al menos 1.',
+            'puntos.max' => 'Los puntos no pueden superar los 10.',
         ]);
+
+        
 
         $tipoBasura->update([
             'nombre' => $request->nombre,
@@ -83,11 +119,6 @@ class TipoBasuraController extends Controller
 
     public function destroy(TipoBasura $tipoBasura)
     {
-        // Verificar si tiene depósitos asociados
-        if ($tipoBasura->depositos()->count() > 0) {
-            return back()->with('error', 'No se puede eliminar un tipo de basura que tiene depósitos asociados');
-        }
-
         $tipoBasura->delete();
 
         return redirect()->route('admin.tipos-basura.index')
@@ -100,5 +131,29 @@ class TipoBasuraController extends Controller
         $tipoBasura->save();
 
         return back()->with('success', $tipoBasura->estado ? 'Tipo de basura activado' : 'Tipo de basura desactivado');
+    }
+
+    public function restore($id)
+    {
+        $tipoBasura = TipoBasura::withTrashed()->findOrFail($id);
+        $tipoBasura->restore();
+
+        return redirect()->route('admin.tipos-basura.index')
+            ->with('success', 'Tipo de basura restaurado exitosamente');
+    }
+
+    public function forceDelete($id)
+    {
+        $tipoBasura = TipoBasura::withTrashed()->findOrFail($id);
+        
+        // Verificar si tiene depósitos asociados
+        if ($tipoBasura->depositos()->count() > 0) {
+            return back()->with('error', 'No se puede eliminar permanentemente un tipo de basura que tiene depósitos asociados');
+        }
+
+        $tipoBasura->forceDelete();
+
+        return redirect()->route('admin.tipos-basura.index')
+            ->with('success', 'Tipo de basura eliminado permanentemente');
     }
 }

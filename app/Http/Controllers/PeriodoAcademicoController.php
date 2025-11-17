@@ -13,18 +13,18 @@ class PeriodoAcademicoController extends Controller
      */
     public function index(Request $request)
     {
-        // Si no se especifica un año, usar el año actual por defecto
-        $defaultYear = $request->year ?: now()->year;
+        // Si no se especifica un año o es "all", usar el año actual por defecto
+        $year = ($request->year && $request->year !== 'all') ? $request->year : now()->year;
         
         $periodos = PeriodoAcademico::query()
             ->when($request->search, function($query, $search) {
                 $query->where('nombre', 'like', "%{$search}%")
                     ->orWhere('codigo', 'like', "%{$search}%");
             })
-            ->when($defaultYear, function($query, $year) {
+            ->when($year && $request->year !== 'all', function($query) use ($year) {
                 $query->whereYear('fecha_inicio', $year);
             })
-            ->when($request->estado, function($query, $estado) {
+            ->when($request->estado && $request->estado !== 'all', function($query, $estado) {
                 $query->where('activo', $estado === 'activo');
             })
             ->latest()
@@ -38,7 +38,7 @@ class PeriodoAcademicoController extends Controller
         return Inertia::render('admin/PeriodosAcademicos/Index', [
             'periodos' => $periodos,
             'filters' => array_merge($request->only(['search', 'year', 'estado']), [
-                'year' => $defaultYear // Asegurar que el año actual se pase como filtro activo
+                'year' => $request->year || 'all'
             ]),
             'years' => $years
         ]);
@@ -50,11 +50,20 @@ class PeriodoAcademicoController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nombre' => 'required|string|max:255',
-            'codigo' => 'required|string|max:50|unique:periodos_academicos',
+            'nombre' => 'required|string|max:50',
+            'codigo' => 'required|string|max:10|unique:periodos_academicos',
             'fecha_inicio' => 'required|date',
             'fecha_fin' => 'required|date|after:fecha_inicio',
             'activo' => 'boolean'
+        ],[
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'codigo.required' => 'El campo código es obligatorio.',
+            'codigo.max' => 'El código no puede superar los 10 caracteres.',
+            'codigo.string' => 'El código debe ser una cadena de texto.',
+            'fecha_inicio.required' => 'El campo fecha de inicio es obligatorio.',
+            'fecha_fin.required' => 'El campo fecha de fin es obligatorio.',
         ]);
 
         PeriodoAcademico::create($validated);
@@ -82,7 +91,7 @@ class PeriodoAcademicoController extends Controller
                 'codigo' => [
                     'required',
                     'string',
-                    'max:50',
+                    'max:10',
                     \Illuminate\Validation\Rule::unique('periodos_academicos', 'codigo')
                         ->ignore($periodo->idPeriodo, 'idPeriodo')
                 ],
@@ -91,6 +100,11 @@ class PeriodoAcademicoController extends Controller
                 'activo' => 'boolean'
             ], [
                 'codigo.unique' => 'El código ya está en uso por otro período académico.',
+                'codigo.required' => 'El campo código es obligatorio.',
+                'codigo.max' => 'El código no puede superar los 10 caracteres.',
+                'nombre.required' => 'El campo nombre es obligatorio.',
+                'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+                'nombre.string' => 'El nombre debe ser una cadena de texto.',
             ]);
 
             // Si se está activando este período, desactivar todos los demás
@@ -118,11 +132,7 @@ class PeriodoAcademicoController extends Controller
     public function destroy(PeriodoAcademico $periodo)
     {
         try {
-            // Verificar si hay puntajes asociados
-            if ($periodo->puntajes()->exists()) {
-                return redirect()->back()
-                    ->with('error', 'No se puede eliminar el período académico porque tiene puntajes asociados.');
-            }
+            
 
             $periodo->delete();
             return redirect()->back()

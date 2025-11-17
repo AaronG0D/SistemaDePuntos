@@ -36,7 +36,7 @@ const { ROUTES, formatearFecha, formatearPuntos } = useResiduos();
 // ===== COMPUTED =====
 const estadisticas = computed(() => {
     const depositos = props.basurero.depositos || [];
-    const totalPuntos = depositos.reduce((sum, d) => sum + (d.tipo_basura?.puntos || 0), 0);
+    const totalPuntos = depositos.reduce((sum, d) => sum + (Number(d.puntos ?? d.tipo_basura?.puntos ?? 0) || 0), 0);
     const usuariosUnicos = new Set(depositos.map((d) => d.user?.id).filter(Boolean)).size;
 
     return {
@@ -48,11 +48,22 @@ const estadisticas = computed(() => {
 });
 
 const depositosRecientes = computed(() => {
-    return props.basurero.depositos.map((deposito) => ({
+    const ordenados = [...(props.basurero.depositos || [])].sort((a, b) => {
+        const aPeriodo = a.idPeriodo ?? null;
+        const bPeriodo = b.idPeriodo ?? null;
+        if (aPeriodo === bPeriodo) {
+            return new Date(b.fechaHora).getTime() - new Date(a.fechaHora).getTime();
+        }
+        if (aPeriodo === null) return 1; // null al final
+        if (bPeriodo === null) return -1;
+        return bPeriodo - aPeriodo; // período descendente
+    });
+
+    return ordenados.map((deposito) => ({
         ...deposito,
         nombreCompleto: `${deposito.user.nombres} ${deposito.user.primerApellido}`,
         tipoBasura: deposito.tipo_basura?.nombre,
-        puntosGenerados: deposito.tipo_basura?.puntos,
+        puntosGenerados: deposito.puntos ??  deposito.tipo_basura?.puntos,
     }));
 });
 
@@ -60,8 +71,8 @@ const actividadResumen = computed(() => {
     const depositos = props.basurero.depositos || [];
     return {
         tiposResiduo: [...new Set(depositos.map((d) => d.tipo_basura?.nombre))],
-        ultimoDeposito: depositos[0]?.fechaHora ? formatearFecha(depositos[0].fechaHora) : 'Sin depósitos',
-        totalPuntos: depositos.reduce((sum, d) => sum + (d.tipo_basura?.puntos || 0), 0),
+        ultimoDeposito: depositosRecientes.value[0]?.fechaHora ? formatearFecha(depositosRecientes.value[0].fechaHora) : 'Sin depósitos',
+        totalPuntos: depositos.reduce((sum, d) => sum + (Number(d.puntos ?? d.puntos_generados ?? d.tipo_basura?.puntos ?? 0) || 0), 0),
     };
 });
 </script>

@@ -40,9 +40,17 @@ const docenteToRestore = ref<number | null>(null);
 // ===== COMPUTED PROPERTIES =====
 const filteredDocentes = computed(() => {
     if (tabActivo.value === 'inactivos') {
-        return props.docentesInactivos || [];
+        return props.docentesInactivos?.data || [];
     }
     return props.docentes.data;
+});
+
+const paginatorDocentes = computed(() => {
+    // Siempre devolver un paginador válido; si inactivos no existe aún, caer a activos
+    if (tabActivo.value === 'inactivos') {
+        return props.docentesInactivos || props.docentes;
+    }
+    return props.docentes;
 });
 
 const formatUserForQr = (user: any) => {
@@ -69,7 +77,7 @@ const formatUserForQr = (user: any) => {
 // ===== MÉTODOS DE NAVEGACIÓN =====
 function goToPage(page: number) {
     const params = {
-        page,
+        ...(tabActivo.value === 'inactivos' ? { inactivos_page: page } : { page }),
         materia: selectedMateria.value !== 'all' ? selectedMateria.value : undefined,
         curso: selectedCurso.value !== 'all' ? selectedCurso.value : undefined,
         search: searchQuery.value || undefined,
@@ -85,7 +93,7 @@ function goToPage(page: number) {
 // Función para aplicar filtros
 function aplicarFiltros() {
     const params: Record<string, any> = {
-        page: 1, // Resetear a la primera página
+        ...(tabActivo.value === 'inactivos' ? { inactivos_page: 1 } : { page: 1 }), // Resetear a la primera página
     };
 
     // Solo agregar parámetros si tienen valores válidos
@@ -116,6 +124,15 @@ function aplicarFiltros() {
             });
         },
     });
+}
+
+// Limpiar filtros y volver a Activos
+function limpiarFiltrosDocentes() {
+    searchQuery.value = '';
+    selectedMateria.value = 'all';
+    selectedCurso.value = 'all';
+    tabActivo.value = 'activos';
+    aplicarFiltros();
 }
 
 // Función debounced para búsqueda
@@ -170,21 +187,46 @@ function confirmarEliminacion() {
 }
 
 function restaurarDocente(id: number) {
-    router.post(`/admin/docentes/${id}/restore`, {}, {
-        preserveState: true,
-        preserveScroll: true,
-        onSuccess: () => {
-            docenteToRestore.value = null;
-            toast.success('Docente reactivado correctamente', {
-                description: 'El docente ha sido reactivado correctamente',
-            });
+    router.post(
+        `/admin/docentes/${id}/restore`,
+        {},
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                docenteToRestore.value = null;
+                toast.success('Docente reactivado correctamente', {
+                    description: 'El docente ha sido reactivado correctamente',
+                });
+            },
+            onError: () => {
+                toast.error('Error al reactivar', {
+                    description: 'No se pudo reactivar el docente',
+                });
+            },
         },
-        onError: () => {
-            toast.error('Error al reactivar', {
-                description: 'No se pudo reactivar el docente',
-            });
+    );
+}
+
+function limpiarAsignaciones(id: number) {
+    router.post(
+        `/admin/docentes/${id}/clear-assignments`,
+        {},
+        {
+            preserveState: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Asignaciones eliminadas', {
+                    description: 'Las asignaciones de materias han sido eliminadas correctamente',
+                });
+            },
+            onError: () => {
+                toast.error('Error al limpiar asignaciones', {
+                    description: 'No se pudieron eliminar las asignaciones',
+                });
+            },
         },
-    });
+    );
 }
 
 // ===== WATCHERS =====
@@ -210,33 +252,55 @@ watch(
     },
     { deep: true },
 );
+
+// Sincronizar cuando cambia el tab
+watch(tabActivo, (newTab) => {
+    const params: Record<string, any> = {
+        ...(newTab === 'inactivos' ? { inactivos_page: 1 } : { page: 1 }),
+        materia: selectedMateria.value !== 'all' ? selectedMateria.value : undefined,
+        curso: selectedCurso.value !== 'all' ? selectedCurso.value : undefined,
+        search: searchQuery.value || undefined,
+        tab: newTab,
+    };
+
+    router.get('/admin/docentes', params, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+});
 </script>
 
 <template>
     <Head title="Docentes" />
 
     <AppLayout>
-        <div class="container mx-auto py-6">
+        <div class="container mx-auto px-3 sm:px-4 py-6">
             <!-- ===== HEADER ===== -->
-            <header class="mb-6">
-                <h1 class="flex items-center gap-3 text-3xl font-bold">
+            <header class="mb-4 sm:mb-6">
+                <h1 class="flex items-center gap-3 text-2xl sm:text-3xl font-bold">
                     <UserCheck class="h-8 w-8 text-blue-600" />
                     Docentes
                 </h1>
-                <p class="text-muted-foreground">Gestiona la lista de docentes y sus materias</p>
+                <p class="text-muted-foreground text-sm sm:text-base">Gestiona la lista de docentes y sus materias</p>
             </header>
 
             <!-- ===== CONTROLES DE FILTRADO ===== -->
-            <div class="mb-6 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <Input v-model="searchQuery" placeholder="Buscar docentes..." class="w-[300px]" @input="handleSearchChange">
+            <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex w-full sm:w-auto flex-wrap items-center gap-2">
+                    <Input
+                        v-model="searchQuery"
+                        placeholder="Buscar docentes..."
+                        class="w-full sm:w-[300px]"
+                        @input="handleSearchChange"
+                    >
                         <template #prefix>
                             <Search class="text-muted-foreground h-4 w-4" />
                         </template>
                     </Input>
 
                     <Select v-model="tabActivo">
-                        <SelectTrigger class="w-[150px]">
+                        <SelectTrigger class="w-full sm:w-[150px]">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -246,7 +310,7 @@ watch(
                     </Select>
 
                     <Select v-model="selectedMateria" @update:model-value="handleMateriaChange">
-                        <SelectTrigger>
+                        <SelectTrigger class="w-full sm:w-[220px]">
                             <SelectValue placeholder="Todas las materias" />
                         </SelectTrigger>
                         <SelectContent>
@@ -261,7 +325,7 @@ watch(
                     </Select>
 
                     <Select v-model="selectedCurso" @update:model-value="handleCursoChange">
-                        <SelectTrigger class="w-[180px]">
+                        <SelectTrigger class="w-full sm:w-[180px]">
                             <SelectValue placeholder="Todos los cursos" />
                         </SelectTrigger>
                         <SelectContent>
@@ -275,35 +339,36 @@ watch(
                         </SelectContent>
                     </Select>
                 </div>
-
-                <Button as-child size="sm" class="bg-primary">
-                    <Link href="/admin/docentes/create">Agregar Docente</Link>
-                </Button>
+                <div class="flex w-full sm:w-auto justify-end">
+                    <Button as-child size="sm" class="bg-primary w-full sm:w-auto">
+                        <Link href="/admin/docentes/create">Agregar Docente</Link>
+                    </Button>
+                </div>
             </div>
 
             <!-- ===== TABLA DE DOCENTES ===== -->
-            <div class="min-h-[500px] rounded-lg border">
+            <div v-if="filteredDocentes.length > 0" class="min-h-[500px] rounded-lg border overflow-x-auto">
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Nombres</TableHead>
-                            <TableHead>Apellidos</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Materias</TableHead>
-                            <TableHead>Cursos</TableHead>
-                            <TableHead>Código QR</TableHead>
+                            <TableHead class="min-w-[140px]">Nombres</TableHead>
+                            <TableHead class="min-w-[160px]">Apellidos</TableHead>
+                            <TableHead class="hidden md:table-cell min-w-[200px]">Email</TableHead>
+                            <TableHead class="hidden lg:table-cell min-w-[220px]">Materias</TableHead>
+                            <TableHead class="hidden lg:table-cell min-w-[240px]">Cursos</TableHead>
+                            <TableHead class="hidden xl:table-cell">Código QR</TableHead>
                             <TableHead class="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         <TableRow v-for="docente in filteredDocentes" :key="docente.idDocente" class="hover:bg-muted/50">
-                            <TableCell>{{ docente.user?.nombres }}</TableCell>
-                            <TableCell>
+                            <TableCell class="max-w-[180px] truncate">{{ docente.user?.nombres }}</TableCell>
+                            <TableCell class="max-w-[220px] truncate">
                                 {{ docente.user?.primerApellido }}
                                 {{ docente.user?.segundoApellido }}
                             </TableCell>
-                            <TableCell>{{ docente.user?.email }}</TableCell>
-                            <TableCell>
+                            <TableCell class="hidden md:table-cell">{{ docente.user?.email }}</TableCell>
+                            <TableCell class="hidden lg:table-cell">
                                 <div class="flex flex-wrap gap-1">
                                     <span
                                         v-for="asignacion in docente.docente_materia_cursos"
@@ -315,7 +380,7 @@ watch(
                                     </span>
                                 </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell class="hidden lg:table-cell">
                                 <div class="flex flex-wrap gap-1">
                                     <span
                                         v-for="asignacion in docente.docente_materia_cursos"
@@ -327,7 +392,7 @@ watch(
                                     </span>
                                 </div>
                             </TableCell>
-                            <TableCell>
+                            <TableCell class="hidden xl:table-cell">
                                 <UserQrCode v-if="docente.user.qr_codigo" :user="formatUserForQr(docente.user)" />
                             </TableCell>
                             <TableCell class="text-right">
@@ -339,6 +404,9 @@ watch(
                                         @click="restaurarDocente(docente.idDocente)"
                                     >
                                         Reactivar
+                                    </Button>
+                                    <Button size="sm" variant="destructive" @click="limpiarAsignaciones(docente.idDocente)">
+                                        Limpiar Asignaciones
                                     </Button>
                                 </template>
                                 <template v-else>
@@ -385,25 +453,40 @@ watch(
                 </Table>
             </div>
 
+            <!-- ===== ESTADO VACÍO ===== -->
+            <div v-else class="min-h-[280px] rounded-lg border p-10 flex items-center justify-center text-center">
+                <div>
+                    <h3 class="text-lg font-semibold">No se encontraron docentes</h3>
+                    <p class="mt-1 text-muted-foreground">Prueba limpiando los filtros o revisa los activos.</p>
+                    <div class="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
+                        <Button size="sm" variant="outline" @click="limpiarFiltrosDocentes">Limpiar filtros</Button>
+                        <Button size="sm" variant="secondary" @click="tabActivo = 'activos'">Ver Activos</Button>
+                    </div>
+                </div>
+            </div>
+
             <!-- ===== PAGINACIÓN ===== -->
             <Pagination
-                v-if="docentes.last_page > 1"
+                v-if="paginatorDocentes && (paginatorDocentes.last_page || 0) > 1"
                 class="bg-rgb(214, 219, 216)"
-                :total="docentes.total"
-                :items-per-page="docentes.per_page"
-                :default-page="docentes.current_page"
+                :total="paginatorDocentes?.total || 0"
+                :items-per-page="paginatorDocentes?.per_page || 0"
+                :default-page="paginatorDocentes?.current_page || 1"
                 v-slot="{ page }"
             >
                 <PaginationContent>
-                    <PaginationPrevious v-if="docentes.current_page > 1" @click="goToPage(docentes.current_page - 1)" />
+                    <PaginationPrevious v-if="paginatorDocentes && paginatorDocentes.current_page > 1" @click="goToPage(paginatorDocentes.current_page - 1)" />
 
-                    <template v-for="p in docentes.last_page" :key="p">
-                        <PaginationItem :value="p" :is-active="p === docentes.current_page" @click="goToPage(p)">
+                    <template v-for="p in (paginatorDocentes?.last_page || 0)" :key="p">
+                        <PaginationItem :value="p" :is-active="p === (paginatorDocentes?.current_page || 1)" @click="goToPage(p)">
                             {{ p }}
                         </PaginationItem>
                     </template>
 
-                    <PaginationNext v-if="docentes.current_page < docentes.last_page" @click="goToPage(docentes.current_page + 1)" />
+                    <PaginationNext
+                        v-if="paginatorDocentes && paginatorDocentes.current_page < paginatorDocentes.last_page"
+                        @click="goToPage(paginatorDocentes.current_page + 1)"
+                    />
                 </PaginationContent>
             </Pagination>
 

@@ -22,12 +22,14 @@ class DocenteController extends Controller
 {
     public function index(Request $request)
     {
+        // Laravel excluye automáticamente registros con soft delete
+        // No necesitas .whereNull('deleted_at') si el modelo tiene SoftDeletes
         $query = Docente::with([
             'user',
             'docenteMateriaCursos.materia',
             'docenteMateriaCursos.cursoParalelo.curso',
             'docenteMateriaCursos.cursoParalelo.paralelo'
-        ])->whereNull('deleted_at');
+        ]);
 
         // Filtro por búsqueda
         if ($request->filled('search') && trim($request->input('search')) !== '') {
@@ -56,13 +58,13 @@ class DocenteController extends Controller
 
         $docentes = $query->paginate(10);
 
-        // Obtener docentes inactivos
+        // Obtener docentes inactivos (con soft delete) paginados
         $docentesInactivos = Docente::with([
             'user',
             'docenteMateriaCursos.materia',
             'docenteMateriaCursos.cursoParalelo.curso',
             'docenteMateriaCursos.cursoParalelo.paralelo'
-        ])->onlyTrashed()->get();
+        ])->onlyTrashed()->paginate(10, ['*'], 'inactivos_page');
 
         // Trae solo datos activos para los filtros
         $materias = Materia::where('estado', true)->orderBy('nombre')->get(['idMateria', 'nombre']);
@@ -159,6 +161,15 @@ class DocenteController extends Controller
                 'materias_cursos' => 'nullable|array',
                 'materias_cursos.*.idMateria' => 'required|exists:materia,idMateria',
                 'materias_cursos.*.idCursoParalelo' => 'required|exists:curso_paralelo,idCursoParalelo',
+            ],[
+                'user.nombres.required' => 'El campo nombres es obligatorio.',
+                'user.nombres.string' => 'El campo nombres debe ser una cadena de texto.',
+                'user.nombres.max' => 'El campo nombres no puede superar los 100 caracteres.',
+                'user.primerApellido.required' => 'El campo primer apellido es obligatorio.',
+                'user.email.required' => 'El campo email es obligatorio.',
+                'user.email.email' => 'El campo email debe ser una dirección de correo válida.',
+                'materias_cursos.*.idMateria.required' => 'El campo materia es obligatorio.',
+                'materias_cursos.*.idCursoParalelo.required' => 'El campo curso-paralelo es obligatorio.',
             ]);
 
             // Actualiza los datos del usuario
@@ -478,6 +489,11 @@ class DocenteController extends Controller
                 'materias_cursos.*.idMateria' => 'required|exists:materia,idMateria',
                 'materias_cursos.*.idCurso' => 'required|exists:curso,idCurso',
                 'materias_cursos.*.idParalelo' => 'required|exists:paralelo,idParalelo',
+            ],[
+                'idUser.required' => 'El campo usuario es obligatorio.',
+                'materias_cursos.*.idMateria.required' => 'El campo materia es obligatorio.',
+                'materias_cursos.*.idCurso.required' => 'El campo curso es obligatorio.',
+                'materias_cursos.*.idParalelo.required' => 'El campo paralelo es obligatorio.',
             ]);
 
             // Crear docente con el usuario seleccionado
@@ -575,6 +591,23 @@ class DocenteController extends Controller
                 ['error' => 'Error al importar estudiantes: ' . $e->getMessage()],
                 500
             );
+        }
+    }
+
+    public function clearAssignments($id)
+    {
+        try {
+            $docente = Docente::withTrashed()->findOrFail($id);
+
+            // Eliminar todas las asignaciones de materias
+            $docente->docenteMateriaCursos()->delete();
+
+            return redirect()->route('admin.docentes')
+                ->with('success', 'Asignaciones de materias eliminadas correctamente');
+        } catch (\Exception $e) {
+            \Log::error('Error al limpiar asignaciones: ' . $e->getMessage());
+            return redirect()->route('admin.docentes')
+                ->with('error', 'Error al limpiar asignaciones: ' . $e->getMessage());
         }
     }
 }

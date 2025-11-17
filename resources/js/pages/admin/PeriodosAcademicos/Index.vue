@@ -12,6 +12,7 @@ import { router, useForm } from '@inertiajs/vue3';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar, Pencil, Plus, Trash } from 'lucide-vue-next';
+import { Head } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import { Toaster, toast } from 'vue-sonner';
 
@@ -23,8 +24,8 @@ const props = defineProps({
 
 const filters = ref({
     search: props.filters?.search || '',
-    year: props.filters?.year || '',
-    estado: props.filters?.estado || '',
+    year: props.filters?.year || 'all',
+    estado: props.filters?.estado || 'all',
 });
 
 // Vigilar cambios en filtros
@@ -144,11 +145,14 @@ const debugForm = () => {
 
 <template>
     <AppLayout>
+        <Head>
+            <title>Gestión de Períodos</title>
+        </Head>
         <div class="container mx-auto p-4 sm:py-6">
             <!-- Header -->
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 class="text-xl font-semibold sm:text-2xl flex items-center gap-3">
+                    <h1 class="flex items-center gap-3 text-xl font-semibold sm:text-2xl">
                         <Calendar class="h-7 w-7 text-blue-600" />
                         Períodos Académicos
                     </h1>
@@ -209,7 +213,7 @@ const debugForm = () => {
                             <SelectValue placeholder="Filtrar por año" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">Todos los años</SelectItem>
+                            <SelectItem value="all">Todos los años</SelectItem>
                             <SelectItem v-for="year in years" :key="year" :value="year">
                                 {{ year }}
                             </SelectItem>
@@ -220,7 +224,7 @@ const debugForm = () => {
                             <SelectValue placeholder="Estado" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">Todos</SelectItem>
+                            <SelectItem value="all">Todos</SelectItem>
                             <SelectItem value="activo">Activos</SelectItem>
                             <SelectItem value="inactivo">Inactivos</SelectItem>
                         </SelectContent>

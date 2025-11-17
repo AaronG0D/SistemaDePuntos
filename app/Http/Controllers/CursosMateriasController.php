@@ -74,6 +74,10 @@ class CursosMateriasController extends Controller
             'idCurso' => 'required|exists:curso,idCurso',
             'idParalelo' => 'required|exists:paralelo,idParalelo',
             'idMateria' => 'required|exists:materia,idMateria',
+        ],[
+            'idCurso.required' => 'El campo idCurso es obligatorio.',
+            'idParalelo.required' => 'El campo idParalelo es obligatorio.',
+            'idMateria.required' => 'El campo idMateria es obligatorio.',
         ]);
 
         $cursoParalelo = CursoParalelo::where('idCurso', $request->idCurso)
@@ -145,6 +149,11 @@ class CursosMateriasController extends Controller
     {
         $request->validate([
             'nombre' => 'required|string|max:100|unique:curso,nombre',
+        ], [
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 100 caracteres.',
+            'nombre.unique' => 'El nombre ya está en uso.',
         ]);
 
         $curso = Curso::create([
@@ -166,7 +175,12 @@ class CursosMateriasController extends Controller
     public function updateCurso(Request $request, $id)
     {
         $request->validate([
-            'nombre' => 'required|string|max:100|unique:curso,nombre,' . $id . ',idCurso',
+            'nombre' => 'required|string|max:50|unique:curso,nombre,' . $id . ',idCurso',
+        ], [
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+            'nombre.unique' => 'El nombre ya está en uso.',
         ]);
 
         $curso = Curso::findOrFail($id);
@@ -210,6 +224,11 @@ class CursosMateriasController extends Controller
     {
         $request->validate([
             'nombre' => 'required|string|max:50|unique:paralelo,nombre',
+        ], [
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+            'nombre.unique' => 'El nombre ya está en uso.',
         ]);
 
         $paralelo = Paralelo::create([
@@ -232,6 +251,11 @@ class CursosMateriasController extends Controller
     {
         $request->validate([
             'nombre' => 'required|string|max:50|unique:paralelo,nombre,' . $id . ',idParalelo',
+        ], [
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+            'nombre.unique' => 'El nombre ya está en uso.',
         ]);
 
         $paralelo = Paralelo::findOrFail($id);
@@ -274,7 +298,12 @@ class CursosMateriasController extends Controller
     public function storeMateria(Request $request)
     {
         $request->validate([
-            'nombre' => 'required|string|max:100|unique:materia,nombre',
+            'nombre' => 'required|string|max:50|unique:materia,nombre',
+        ], [
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+            'nombre.unique' => 'El nombre ya está en uso.',
         ]);
 
         $materia = Materia::create([
@@ -287,7 +316,12 @@ class CursosMateriasController extends Controller
     public function updateMateria(Request $request, $id)
     {
         $request->validate([
-            'nombre' => 'required|string|max:100|unique:materia,nombre,' . $id . ',idMateria',
+            'nombre' => 'required|string|max:50|unique:materia,nombre,' . $id . ',idMateria',
+        ], [
+            'nombre.required' => 'El campo nombre es obligatorio.',
+            'nombre.string' => 'El nombre debe ser una cadena de texto.',
+            'nombre.max' => 'El nombre no puede superar los 50 caracteres.',
+            'nombre.unique' => 'El nombre ya está en uso.',
         ]);
 
         $materia = Materia::findOrFail($id);

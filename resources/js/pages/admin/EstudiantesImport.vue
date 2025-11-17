@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -217,6 +218,7 @@ onMounted(() => {
 
 <template>
     <AppLayout>
+        <Head title="Importar Estudiantes" />
         <div class="container mx-auto py-6">
             <!-- Header -->
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
