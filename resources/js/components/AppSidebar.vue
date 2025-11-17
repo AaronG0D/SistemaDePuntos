@@ -208,7 +208,7 @@ watch(openResiduos, (val) => {
             </SidebarMenu>
         </SidebarHeader>
 
-        <SidebarContent class="space-y-1">
+        <SidebarContent class="space-y-1 sidebar-scroll">
             <SidebarGroup class="py-1">
                 <SidebarGroupLabel class="text-muted-foreground px-3 py-1 text-xs font-medium uppercase"> Sistema de Puntos </SidebarGroupLabel>
                 <SidebarGroupContent>
@@ -473,5 +473,21 @@ watch(openResiduos, (val) => {
     width: 3px;
     background-color: #475569;
     border-radius: 0 2px 2px 0;
+}
+
+/* Estilos para el scroll del sidebar sin mostrar la barra */
+.sidebar-scroll {
+    overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+
+/* Aplicar la clase de scroll al contenido del sidebar */
+:deep(.sidebar-scroll) {
+    max-height: 100vh;
 }
 </style>
