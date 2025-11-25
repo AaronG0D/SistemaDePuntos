@@ -13,6 +13,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ArrowLeft, Award, BoxIcon, Calendar, Edit, Eye, FileText, Filter, Plus, Search, Table2, Trash2, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 
 
 
@@ -36,6 +37,10 @@ const selectedBasurero = ref(props.filters?.basurero?.toString() || '0');
 const selectedTipoBasura = ref(props.filters?.tipo_basura?.toString() || '0');
 const selectedFecha = ref(props.filters?.fecha || '');
 
+// Estado para diálogo de confirmación
+const showConfirmDeleteDialog = ref(false);
+const itemToDelete = ref<number | null>(null);
+
 // ===== COMPUTED =====
 // Ahora usamos directamente los datos del servidor ya filtrados
 const depositosFiltrados = computed(() => {
@@ -44,8 +49,20 @@ const depositosFiltrados = computed(() => {
 
 // ===== MÉTODOS =====
 function handleEliminar(deposito: Deposito) {
-    eliminarDeposito(deposito.idDeposito);
+    itemToDelete.value = deposito.idDeposito;
+    showConfirmDeleteDialog.value = true;
 }
+
+const confirmDelete = async () => {
+    if (itemToDelete.value === null) return;
+    
+    await eliminarDeposito(itemToDelete.value, {
+        confirmFn: async () => true // Ya confirmado por el diálogo
+    });
+    
+    showConfirmDeleteDialog.value = false;
+    itemToDelete.value = null;
+};
 
 function handleFiltrar() {
     const filters: FiltrosDepositos = {};
@@ -305,7 +322,16 @@ function limpiarFiltros() {
             </Card>
 
             
-
         </div>
+        
+        <!-- Confirm Dialog -->
+        <ConfirmDelete
+            :open="showConfirmDeleteDialog"
+            title="¿Eliminar depósito?"
+            description="El depósito se moverá a la papelera. Podrás restaurarlo después si es necesario."
+            @update:open="(v) => showConfirmDeleteDialog = v"
+            @confirm="confirmDelete"
+            @cancel="showConfirmDeleteDialog = false"
+        />
     </AppLayout>
 </template>

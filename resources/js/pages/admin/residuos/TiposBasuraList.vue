@@ -13,6 +13,7 @@ import { ArrowLeft, Award, Edit, Eye, Plus, Recycle, Search, ToggleLeft, ToggleR
 import { computed, ref } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
 import { Switch } from '@/components/ui/switch';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 
 // ===== PROPS =====
 const props = defineProps<{
@@ -24,6 +25,10 @@ const { eliminarTipoBasura, ROUTES, formatearPuntos } = useResiduos();
 
 // ===== REACTIVE =====
 const searchTerm = ref('');
+
+// Estado para diálogo de confirmación
+const showConfirmDeleteDialog = ref(false);
+const itemToDelete = ref<number | null>(null);
 
 // ===== COMPUTED =====
 const tiposFiltrados = computed(() => {
@@ -38,8 +43,20 @@ const tiposFiltrados = computed(() => {
 
 // ===== MÉTODOS =====
 function handleEliminar(tipo: TipoBasura) {
-    eliminarTipoBasura(tipo.idTipoBasura);
+    itemToDelete.value = tipo.idTipoBasura;
+    showConfirmDeleteDialog.value = true;
 }
+
+const confirmDelete = async () => {
+    if (itemToDelete.value === null) return;
+    
+    await eliminarTipoBasura(itemToDelete.value, {
+        confirmFn: async () => true // Ya confirmado por el diálogo
+    });
+    
+    showConfirmDeleteDialog.value = false;
+    itemToDelete.value = null;
+};
 
 function handleSearch() {
     // La búsqueda se hace en el cliente por simplicidad
@@ -220,5 +237,15 @@ function toggleEstado(tipo: TipoBasura) {
             </Card>
             <Toaster />
         </div>
+        
+        <!-- Confirm Dialog -->
+        <ConfirmDelete
+            :open="showConfirmDeleteDialog"
+            title="¿Eliminar tipo de basura?"
+            description="El tipo de basura se moverá a la papelera. Podrás restaurarlo después si es necesario."
+            @update:open="(v) => showConfirmDeleteDialog = v"
+            @confirm="confirmDelete"
+            @cancel="showConfirmDeleteDialog = false"
+        />
     </AppLayout>
 </template>

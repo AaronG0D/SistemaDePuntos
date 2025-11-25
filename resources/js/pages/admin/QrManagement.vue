@@ -320,6 +320,16 @@
 
         <!-- Toaster para notificaciones -->
         <Toaster position="top-center" />
+        
+        <!-- Confirm Dialog -->
+        <ConfirmDelete
+            :open="showConfirmDeactivateDialog"
+            title="¿Desactivar código QR?"
+            description="El estudiante no podrá usar este QR hasta que lo reactives."
+            @update:open="(v) => showConfirmDeactivateDialog = v"
+            @confirm="confirmDeactivate"
+            @cancel="showConfirmDeactivateDialog = false"
+        />
     </AppLayout>
 </template>
 
@@ -339,6 +349,7 @@ import axios from 'axios';
 import { Activity, CheckCircle, ChevronLeft, ChevronRight, FileDown, FileText, QrCode, Search, Users, XCircle } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { toast, Toaster } from 'vue-sonner';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 import 'vue-sonner/style.css';
 import { route } from 'ziggy-js';
 
@@ -359,6 +370,10 @@ const showQrDialog = ref(false);
 const qrUrl = ref('');
 const qrLoading = ref(false);
 const qrError = ref(false);
+
+// Estado para diálogo de confirmación
+const showConfirmDeactivateDialog = ref(false);
+const studentToDeactivate = ref<number | null>(null);
 
 interface Student {
     id: number;
@@ -479,22 +494,31 @@ const activateQr = async (studentId: number) => {
 };
 
 // Desactivar QR (establecer como string vacío)
-const deactivateQr = async (studentId: number) => {
-    if (!confirm('¿Estás seguro de desactivar este QR? El estudiante no podrá usarlo hasta que lo reactives.')) {
-        return;
-    }
+const deactivateQr = (studentId: number) => {
+    studentToDeactivate.value = studentId;
+    showConfirmDeactivateDialog.value = true;
+};
+
+const confirmDeactivate = async () => {
+    if (studentToDeactivate.value === null) return;
     
     try {
-        const response = await axios.post(route('qr.deactivate', studentId));
+        const response = await axios.post(route('qr.deactivate', studentToDeactivate.value));
         if (response.data.success) {
             toast.success('QR desactivado correctamente');
-            await loadStudents(); // Recargar lista
+            await loadStudents();
+            showConfirmDeactivateDialog.value = false;
+            studentToDeactivate.value = null;
         } else {
             toast.error(response.data.error || 'Error al desactivar QR');
+            showConfirmDeactivateDialog.value = false;
+            studentToDeactivate.value = null;
         }
     } catch (error) {
         console.error('Error desactivando QR:', error);
         toast.error('Error al desactivar QR');
+        showConfirmDeactivateDialog.value = false;
+        studentToDeactivate.value = null;
     }
 };
 

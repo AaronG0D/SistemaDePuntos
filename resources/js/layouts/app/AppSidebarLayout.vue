@@ -3,6 +3,7 @@ import AppContent from '@/components/AppContent.vue';
 import AppShell from '@/components/AppShell.vue';
 import AppSidebar from '@/components/AppSidebar.vue';
 import AppSidebarHeader from '@/components/AppSidebarHeader.vue';
+import { Toaster } from 'vue-sonner';
 import type { BreadcrumbItemType } from '@/types';
 import { ref } from 'vue';
 
@@ -48,5 +49,8 @@ withDefaults(defineProps<Props>(), {
             </header>
             <slot />
         </AppContent>
+        
+        <!-- Global Toaster for all admin pages -->
+       
     </AppShell>
 </template>

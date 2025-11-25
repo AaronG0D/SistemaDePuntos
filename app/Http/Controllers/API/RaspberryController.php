@@ -7,6 +7,7 @@ use App\Models\RaspberryEvent;
 use App\Models\User;
 use App\Models\TipoBasura;
 use App\Models\Deposito;
+use App\Models\Basurero;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -50,14 +51,12 @@ class RaspberryController extends Controller
             $data = $request->validate([
                 'qr_codigo' => 'required|string',
                 'tipo_basura' => 'required|string',
-                'peso' => 'nullable|numeric|min:0',
+               
             ], [
                 'qr_codigo.required' => 'El campo código QR es obligatorio.',
                 'qr_codigo.string' => 'El código QR debe ser una cadena de texto.',
                 'tipo_basura.required' => 'El campo tipo de basura es obligatorio.',
                 'tipo_basura.string' => 'El tipo de basura debe ser una cadena de texto.',
-                'peso.numeric' => 'El peso debe ser un número.',
-                'peso.min' => 'El peso debe ser mayor o igual a 0.',
             ]);
 
             // 1) Buscar usuario por código QR
@@ -90,6 +89,20 @@ class RaspberryController extends Controller
                     'message' => 'El usuario no es un estudiante'
                 ], 422);
             }
+            $basurero=Basurero::where('estado',true)->first();
+            if(!$basurero){
+                $event->update([
+                    'idUser' => $user->id,
+                    'status' => 'failed',
+                    'message' => 'Basurero no encontrado',
+                    'processed_at' => now(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Basurero Inactivo'
+                ], 404);
+            }
 
             // 3) Buscar tipo de basura
             $tipoBasura = TipoBasura::where('nombre', 'LIKE', '%' . $data['tipo_basura'] . '%')
@@ -100,13 +113,13 @@ class RaspberryController extends Controller
                 $event->update([
                     'idUser' => $user->id,
                     'status' => 'failed',
-                    'message' => 'Tipo de basura no válido',
+                    'message' => $data['tipo_basura'] . ' no Activo',
                     'processed_at' => now(),
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Tipo de basura no válido'
+                    'message' => $data['tipo_basura'] . ' no Activo'
                 ], 422);
             }
 
@@ -139,11 +152,12 @@ class RaspberryController extends Controller
             if ($periodoActivo) {
                 $puntosActualizados = \App\Models\Puntaje::where('idUser', $user->id)
                     ->where('idPeriodo', $periodoActivo->idPeriodo)
+                    ->where('tipo_puntaje','depositos')
                     ->sum('puntos') ?? 0;
             }
 
             // 6) Actualizar evento como exitoso
-            $event->update([
+            $event->update([    
                 'idUser' => $user->id,
                 'idTipoBasura' => $tipoBasura->idTipoBasura,
                 'idDeposito' => $deposito->idDeposito,

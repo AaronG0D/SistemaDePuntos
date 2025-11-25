@@ -55,11 +55,15 @@ class Estudiante extends Model
         });
     }
 
-    public function scopeOrderByPuntaje(Builder $query, string $direction = 'desc'): Builder
+    public function scopeOrderByPuntaje(Builder $query, string $direction = 'desc', $tipoPuntaje = null): Builder
     {
         // Ordena por la suma de puntos del estudiante en la tabla puntaje
         $query->leftJoin('puntaje', 'estudiante.idUser', '=', 'puntaje.idUser')
-              ->select('estudiante.*', 'puntaje.puntos as total_puntos')
+              ->when($tipoPuntaje, function($q) use ($tipoPuntaje) {
+                  return $q->where('puntaje.tipo_puntaje', $tipoPuntaje);
+              })
+              ->select('estudiante.*', DB::raw('SUM(puntaje.puntos) as total_puntos'))
+              ->groupBy('estudiante.idUser')
               ->orderBy('total_puntos', $direction);
         return $query;
     }

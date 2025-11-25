@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/AppLayout.vue';
@@ -15,6 +15,7 @@ import { Calendar, Pencil, Plus, Trash } from 'lucide-vue-next';
 import { Head } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import { Toaster, toast } from 'vue-sonner';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 
 const props = defineProps({
     periodos: Array,
@@ -25,7 +26,7 @@ const props = defineProps({
 const filters = ref({
     search: props.filters?.search || '',
     year: props.filters?.year || 'all',
-    estado: props.filters?.estado || 'all',
+    trashed: props.filters?.trashed || 'active',
 });
 
 // Vigilar cambios en filtros
@@ -51,7 +52,7 @@ const form = useForm({
     codigo: '',
     fecha_inicio: '',
     fecha_fin: '',
-    activo: false,
+    activo: 0,
 });
 
 const editForm = useForm({
@@ -60,11 +61,17 @@ const editForm = useForm({
     codigo: '',
     fecha_inicio: '',
     fecha_fin: '',
-    activo: false,
+    activo: 0,
 });
 
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
+
+// Estado para diálogos de confirmación
+const showConfirmDeleteDialog = ref(false);
+const itemToDelete = ref(null);
+const showConfirmRestoreDialog = ref(false);
+const itemToRestore = ref(null);
 
 const submit = () => {
     form.post(route('admin.periodos.store'), {
@@ -91,7 +98,7 @@ const editPeriodo = (periodo) => {
     // Formatear las fechas a YYYY-MM-DD para el input type="date"
     editForm.fecha_inicio = periodo.fecha_inicio ? format(new Date(periodo.fecha_inicio), 'yyyy-MM-dd') : '';
     editForm.fecha_fin = periodo.fecha_fin ? format(new Date(periodo.fecha_fin), 'yyyy-MM-dd') : '';
-    editForm.activo = periodo.activo;
+    editForm.activo = periodo.activo ? 1 : 0;
     showEditModal.value = true;
 };
 
@@ -114,20 +121,55 @@ const updatePeriodo = () => {
 };
 
 const deletePeriodo = (id) => {
-    if (confirm('¿Está seguro de eliminar este período?')) {
-        router.delete(route('admin.periodos.destroy', id), {
-            onSuccess: () => {
-                toast.success('Período eliminado', {
-                    description: 'El período académico ha sido eliminado exitosamente',
-                });
-            },
-            onError: () => {
-                toast.error('Error', {
-                    description: 'No se pudo eliminar el período académico',
-                });
-            },
-        });
-    }
+    itemToDelete.value = id;
+    showConfirmDeleteDialog.value = true;
+};
+
+const confirmDelete = () => {
+    if (itemToDelete.value === null) return;
+    
+    router.delete(route('admin.periodos.destroy', itemToDelete.value), {
+        onSuccess: () => {
+            toast.success('Período eliminado', {
+                description: 'El período académico ha sido eliminado exitosamente',
+            });
+            showConfirmDeleteDialog.value = false;
+            itemToDelete.value = null;
+        },
+        onError: () => {
+            toast.error('Error', {
+                description: 'No se pudo eliminar el período académico',
+            });
+            showConfirmDeleteDialog.value = false;
+            itemToDelete.value = null;
+        },
+    });
+};
+
+const restorePeriodo = (id) => {
+    itemToRestore.value = id;
+    showConfirmRestoreDialog.value = true;
+};
+
+const confirmRestore = () => {
+    if (itemToRestore.value === null) return;
+    
+    router.post(route('admin.periodos.restore', itemToRestore.value), {}, {
+        onSuccess: () => {
+            toast.success('Período restaurado', {
+                description: 'El período académico ha sido restaurado exitosamente',
+            });
+            showConfirmRestoreDialog.value = false; // Corrected variable name
+            itemToRestore.value = null; // Corrected variable name
+        },
+        onError: () => {
+            toast.error('Error', {
+                description: 'No se pudo restaurar el período académico',
+            });
+            showConfirmRestoreDialog.value = false; // Corrected variable name
+            itemToRestore.value = null; // Corrected variable name
+        },
+    });
 };
 
 // Añadir un método para debug
@@ -144,11 +186,22 @@ const debugForm = () => {
 </script>
 
 <template>
+    <Head>
+        <title>Gestión de Períodos</title>
+    </Head>
     <AppLayout>
-        <Head>
-            <title>Gestión de Períodos</title>
-        </Head>
+         <Toaster 
+            position="top-right" 
+            richColors 
+            :toastOptions="{
+                style: {
+                    maxWidth: '400px',
+                },
+                duration: 3000,
+            }"
+        />
         <div class="container mx-auto p-4 sm:py-6">
+           
             <!-- Header -->
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -208,27 +261,16 @@ const debugForm = () => {
                     <Input v-model="filters.search" placeholder="Buscar..." class="w-full sm:max-w-sm" />
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <Select v-model="filters.year" class="w-full sm:w-[180px]">
-                        <SelectTrigger class="w-[180px]">
-                            <SelectValue placeholder="Filtrar por año" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos los años</SelectItem>
-                            <SelectItem v-for="year in years" :key="year" :value="year">
-                                {{ year }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select v-model="filters.estado" class="w-full sm:w-[180px]">
-                        <SelectTrigger class="w-[180px]">
-                            <SelectValue placeholder="Estado" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">Todos</SelectItem>
-                            <SelectItem value="activo">Activos</SelectItem>
-                            <SelectItem value="inactivo">Inactivos</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <select v-model="filters.year" class="flex h-10 w-full sm:w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="all">Todos los años</option>
+                        <option v-for="year in years" :key="year" :value="year">{{ year }}</option>
+                    </select>
+                    <select v-model="filters.trashed" class="flex h-10 w-full sm:w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                        <option value="active">Activos</option>
+                        <option value="only">Eliminados</option>
+                        <option value="with">Todos</option>
+                    </select>
+                    
                 </div>
             </div>
 
@@ -271,12 +313,20 @@ const debugForm = () => {
                             </TableCell>
                             <TableCell>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <Button variant="outline" size="sm" @click="editPeriodo(periodo)">
-                                        <Pencil class="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="destructive" size="sm" @click="deletePeriodo(periodo.idPeriodo)">
-                                        <Trash class="h-4 w-4" />
-                                    </Button>
+                                    <template v-if="periodo.deleted_at">
+                                        <Button variant="outline" size="sm" @click="restorePeriodo(periodo.idPeriodo)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                                            Restaurar
+                                        </Button>
+                                    </template>
+                                    <template v-else>
+                                        <Button variant="outline" size="sm" @click="editPeriodo(periodo)">
+                                            <Pencil class="h-4 w-4" />
+                                        </Button>
+                                        <Button variant="destructive" size="sm" @click="deletePeriodo(periodo.idPeriodo)">
+                                            <Trash class="h-4 w-4" />
+                                        </Button>
+                                    </template>
                                 </div>
                             </TableCell>
                         </TableRow>
@@ -322,7 +372,7 @@ const debugForm = () => {
                                 <span class="text-muted-foreground text-xs"> Fecha seleccionada: {{ formatDate(editForm.fecha_fin) }} </span>
                             </div>
                             <div class="flex items-center space-x-2">
-                                <Switch v-model="editForm.activo" />
+                                <Switch v-model="editForm.activo" :true-value="1" :false-value="0" />
                                 <Label>Activo</Label>
                             </div>
                         </div>
@@ -334,8 +384,28 @@ const debugForm = () => {
                 </DialogContent>
             </Dialog>
         </div>
-    </AppLayout>
-    <Toaster />
+        
+        <!-- Confirm Dialogs -->
+        <ConfirmDelete
+            :open="showConfirmDeleteDialog"
+            title="¿Eliminar período académico?"
+            description="Esta acción moverá el período a la papelera. Podrás restaurarlo después si es necesario."
+            @update:open="(v) => showConfirmDeleteDialog = v"
+            @confirm="confirmDelete"
+            @cancel="showConfirmDeleteDialog = false"
+        />
+        
+        <ConfirmDelete
+            :open="showConfirmRestoreDialog"
+            title="¿Restaurar período académico?"
+            description="El período será restaurado y estará disponible nuevamente."
+            confirmText="Restaurar"
+            @update:open="(v) => showConfirmRestoreDialog = v"
+            @confirm="confirmRestore"
+            @cancel="showConfirmRestoreDialog = false"
+        />
+        </AppLayout>
+    
 </template>
 
 <style>

@@ -13,6 +13,7 @@ import { ArrowLeft, Edit, Eye, Plus, Search, ToggleLeft, ToggleRight, Trash2 } f
 import { computed, ref } from 'vue';
 import { Toaster } from 'vue-sonner';
 import 'vue-sonner/style.css';
+import ConfirmDelete from '@/components/ConfirmDelete.vue';
 
 // ===== PROPS =====
 const props = defineProps<{
@@ -24,6 +25,10 @@ const { eliminarBasurero, toggleEstadoBasurero, ROUTES } = useResiduos();
 
 // ===== REACTIVE =====
 const searchTerm = ref('');
+
+// Estado para diálogo de confirmación
+const showConfirmDeleteDialog = ref(false);
+const itemToDelete = ref<number | null>(null);
 
 // ===== COMPUTED =====
 const basurerosFiltrados = computed(() => {
@@ -38,8 +43,20 @@ const basurerosFiltrados = computed(() => {
 
 // ===== MÉTODOS =====
 function handleEliminar(basurero: Basurero) {
-    eliminarBasurero(basurero.idBasurero);
+    itemToDelete.value = basurero.idBasurero;
+    showConfirmDeleteDialog.value = true;
 }
+
+const confirmDelete = async () => {
+    if (itemToDelete.value === null) return;
+    
+    await eliminarBasurero(itemToDelete.value, {
+        confirmFn: async () => true // Ya confirmado por el diálogo
+    });
+    
+    showConfirmDeleteDialog.value = false;
+    itemToDelete.value = null;
+};
 
 function handleToggleEstado(basurero: Basurero) {
     toggleEstadoBasurero(basurero.idBasurero);
@@ -209,5 +226,15 @@ function handleSearch() {
 
             <Toaster />
         </div>
+        
+        <!-- Confirm Dialog -->
+        <ConfirmDelete
+            :open="showConfirmDeleteDialog"
+            title="¿Eliminar basurero?"
+            description="El basurero se moverá a la papelera. Podrás restaurarlo después si es necesario."
+            @update:open="(v) => showConfirmDeleteDialog = v"
+            @confirm="confirmDelete"
+            @cancel="showConfirmDeleteDialog = false"
+        />
     </AppLayout>
 </template>

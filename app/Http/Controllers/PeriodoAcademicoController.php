@@ -16,7 +16,17 @@ class PeriodoAcademicoController extends Controller
         // Si no se especifica un año o es "all", usar el año actual por defecto
         $year = ($request->year && $request->year !== 'all') ? $request->year : now()->year;
         
-        $periodos = PeriodoAcademico::query()
+        $query = PeriodoAcademico::query();
+        
+        // Filtrar por estado de eliminación
+        if ($request->trashed === 'only') {
+            $query->onlyTrashed();
+        } elseif ($request->trashed === 'with') {
+            $query->withTrashed();
+        }
+        // Por defecto: solo activos (sin trashed)
+        
+        $periodos = $query
             ->when($request->search, function($query, $search) {
                 $query->where('nombre', 'like', "%{$search}%")
                     ->orWhere('codigo', 'like', "%{$search}%");
@@ -24,22 +34,24 @@ class PeriodoAcademicoController extends Controller
             ->when($year && $request->year !== 'all', function($query) use ($year) {
                 $query->whereYear('fecha_inicio', $year);
             })
-            ->when($request->estado && $request->estado !== 'all', function($query, $estado) {
-                $query->where('activo', $estado === 'activo');
-            })
             ->latest()
             ->get();
 
-        $years = PeriodoAcademico::selectRaw('YEAR(fecha_inicio) as year')
+        $years = PeriodoAcademico::withTrashed()
+            ->selectRaw('YEAR(fecha_inicio) as year')
             ->distinct()
             ->orderBy('year', 'desc')
             ->pluck('year');
 
         return Inertia::render('admin/PeriodosAcademicos/Index', [
             'periodos' => $periodos,
-            'filters' => array_merge($request->only(['search', 'year', 'estado']), [
-                'year' => $request->year || 'all'
-            ]),
+            'filters' => array_merge(
+                $request->only(['search', 'year', 'trashed']),
+                [
+                    'year' => $request->year ?? 'all',
+                    'trashed' => $request->trashed ?? 'active',
+                ]
+            ),
             'years' => $years
         ]);
     }
@@ -151,4 +163,32 @@ class PeriodoAcademicoController extends Controller
     /**
      * Remove the specified resource from storage.
      */
+
+    /**
+     * Restore a soft-deleted academic period.
+     */
+    public function restore($id)
+    {
+        try {
+            $periodo = PeriodoAcademico::withTrashed()->findOrFail($id);
+            
+            if (!$periodo->trashed()) {
+                return redirect()->back()
+                    ->with('error', 'El período académico no está eliminado.');
+            }
+            
+            $periodo->restore();
+            
+            return redirect()->back()
+                ->with('success', 'Período académico restaurado exitosamente');
+        } catch (\Exception $e) {
+            \Log::error('Error al restaurar período:', [
+                'id' => $id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return redirect()->back()
+                ->with('error', 'No se pudo restaurar el período académico.');
+        }
+    }
 }

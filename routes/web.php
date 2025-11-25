@@ -194,11 +194,15 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
     Route::get('/admin/reportes/depositos/pdf', [ReporteController::class, 'exportarPDF'])->name('admin.reportes.depositos.pdf');
     Route::get('/admin/reportes/depositos/excel', [ReporteController::class, 'exportarExcel'])->name('admin.reportes.depositos.excel');
     Route::get('/admin/reportes/ranking/pdf', [ReporteController::class, 'exportarRankingPDF'])->name('admin.reportes.ranking.pdf');
-    Route::get('/admin/reportes/basurero/pdf', [ReporteController::class, 'exportarBasureroPDF'])->name('admin.reportes.basurero.pdf');
+
     Route::get('/admin/reportes/fecha/pdf', [ReporteController::class, 'exportarDepositosPorFechaPDF'])->name('admin.reportes.fecha.pdf');
+    Route::get('/admin/reportes/estudiante/pdf', [ReporteController::class, 'exportarEvolucionEstudiantePDF'])->name('admin.reportes.estudiante.pdf');
+    Route::get('/admin/reportes/ranking-cursos', [ReporteController::class, 'rankingCursos'])->name('admin.reportes.ranking-cursos');
+    Route::get('/admin/reportes/ranking-cursos/pdf', [ReporteController::class, 'exportarRankingCursosPDF'])->name('admin.reportes.ranking-cursos.pdf');
     Route::get('/admin/reportes/depositos', [ReporteController::class, 'depositos'])->name('admin.reportes.depositos');
     Route::get('/admin/reportes/ranking', [ReporteController::class, 'ranking'])->name('admin.reportes.ranking');
-    Route::get('/admin/reportes/basureros', [ReporteController::class, 'basureros'])->name('admin.reportes.basureros');
+
+    Route::get('/admin/reportes/estudiante', [ReporteController::class, 'evolucionEstudiante'])->name('admin.reportes.estudiante');
     Route::get('/admin/reportes/tendencias', [ReporteController::class, 'tendencias'])->name('admin.reportes.tendencias');
     Route::get('/admin/reportes/impacto', [ReporteController::class, 'impacto'])->name('admin.reportes.impacto');
 
@@ -220,6 +224,7 @@ Route::middleware(['auth', RoleMiddleware::class.':administrador'])->group(funct
             'update' => 'admin.periodos.update',
             'destroy' => 'admin.periodos.destroy',
         ]);
+        Route::post('periodos/{id}/restore', [PeriodoAcademicoController::class, 'restore'])->name('admin.periodos.restore');
     });
 
     // Rutas para monitoreo de Raspberry Pi

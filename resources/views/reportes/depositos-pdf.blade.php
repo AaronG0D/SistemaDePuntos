@@ -132,8 +132,17 @@
 </head>
 <body>
     <div class="header">
+        <img src="{{ public_path('img/LogoDario.png') }}" alt="Logo" style="width: 80px; height: auto; margin-bottom: 0.5cm;">
         <div class="title">Reporte de Depósitos de Residuos</div>
-        <div class="subtitle">{{ $fecha_generacion }}</div>
+        <div class="subtitle">
+            <strong>Período:</strong> {{ $filtros['periodo'] }} 
+            @if($filtros['fecha_inicio'] && $filtros['fecha_fin'])
+                ({{ \Carbon\Carbon::parse($filtros['fecha_inicio'])->format('d/m/Y') }} - {{ \Carbon\Carbon::parse($filtros['fecha_fin'])->format('d/m/Y') }})
+            @endif
+            <br>
+            <strong>Tipo de Residuo:</strong> {{ $filtros['tipo_residuo'] }}
+        </div>
+        <div class="subtitle" style="margin-top: 5px; font-size: 8pt;">Generado el: {{ $fecha_generacion }}</div>
     </div>
 
     <div class="section">
@@ -189,13 +198,13 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($depositos->take(15) as $deposito)
+                @foreach($depositos as $deposito)
                 <tr>
                     <td>{{ \Carbon\Carbon::parse($deposito->fechaHora)->isoFormat('DD MMM YYYY, HH:mm') }}</td>
                     <td>{{ $deposito->user ? mb_convert_encoding("{$deposito->user->nombres} {$deposito->user->primerApellido}", 'UTF-8', 'auto') : 'N/A' }}</td>
                     <td>{{ $deposito->basurero ? mb_convert_encoding($deposito->basurero->ubicacion, 'UTF-8', 'auto') : 'N/A' }}</td>
                     <td>{{ $deposito->tipoBasura ? mb_convert_encoding($deposito->tipoBasura->nombre, 'UTF-8', 'auto') : 'N/A' }}</td>
-                    <td>{{ $deposito->tipoBasura ? number_format($deposito->tipoBasura->puntos) : 0 }} pts</td>
+                    <td>{{ $deposito->puntos_generados ?? 0 }} pts</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -203,7 +212,17 @@
     </div>
 
     <div class="footer">
-        Sistema de Puntos - Página <span class="page-number"></span>
+        <script type="text/php">
+            if (isset($pdf)) {
+                $text = "Página {PAGE_NUM} de {PAGE_COUNT}";
+                $size = 8;
+                $font = $fontMetrics->getFont("helvetica");
+                $width = $fontMetrics->get_text_width($text, $font, $size) / 2;
+                $x = ($pdf->get_width() - $width) / 2;
+                $y = $pdf->get_height() - 35;
+                $pdf->page_text($x, $y, $text, $font, $size);
+            }
+        </script>
     </div>
 </body>
 </html> 
